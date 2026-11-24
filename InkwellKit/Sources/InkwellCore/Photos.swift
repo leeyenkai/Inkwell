@@ -3,8 +3,12 @@ import Foundation
 /// A photo stream kept as one small file per photo in `_photos/`, listed by a Liquid loop on the photos page.
 public enum PhotoStream {
     public static let collection = "photos"
+    /// The album index, shown above the stream when the site has albums.
+    public static let albumsInclude = "{% include inkwell/albums.html %}"
 
     public static let loop = """
+    \(albumsInclude)
+
     <div class="photo-stream">
     {% assign photos = site.photos | where_exp: "photo", "photo.hidden != true" | sort: "date" | reverse %}
     {% for photo in photos %}
@@ -24,13 +28,15 @@ public enum PhotoStream {
         public var alt: String
         public var date: Date
         public var location: String
+        public var albums: [String]
 
-        public init(image: String, caption: String = "", alt: String = "", date: Date, location: String = "") {
+        public init(image: String, caption: String = "", alt: String = "", date: Date, location: String = "", albums: [String] = []) {
             self.image = image
             self.caption = caption
             self.alt = alt
             self.date = date
             self.location = location
+            self.albums = albums
         }
     }
 
@@ -54,6 +60,7 @@ public enum PhotoStream {
         if !photo.alt.isEmpty { fields.append(("alt", YAMLFormat.quoted(photo.alt))) }
         fields.append(("date", date))
         if !photo.location.isEmpty { fields.append(("location", YAMLFormat.quoted(photo.location))) }
+        if !photo.albums.isEmpty { fields.append(("albums", YAMLFormat.list(photo.albums))) }
         return ContentEdit(path: "_photos/\(name)", newText: FrontMatterDocument(fields: fields, body: "").text)
     }
 
@@ -67,7 +74,7 @@ public enum PhotoStream {
         if config.addCollection(collection, output: false) {
             plan.append((ContentEdit(path: "_config.yml", newText: config.text), localized("Adds a “photos” collection: one small file per photo in _photos/.")))
         }
-        let pagePath = ["photos.md", "photos.html", "photos/index.md"].first { read($0) != nil } ?? "photos.md"
+        let pagePath = Self.pagePath(siteRoot: siteRoot) ?? "photos.md"
         let old = read(pagePath)
         var front = "---\nlayout: default\ntitle: Photos\n---\n\n"
         var intro = "# Photos\n\n"
@@ -104,6 +111,22 @@ public enum PhotoStream {
             }
         }
         return plan
+    }
+
+    /// The photos page, if the site has one.
+    public static func pagePath(siteRoot: URL) -> String? {
+        ["photos.md", "photos.html", "photos/index.md"].first { FileManager.default.fileExists(atPath: siteRoot.appending(path: $0).path) }
+    }
+
+    /// For a photos page set up before albums: the album index added above the stream. Nil when it is there already,
+    /// or the page is not a photo stream.
+    public static func albumsOnPhotosPage(siteRoot: URL) -> ContentEdit? {
+        guard let path = pagePath(siteRoot: siteRoot), let text = try? String(contentsOf: siteRoot.appending(path: path), encoding: .utf8),
+              text.contains("site.photos"), !text.contains("inkwell/albums.html") else { return nil }
+        let anchor = text.range(of: "<div class=\"photo-stream\">") ?? text.range(of: "{% assign photos")
+        guard let anchor else { return nil }
+        let updated = String(text[..<anchor.lowerBound]) + albumsInclude + "\n\n" + String(text[anchor.lowerBound...])
+        return ContentEdit(path: path, newText: updated)
     }
 
     /// `<div class="photo-item"><img src alt><p class="photo-caption">…</p><time>…</time></div>` blocks, as photos.

@@ -1,0 +1,26 @@
+{%- comment -%}
+  Every album from _data/albums.yml, in the order set there, with its cover, title and number of photos. Liquid tag:
+    include inkwell/albums.html
+  Optional: limit=6, heading=false (no "Albums" heading, for a page that is only the album index).
+{%- endcomment -%}
+{%- assign inkwell_albums = site.data.albums -%}
+{%- if inkwell_albums and inkwell_albums.size > 0 -%}
+<section class="inkwell-albums" aria-label="Albums">
+{%- unless include.heading == false %}
+<h2 class="inkwell-albums-heading">Albums</h2>
+{%- endunless %}
+<ul class="inkwell-albums-grid" role="list">
+{%- for album in inkwell_albums limit: include.limit %}
+{%- assign inkwell_listed = site.photos | where: "albums", album.id -%}
+{%- assign inkwell_single = site.photos | where: "album", album.id -%}
+{%- assign inkwell_photos = inkwell_listed | concat: inkwell_single | where_exp: "photo", "photo.hidden != true" | sort: "date" | reverse -%}
+{%- assign inkwell_cover = album.cover | default: inkwell_photos.first.image %}
+<li class="inkwell-albums-item"><a class="inkwell-albums-link" href="{{ '/albums/' | append: album.id | append: '/' | relative_url }}">
+<span class="inkwell-albums-cover">{% if inkwell_cover %}<img src="{{ inkwell_cover | relative_url }}" alt="" loading="lazy">{% endif %}</span>
+<span class="inkwell-albums-title">{{ album.title | default: album.id | escape }}</span>
+<span class="inkwell-albums-count">{{ inkwell_photos.size }} {% if inkwell_photos.size == 1 %}photo{% else %}photos{% endif %}</span>
+</a></li>
+{%- endfor %}
+</ul>
+</section>
+{%- endif -%}
