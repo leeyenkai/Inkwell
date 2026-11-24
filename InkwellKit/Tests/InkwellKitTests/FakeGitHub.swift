@@ -1,3 +1,5 @@
+// The fake server reads its own well-formed requests, so force casts keep it short.
+// swiftlint:disable force_cast force_try
 import Foundation
 @testable import InkwellGitHub
 @testable import InkwellSync

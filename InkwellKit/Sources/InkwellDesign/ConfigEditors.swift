@@ -71,7 +71,9 @@ public struct ConfigDocument: Sendable, Equatable {
 
     func contentEnd(_ start: Int, _ end: Int) -> Int {
         var upper = end
-        while upper > start + 1, lines[upper - 1].trimmingCharacters(in: .whitespaces).isEmpty || lines[upper - 1].trimmingCharacters(in: .whitespaces).hasPrefix("#") {
+        while upper > start + 1 {
+            let trimmed = lines[upper - 1].trimmingCharacters(in: .whitespaces)
+            guard trimmed.isEmpty || trimmed.hasPrefix("#") else { break }
             upper -= 1
         }
         return upper
