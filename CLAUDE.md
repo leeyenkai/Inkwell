@@ -23,12 +23,14 @@ If a request conflicts with the spec, say so and update the spec before the code
 ```
 Inkwell/                 app target (synchronized folder)
   App/                   InkwellApp (scenes, commands, launch flags, self-test), AppModel, AccountModel, Backends (GitHub / local git),
-                         EditorDocument, SiteCreation, ContentActions (move, duplicate, pages, tags), PhotoActions (photos, galleries)
+                         EditorDocument, SiteCreation, ContentActions (move, duplicate, pages, tags), PhotoActions (photos, galleries),
+                         HealthActions (health, external links), Preferences (Prefs, Diagnostics)
   Features/Design/       DesignModel, DesignViews (panel, token rows, theme gallery, preview), SettingsViews (navigation, settings,
                          custom domain), CodeViews (file list, code editor pane)
   Platform/CodeTextView  CodeHighlighter and the CodeEditor text view
   Features/              ContentView (window, sidebar, list, detail, site menu), Onboarding (welcome, sign-in, site picker, new site),
                          ContentSheets (move, new page, history, tags, link picker), PhotoViews (photo grid, captions, media library), TableEditor,
+                         HealthViews, SharingView (per-post SEO), SettingsWindow, HelpViews (help, shortcuts, site summary),
                          EditorView (+ Properties), PreviewView, PublishSession (publish/update/delete/unpublish/changes), Sheets
   Platform/              InkwellTextView (NSTextView, MarkdownStyler, MarkdownEditor representable)
   Resources/             AppIcon.icon (Liquid Glass: icon.json + SVG layers), Assets.xcassets (accent colour)
@@ -37,7 +39,8 @@ InkwellKit/Sources/
   InkwellSync            WorkingCopy (download, blob-SHA changes, one-commit publish, pull, conflicts, discard), SiteRef
   InkwellDesign          CSSTokenDocument, ConfigDocument, NavigationDocument, ThemeManifest + Themes/, ThemeApplier, DesignTokens
   InkwellCore            YAML subset, FrontMatterDocument, SiteLoader, Permalink, Filename, Slug, SchemaInference, Validation, ContentChecks, DraftStore,
-                         ContentTools (MovePlanner, ConfigEditing, TagIndex, TextDiff), Photos (PhotoStream, MediaLibrary), Schedule
+                         ContentTools (MovePlanner, ConfigEditing, TagIndex, TextDiff), Photos (PhotoStream, MediaLibrary), Schedule,
+                         SiteHealth
   InkwellMarkdown        MarkdownScanner (editor styling), MarkdownRenderer (kramdown + GFM HTML), Formatting (editor commands),
                          SmartTyping, Tables (MarkdownTable, ImageLines)
   InkwellTemplate        LiquidTemplate, LiquidContext, LiquidFilters, PreviewBuilder
@@ -60,13 +63,16 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
   That private repository is a throwaway the user agreed to; never point the write test at a real site.
 - Design self-test: `--site <sample-site> --selftest-design` (applies a theme, edits colours, options and the menu, checks files,
   preview and the change list; refuses GitHub remotes).
+- Typing cost: `--site <sample-site> --measure-typing` prints milliseconds per keystroke at 15k, 60k and 150k characters.
+  `swift test --filter PerformanceTests` times load, health, media and preview on a generated 600-post site.
 - Content self-test: `--site <sample-site> --selftest-content` (move with redirect and publish, history, duplicate, new page, tags,
   Photos setup and import, the media library, a scheduled post published with its workflow, an inline image, and a table edit
-  undone in one step; refuses GitHub remotes).
-- Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--pane design|navigation|settings|media`
+  undone in one step, quick restyle matching a full one, a health fix; refuses GitHub remotes).
+- Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--pane design|navigation|settings|media|health` (`--issue <id>`)
   (`--media-file <path in site>`), `--photo <_photos/file>`,
   `--apply-theme <id>`, `--theme-gallery`, `--pane code --code-file <path> [--theme-file]`, `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`, `--table-cursor` (cursor in the first table),
-  `--edit-table` (the table grid, in a window so it can be captured).
+  `--edit-table` (the table grid, in a window so it can be captured), `--settings`, `--help <topic>`, `--summary` (first-open
+  summary, which `--site` otherwise suppresses).
 - README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
 ## Rules

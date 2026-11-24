@@ -19,6 +19,7 @@
 - **A real preview.** Posts render through the site's own layouts, theme and styles (Sass included) as you type. Browse the whole site, at desktop or phone width, in light or dark mode.
 - **Design without code, or with it.** Pick one of four themes, change colours, fonts and layout, edit the menu and site settings, set a custom domain, or open the code editor for layouts and styles. GitHub Pages themes such as minima work too.
 - **Edit like a notes app.** Markdown markers fade away off the line you are on, lists continue on Return, `/` opens a menu of blocks, `[[` links to another post, pictures show in place, and tables open as a grid. Rename a post and its old address keeps working.
+- **Keeps the site healthy.** Health finds broken links and images, missing alt text, oversized pictures and missing search and sharing basics, and fixes the safe ones in one click. Each post gets a description, share image and link preview.
 - **Private drafts, one-click publish.** Drafts stay on your Mac until you publish. Publishing checks the post, sends only its own files in one change, and tells you when GitHub Pages has it live. Update, unpublish or delete posts the same way, or date one in the future to schedule it; changes made on GitHub come in automatically.
 
 | Draft with preview | Publish |
