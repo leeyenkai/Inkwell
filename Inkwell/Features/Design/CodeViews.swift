@@ -28,17 +28,17 @@ extension DesignModel {
             return files.sorted { $0.path < $1.path }
         }
         var groups: [(String, [CodeFile])] = [
-            ("Layouts", list(root, "_layouts", inTheme: false)),
-            ("Includes", list(root, "_includes", inTheme: false)),
-            ("Styles and scripts", list(root, "_sass", inTheme: false) + list(root, "assets", inTheme: false)),
-            ("Settings and data", (FileManager.default.fileExists(atPath: root.appending(path: "_config.yml").path)
+            (String(localized: "Layouts"), list(root, "_layouts", inTheme: false)),
+            (String(localized: "Includes"), list(root, "_includes", inTheme: false)),
+            (String(localized: "Styles and scripts"), list(root, "_sass", inTheme: false) + list(root, "assets", inTheme: false)),
+            (String(localized: "Settings and data"), (FileManager.default.fileExists(atPath: root.appending(path: "_config.yml").path)
                     ? [CodeFile(path: "_config.yml", inTheme: false)] : []) + list(root, "_data", inTheme: false)),
         ]
         if let themeRoot {
             let own = Set(groups.flatMap(\.1).map(\.path))
             let themeFiles = (list(themeRoot, "_layouts", inTheme: true) + list(themeRoot, "_includes", inTheme: true)
                 + list(themeRoot, "_sass", inTheme: true) + list(themeRoot, "assets", inTheme: true)).filter { !own.contains($0.path) }
-            groups.append(("Theme files (read-only)", themeFiles))
+            groups.append((String(localized: "Theme files (read-only)"), themeFiles))
         }
         return groups.filter { !$0.1.isEmpty }
     }
@@ -193,10 +193,12 @@ struct CodeEditorPane: View {
 
     func revert() {
         let alert = NSAlert()
-        alert.messageText = "Revert \(file.name) to the published version?"
-        alert.informativeText = model.changes[file.path] == .added ? "The file is new, so it is removed." : "Your unpublished changes to it are discarded."
-        alert.addButton(withTitle: "Revert")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Revert \(file.name) to the published version?")
+        alert.informativeText = model.changes[file.path] == .added
+            ? String(localized: "The file is new, so it is removed.")
+            : String(localized: "Your unpublished changes to it are discarded.")
+        alert.addButton(withTitle: String(localized: "Revert"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, let backend = model.backend else { return }
         saveTask?.cancel()
         let path = file.path

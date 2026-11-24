@@ -59,9 +59,14 @@ struct HealthList: View {
 
 extension HealthList {
     func subtitle(_ issues: [SiteHealth.Issue]) -> String {
-        let suggestions = issues.count - model.healthProblems
-        let problems = model.healthProblems == 0 ? "No problems" : SiteHealth.plural(model.healthProblems, "problem")
-        return suggestions == 0 ? problems : "\(problems) · \(SiteHealth.plural(suggestions, "suggestion"))"
+        let problems = model.healthProblems
+        let suggestions = issues.count - problems
+        switch (problems, suggestions) {
+        case (0, 0): return String(localized: "No problems")
+        case (_, 0): return String(localized: "\(problems) problems")
+        case (0, _): return String(localized: "No problems · \(suggestions) suggestions")
+        default: return String(localized: "\(problems) problems · \(suggestions) suggestions")
+        }
     }
 }
 
@@ -81,10 +86,16 @@ struct HealthDetail: View {
     var model: AppModel
     var issue: SiteHealth.Issue
 
-    func verb(_ edit: ContentEdit) -> String {
-        guard edit.newText != nil else { return "Delete" }
+    func line(_ edit: ContentEdit) -> String {
+        guard edit.newText != nil else { return String(localized: "Delete \(edit.path)") }
         let exists = model.site.map { FileManager.default.fileExists(atPath: $0.root.appending(path: edit.path).path) } ?? false
-        return exists ? "Change" : "Add"
+        return exists ? String(localized: "Change \(edit.path)") : String(localized: "Add \(edit.path)")
+    }
+
+    func lines(_ edits: [ContentEdit]) -> String {
+        var text = edits.prefix(8).map { line($0) }
+        if edits.count > 8 { text.append(String(localized: "…and \(edits.count - 8) more")) }
+        return text.joined(separator: "\n")
     }
 
     var body: some View {
@@ -112,8 +123,7 @@ struct HealthDetail: View {
                     GroupBox {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(summary)
-                            Text(edits.prefix(8).map { verb($0) + " " + $0.path }.joined(separator: "\n")
-                                + (edits.count > 8 ? "\n…and \(edits.count - 8) more" : ""))
+                            Text(lines(edits))
                                 .font(.caption.monospaced()).foregroundStyle(.secondary)
                             HStack {
                                 Text("Nothing goes live until you publish.").font(.caption).foregroundStyle(.secondary)

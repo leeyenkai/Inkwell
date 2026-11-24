@@ -176,7 +176,7 @@ struct SidebarView: View {
                             Text(section.label)
                             Spacer()
                             if section.listsDocuments {
-                                Text("\(model.count(for: section.id))")
+                                Text(model.count(for: section.id), format: .number)
                                     .foregroundStyle(.secondary)
                                     .monospacedDigit()
                             }
@@ -192,7 +192,7 @@ struct SidebarView: View {
                     HStack {
                         Text("Drafts")
                         Spacer()
-                        Text("\(model.documents(for: .drafts).count)").foregroundStyle(.secondary).monospacedDigit()
+                        Text(model.documents(for: .drafts).count, format: .number).foregroundStyle(.secondary).monospacedDigit()
                     }
                 } icon: {
                     Image(systemName: "circle.lefthalf.filled")
@@ -205,7 +205,7 @@ struct SidebarView: View {
                         Text("Health")
                         Spacer()
                         if model.healthProblems > 0 {
-                            Text("\(model.healthProblems)").foregroundStyle(.secondary).monospacedDigit()
+                            Text(model.healthProblems, format: .number).foregroundStyle(.secondary).monospacedDigit()
                                 .accessibilityLabel("\(model.healthProblems) problems")
                         }
                     }
@@ -236,6 +236,10 @@ struct SidebarView: View {
 struct SyncFooter: View {
     var model: AppModel
 
+    var upToDate: String {
+        model.drafts.isEmpty ? String(localized: "Site up to date") : String(localized: "Site up to date · \(model.drafts.count) drafts")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !model.conflicts.isEmpty {
@@ -259,13 +263,12 @@ struct SyncFooter: View {
                 Button {
                     model.showChanges = true
                 } label: {
-                    Label("\(model.pendingChanges) unpublished change\(model.pendingChanges == 1 ? "" : "s")", systemImage: "pencil.circle.fill")
+                    Label("\(model.pendingChanges) unpublished changes", systemImage: "pencil.circle.fill")
                 }
                 .buttonStyle(.plain)
                 .help("Review and publish them (⌥⇧⌘P)")
             } else {
-                Label(model.drafts.isEmpty ? "Site up to date" : "Site up to date · \(model.drafts.count) draft\(model.drafts.count == 1 ? "" : "s")",
-                      systemImage: "checkmark.circle.fill")
+                Label(upToDate, systemImage: "checkmark.circle.fill")
                     .symbolRenderingMode(.multicolor)
             }
             switch model.syncStatus {
@@ -307,7 +310,7 @@ struct SiteMenu: View {
                 Button("Sign Out of GitHub") { model.signOut() }
             }
         } label: {
-            Label(model.backend?.displayName ?? "Site", systemImage: "globe")
+            Label(model.backend?.displayName ?? String(localized: "Site"), systemImage: "globe")
                 .labelStyle(.titleAndIcon)
         }
         .help("Site")
@@ -320,14 +323,14 @@ struct DocumentListView: View {
     var title: String {
         switch model.sidebarSelection {
         case let .section(id)?: model.site?.section(id)?.label ?? ""
-        case .drafts?: "Drafts"
-        case .design?: "Design"
-        case .navigation?: "Navigation"
-        case .settings?: "Settings"
-        case .code?: "Code"
-        case .tags?: "Tags"
-        case .media?: "Media"
-        case .health?: "Health"
+        case .drafts?: String(localized: "Drafts")
+        case .design?: String(localized: "Design")
+        case .navigation?: String(localized: "Navigation")
+        case .settings?: String(localized: "Settings")
+        case .code?: String(localized: "Code")
+        case .tags?: String(localized: "Tags")
+        case .media?: String(localized: "Media")
+        case .health?: String(localized: "Health")
         case nil: ""
         }
     }
@@ -365,14 +368,17 @@ struct DocumentListView: View {
         .overlay {
             if docs.isEmpty {
                 ContentUnavailableView {
-                    Label(model.searchText.isEmpty ? "Nothing here yet" : "No Results", systemImage: "doc.text")
+                    Label(model.searchText.isEmpty ? String(localized: "Nothing here yet") : String(localized: "No Results"),
+                          systemImage: "doc.text")
                 } description: {
-                    Text(model.searchText.isEmpty ? "Press ⌘N to start a post." : "Try a different search.")
+                    Text(model.searchText.isEmpty
+                        ? String(localized: "Press ⌘N to start a post.")
+                        : String(localized: "Try a different search."))
                 }
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle("\(docs.count) item\(docs.count == 1 ? "" : "s")")
+        .navigationSubtitle("\(docs.count) items")
     }
 }
 
@@ -414,11 +420,15 @@ struct DocumentRow: View {
     var subtitle: String {
         switch status {
         case .draft:
-            "Draft · edited \(doc.modified.formatted(.relative(presentation: .named)))"
+            String(localized: "Draft · edited \(doc.modified.formatted(.relative(presentation: .named)))")
         case .edited:
-            "Edited · not yet updated"
+            String(localized: "Edited · not yet updated")
         default:
-            if let date = doc.date { "\(status.label) · \(date.formatted(.dateTime.month(.abbreviated).day().year()))" } else { status.label }
+            if let date = doc.date {
+                String(localized: "\(status.label) · \(date.formatted(.dateTime.month(.abbreviated).day().year()))")
+            } else {
+                status.label
+            }
         }
     }
 
@@ -430,7 +440,7 @@ struct DocumentRow: View {
                 .help(status.label)
                 .accessibilityLabel(status.label)
             VStack(alignment: .leading, spacing: 3) {
-                Text(doc.title.isEmpty ? "Untitled" : doc.title)
+                Text(doc.title.isEmpty ? String(localized: "Untitled") : doc.title)
                     .font(.headline)
                     .lineLimit(1)
                     .foregroundStyle(doc.title.isEmpty ? .secondary : .primary)

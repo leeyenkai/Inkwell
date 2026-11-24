@@ -73,7 +73,7 @@ struct CodeEditor: NSViewRepresentable {
         textView.drawsBackground = true
         textView.backgroundColor = .textBackgroundColor
         textView.delegate = context.coordinator
-        textView.setAccessibilityLabel("Code")
+        textView.setAccessibilityLabel(String(localized: "Code"))
         load(textView, coordinator: context.coordinator)
         return scroll
     }

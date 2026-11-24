@@ -22,7 +22,7 @@ extension AppModel {
         do {
             for edit in edits { try edit.apply(to: site.root) }
         } catch {
-            errorMessage = "The fix could not be applied: \(error.localizedDescription)"
+            errorMessage = String(localized: "The fix could not be applied: \(error.localizedDescription)")
         }
         selectedIssueID = nil
         design?.reload()
@@ -67,9 +67,8 @@ extension AppModel {
             externalLinkIssues = byDoc.keys.sorted().map { path in
                 let title = site.documents.first { $0.relativePath == path }?.title ?? path
                 let urls = byDoc[path, default: []].sorted()
-                let works = urls.count == 1 ? "works" : "work"
                 return SiteHealth.Issue(id: "external:\(path)", category: .links, severity: .warning,
-                                        title: "\(SiteHealth.plural(urls.count, "link")) to other sites in “\(title)” no longer \(works)",
+                                        title: String(localized: "\(urls.count) links to other sites in “\(title)” no longer work"),
                                         detail: urls.joined(separator: "\n"), paths: [path], fix: nil)
             }
             externalCheck = .checked(Date())

@@ -35,8 +35,10 @@ struct PublishSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Toggle("Publish it on time", isOn: Binding(get: { session.addScheduleWorkflow == true },
                                                                set: { session.addScheduleWorkflow = $0 }))
-                    Text("GitHub Pages only rebuilds when something changes. This adds a small hourly workflow to the site that "
-                        + "rebuilds it when a scheduled post comes due. Without it, the post appears the next time you publish anything.")
+                    Text("""
+                    GitHub Pages only rebuilds when something changes. This adds a small hourly workflow to the site that \
+                    rebuilds it when a scheduled post comes due. Without it, the post appears the next time you publish anything.
+                    """)
                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -71,26 +73,32 @@ struct PublishSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             switch session.phase {
             case .publishing:
-                step("Sending to GitHub…", busy: true)
+                step(String(localized: "Sending to GitHub…"), busy: true)
             case let .building(state):
-                step("Saved on GitHub", done: true)
+                step(String(localized: "Saved on GitHub"), done: true)
                 switch state {
-                case .waiting, .building: step("GitHub Pages is building the site…", busy: true)
-                case let .failed(reason): step("The Pages build failed (\(reason)). Open the repository’s Actions tab on GitHub for the details.", failed: true)
-                case let .unknown(reason): step("Could not follow the build: \(reason) The change is on GitHub.", failed: true)
-                case .live: step("Live", done: true)
+                case .waiting, .building: step(String(localized: "GitHub Pages is building the site…"), busy: true)
+                case let .failed(reason):
+                    step(String(localized: """
+                    The Pages build failed (\(reason)). Open the repository’s Actions tab on GitHub for the details.
+                    """), failed: true)
+                case let .unknown(reason):
+                    step(String(localized: "Could not follow the build: \(reason) The change is on GitHub."), failed: true)
+                case .live: step(String(localized: "Live"), done: true)
                 }
             case .live:
-                step("Saved on GitHub", done: true)
-                step(session.kind == .delete || session.kind == .unpublish ? "Removed from the live site" : "Live on the site", done: true)
+                step(String(localized: "Saved on GitHub"), done: true)
+                step(session.kind == .delete || session.kind == .unpublish
+                    ? String(localized: "Removed from the live site") : String(localized: "Live on the site"), done: true)
             case .pushed:
-                step("Committed and pushed", done: true)
+                step(String(localized: "Committed and pushed"), done: true)
             case .committedOnly:
-                step("Committed in the folder. It has no GitHub remote to push to.", done: true)
+                step(String(localized: "Committed in the folder. It has no GitHub remote to push to."), done: true)
             case let .pushFailed(message):
-                step("Committed here, but not pushed: \(message)", failed: true)
+                step(String(localized: "Committed here, but not pushed: \(message)"), failed: true)
             case let .conflict(paths):
-                step("Changed on GitHub too: \(paths.joined(separator: ", ")). Choose which version to keep, then publish again.", failed: true)
+                let list = paths.joined(separator: ", ")
+                step(String(localized: "Changed on GitHub too: \(list). Choose which version to keep, then publish again."), failed: true)
             case let .failed(message):
                 step(message, failed: true)
             case .ready:
@@ -110,7 +118,7 @@ struct PublishSheet: View {
                 if session.phase == .live, let url = session.liveURL, session.kind == .publish || session.kind == .update {
                     Button("Open Post") { NSWorkspace.shared.open(url) }
                 }
-                Button(isBusy ? "Hide" : "Done") { dismiss() }
+                Button(isBusy ? String(localized: "Hide") : String(localized: "Done")) { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -179,7 +187,7 @@ struct ChangesSheet: View {
             }
             HStack {
                 if !sorted.isEmpty {
-                    Button(included.count == sorted.count ? "Select None" : "Select All") {
+                    Button(included.count == sorted.count ? String(localized: "Select None") : String(localized: "Select All")) {
                         included = included.count == sorted.count ? [] : Set(sorted.map(\.0))
                     }
                 }
@@ -198,9 +206,9 @@ struct ChangesSheet: View {
 
     func label(_ kind: ChangeKind) -> String {
         switch kind {
-        case .added: "New"
-        case .modified: "Changed"
-        case .deleted: "Removed"
+        case .added: String(localized: "New")
+        case .modified: String(localized: "Changed")
+        case .deleted: String(localized: "Removed")
         }
     }
 
@@ -242,8 +250,8 @@ struct ConflictSheet: View {
                 Divider()
                 Text(comparing).font(.caption.monospaced()).foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 12) {
-                    version("This Mac", mine)
-                    version("GitHub", theirs)
+                    version(String(localized: "This Mac"), mine)
+                    version(String(localized: "GitHub"), theirs)
                 }
                 .frame(height: 260)
             }
@@ -270,8 +278,8 @@ struct ConflictSheet: View {
     func compare(_ path: String) {
         guard let backend = model.backend else { return }
         comparing = path
-        mine = (try? String(contentsOf: backend.siteRoot.appending(path: path), encoding: .utf8)) ?? "(removed here)"
-        Task { theirs = (try? await backend.remoteVersion(of: path)) ?? "(removed on GitHub)" }
+        mine = (try? String(contentsOf: backend.siteRoot.appending(path: path), encoding: .utf8)) ?? String(localized: "(removed here)")
+        Task { theirs = (try? await backend.remoteVersion(of: path)) ?? String(localized: "(removed on GitHub)") }
     }
 
     func resolve(_ path: String, keepMine: Bool) {

@@ -69,7 +69,7 @@ extension AppModel {
         do {
             for step in plan { try step.edit.apply(to: site.root) }
         } catch {
-            errorMessage = "Photos could not be set up: \(error.localizedDescription)"
+            errorMessage = String(localized: "Photos could not be set up: \(error.localizedDescription)")
         }
         design?.reload()
         sidebarSelection = .section(PhotoStream.collection)
@@ -102,7 +102,8 @@ extension AppModel {
                     return PendingPhoto(image: image, date: date)
                 }
             }.value
-            if imported.count < urls.count { errorMessage = "\(urls.count - imported.count) of the files could not be read as pictures." }
+            let failed = urls.count - imported.count
+            if failed > 0 { errorMessage = String(localized: "\(failed) of the files could not be read as pictures.") }
             if !imported.isEmpty { pendingPhotos = imported }
         }
     }
@@ -141,10 +142,10 @@ extension AppModel {
     func deletePhoto(_ entry: PhotoEntry) {
         guard let site else { return }
         let alert = NSAlert()
-        alert.messageText = "Delete this photo?"
-        alert.informativeText = "It leaves the photo stream when you next publish. GitHub keeps its history."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Delete this photo?")
+        alert.informativeText = String(localized: "It leaves the photo stream when you next publish. GitHub keeps its history.")
+        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         try? FileManager.default.removeItem(at: entry.doc.fileURL)
         if let image = fileURL(forSitePath: entry.image) {

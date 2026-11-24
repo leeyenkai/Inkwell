@@ -17,7 +17,8 @@ struct SharingView: View {
                             .lineLimit(2 ... 4)
                     }
                     HStack {
-                        Button(editor.string("image").isEmpty ? "Choose Share Image…" : "Change Share Image…") { chooseImage() }
+                        Button(editor.string("image").isEmpty
+                            ? String(localized: "Choose Share Image…") : String(localized: "Change Share Image…")) { chooseImage() }
                         if !editor.string("image").isEmpty {
                             Button("Remove") { editor.setRaw("image", nil) }
                         }
@@ -72,11 +73,11 @@ struct SharingView: View {
 
     var hints: [String] {
         var result: [String] = []
-        if cardTitle.count > 60 { result.append("Search results cut titles after about 60 characters.") }
+        if cardTitle.count > 60 { result.append(String(localized: "Search results cut titles after about 60 characters.")) }
         if description.isEmpty {
-            result.append("Without a description, search engines and previews use the first paragraph.")
+            result.append(String(localized: "Without a description, search engines and previews use the first paragraph."))
         } else if description.count > 160 {
-            result.append("Search results cut descriptions after about 160 characters.")
+            result.append(String(localized: "Search results cut descriptions after about 160 characters."))
         }
         return result
     }
@@ -85,7 +86,7 @@ struct SharingView: View {
         guard let site = model.site else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
-        panel.message = "Choose the picture shown when this post is shared. A wide image (1200 × 630) works best."
+        panel.message = String(localized: "Choose the picture shown when this post is shared. A wide image (1200 × 630) works best.")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let slug = Filename.parse(editor.document.filename).slug
         do {
@@ -114,7 +115,7 @@ struct LinkPreviewCard: View {
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text(host.uppercased()).font(.caption2).foregroundStyle(.secondary)
-                Text(title.isEmpty ? "Untitled" : title).font(.callout.weight(.semibold)).lineLimit(2)
+                Text(title.isEmpty ? String(localized: "Untitled") : title).font(.callout.weight(.semibold)).lineLimit(2)
                 if !description.isEmpty {
                     Text(description).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                 }

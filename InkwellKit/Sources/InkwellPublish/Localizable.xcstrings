@@ -1,0 +1,15 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "GitHub did not accept the saved sign-in for this repository. Push once from Terminal to save it, then try again." : {
+
+    },
+    "The site changed on GitHub since it was last fetched, and the changes could not be combined automatically." : {
+
+    },
+    "git %@ failed." : {
+
+    }
+  },
+  "version" : "1.0"
+}

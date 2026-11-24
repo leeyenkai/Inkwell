@@ -7,12 +7,12 @@ public struct GitError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         let detail = output.trimmingCharacters(in: .whitespacesAndNewlines)
         if detail.contains("Authentication failed") || detail.contains("could not read Username") {
-            return "GitHub did not accept the saved sign-in for this repository. Push once from Terminal to save it, then try again."
+            return localized("GitHub did not accept the saved sign-in for this repository. Push once from Terminal to save it, then try again.")
         }
         if detail.contains("rejected") || detail.contains("non-fast-forward") {
-            return "The site changed on GitHub since it was last fetched, and the changes could not be combined automatically."
+            return localized("The site changed on GitHub since it was last fetched, and the changes could not be combined automatically.")
         }
-        return detail.isEmpty ? "git \(command) failed." : detail
+        return detail.isEmpty ? localized("git \(command) failed.") : detail
     }
 }
 

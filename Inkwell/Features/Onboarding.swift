@@ -124,7 +124,8 @@ struct SitePickerView: View {
                         .frame(width: 20)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(repo.full_name).font(.headline)
-                        Text(repo.has_pages == true ? "GitHub Pages site" : (repo.description ?? "Repository"))
+                        Text(repo.has_pages == true
+                            ? String(localized: "GitHub Pages site") : (repo.description ?? String(localized: "Repository")))
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer()
@@ -199,8 +200,8 @@ struct NewSiteSheet: View {
             Form {
                 TextField("Site title", text: $title, prompt: Text("My notebook"))
                 Picker("Address", selection: $userSite) {
-                    Text(userSiteTaken ? "\(login).github.io (already used)" : "\(login).github.io").tag(true)
-                    Text("\(login).github.io/…").tag(false)
+                    Text(userSiteTaken ? String(localized: "\(login).github.io (already used)") : "\(login).github.io").tag(true)
+                    Text(verbatim: "\(login).github.io/…").tag(false)
                 }
                 .disabled(userSiteTaken)
                 if !userSite || userSiteTaken {

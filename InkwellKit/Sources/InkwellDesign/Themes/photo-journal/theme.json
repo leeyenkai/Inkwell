@@ -55,35 +55,35 @@
       "name": "--font-body",
       "label": "Body font",
       "kind": "font",
-      "group": "Type",
+      "group": "Fonts",
       "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
     },
     {
       "name": "--font-heading",
       "label": "Heading font",
       "kind": "font",
-      "group": "Type",
+      "group": "Fonts",
       "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
     },
     {
       "name": "--font-mono",
       "label": "Code font",
       "kind": "font",
-      "group": "Type",
+      "group": "Fonts",
       "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
     },
     {
       "name": "--font-size",
       "label": "Text size",
       "kind": "length",
-      "group": "Type",
+      "group": "Fonts",
       "light": "17px"
     },
     {
       "name": "--line-height",
       "label": "Line spacing",
       "kind": "number",
-      "group": "Type",
+      "group": "Fonts",
       "light": "1.6"
     },
     {

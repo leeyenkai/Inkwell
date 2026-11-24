@@ -25,8 +25,8 @@ public enum ImageImportError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .unreadable(name): "\(name) could not be read as an image."
-        case let .writeFailed(name): "\(name) could not be saved."
+        case let .unreadable(name): localized("\(name) could not be read as an image.")
+        case let .writeFailed(name): localized("\(name) could not be saved.")
         }
     }
 }

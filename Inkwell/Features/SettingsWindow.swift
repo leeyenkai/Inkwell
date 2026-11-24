@@ -49,7 +49,7 @@ struct EditorSettings: View {
             LabeledContent("Text size") {
                 HStack {
                     Slider(value: $size, in: 12 ... 22, step: 1).frame(width: 180)
-                    Text("\(Int(size)) pt").monospacedDigit().frame(width: 40, alignment: .trailing)
+                    Text("\(String(Int(size))) pt").monospacedDigit().frame(width: 40, alignment: .trailing)
                 }
             }
             Toggle("Hide Markdown syntax away from the cursor", isOn: Binding(get: { model.hideSyntax }, set: { model.hideSyntax = $0 }))
@@ -81,11 +81,13 @@ struct ImageSettings: View {
             LabeledContent("JPEG quality") {
                 HStack {
                     Slider(value: $quality, in: 0.6 ... 0.95, step: 0.01).frame(width: 180)
-                    Text("\(Int((quality * 100).rounded()))%").monospacedDigit().frame(width: 40, alignment: .trailing)
+                    Text(quality, format: .percent.precision(.fractionLength(0))).monospacedDigit().frame(width: 40, alignment: .trailing)
                 }
             }
-            Text("Pictures are turned upright and lose their location and camera data whatever these are set to. "
-                + "Settings apply to pictures added from now on.")
+            Text("""
+                Pictures are turned upright and lose their location and camera data whatever these are set to. \
+                Settings apply to pictures added from now on.
+                """)
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .formStyle(.grouped)

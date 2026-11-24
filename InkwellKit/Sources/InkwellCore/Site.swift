@@ -140,7 +140,7 @@ public enum SiteError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .notASite(url): "\(url.lastPathComponent) does not look like a Jekyll site. It has no _config.yml."
+        case let .notASite(url): localized("\(url.lastPathComponent) does not look like a Jekyll site. It has no _config.yml.")
         }
     }
 }

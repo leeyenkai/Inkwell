@@ -1,0 +1,102 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "A wide layout where pictures lead and posts show as cards.": {
+      "comment": "Summary of the Photo journal theme",
+      "extractionState": "manual"
+    },
+    "Accent": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Appearance": {
+      "comment": "Design panel: a theme option",
+      "extractionState": "manual"
+    },
+    "Background": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Body font": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Clean sans-serif notes and short posts, light and dark.": {
+      "comment": "Summary of the Notebook theme",
+      "extractionState": "manual"
+    },
+    "Code font": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Colours": {
+      "comment": "Design panel: a group of settings",
+      "extractionState": "manual"
+    },
+    "Content width": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Corner rounding": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Date format": {
+      "comment": "Design panel: a theme option",
+      "extractionState": "manual"
+    },
+    "Fonts": {
+      "comment": "Design panel: a group of settings",
+      "extractionState": "manual"
+    },
+    "Heading font": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Home page list": {
+      "comment": "Design panel: a theme option",
+      "extractionState": "manual"
+    },
+    "Layout": {
+      "comment": "Design panel: a group of settings",
+      "extractionState": "manual"
+    },
+    "Line spacing": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Lines": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Long-form writing in a calm serif column, on warm paper.": {
+      "comment": "Summary of the Essayist theme",
+      "extractionState": "manual"
+    },
+    "Panels": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Plain text and generous space, with monospaced headings.": {
+      "comment": "Summary of the Minimal theme",
+      "extractionState": "manual"
+    },
+    "Secondary text": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Show reading time": {
+      "comment": "Design panel: a theme option",
+      "extractionState": "manual"
+    },
+    "Text": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Text size": {
+      "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    }
+  },
+  "version": "1.0"
+}

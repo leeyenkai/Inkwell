@@ -1,0 +1,63 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "A home page that lists your latest posts." : {
+
+    },
+    "Add" : {
+
+    },
+    "Change" : {
+
+    },
+    "Colours" : {
+
+    },
+    "Design change" : {
+
+    },
+    "Fonts" : {
+
+    },
+    "How a post looks: title, byline, date and text." : {
+
+    },
+    "How a standalone page looks." : {
+
+    },
+    "Layout" : {
+
+    },
+    "Other" : {
+
+    },
+    "Remembers the theme and its options under “inkwell:”." : {
+
+    },
+    "Remove" : {
+
+    },
+    "Switch to %@" : {
+
+    },
+    "The dark palette, used when the reader’s Mac or phone is in dark mode." : {
+
+    },
+    "The footer line." : {
+
+    },
+    "The list of posts used on the home page." : {
+
+    },
+    "The menu at the top of every page." : {
+
+    },
+    "The page frame: header, navigation and footer." : {
+
+    },
+    "The site title and navigation." : {
+
+    }
+  },
+  "version" : "1.0"
+}

@@ -48,7 +48,7 @@ extension AppModel {
             return
         }
         guard !FileManager.default.fileExists(atPath: site.root.appending(path: newPath).path) else {
-            errorMessage = "\(newPath) already exists. Choose another address."
+            errorMessage = String(localized: "\(newPath) already exists. Choose another address.")
             return
         }
         let published = status(of: doc) != .notPublished
@@ -59,16 +59,16 @@ extension AppModel {
         do {
             for edit in plan.edits { try edit.apply(to: site.root) }
         } catch {
-            errorMessage = "The post could not be moved: \(error.localizedDescription)"
+            errorMessage = String(localized: "The post could not be moved: \(error.localizedDescription)")
             return
         }
         sidebarSelection = sectionID == doc.sectionID ? sidebarSelection : .section(sectionID)
         didPublish(selecting: newPath)
         guard published else { return }
         let links = plan.updatedLinks.count
+        let heading = links > 0 ? String(localized: "Move “\(title)” and update \(links) links") : String(localized: "Move “\(title)”")
         publishSheet = PublishSession.changes(paths: plan.edits.map(\.path), message: "Move: \(title)", backend: backend, model: self,
-                                              heading: "Move “\(title)”" + (links > 0 ? " and update \(links) link\(links == 1 ? "" : "s")" : ""),
-                                              selecting: newPath)
+                                              heading: heading, selecting: newPath)
     }
 
     /// Sections a post can move to: collections only (pages stay pages).
@@ -142,7 +142,7 @@ extension AppModel {
             // The text could have been reloaded while the grid was open; only replace the same table.
             guard NSMaxRange(range) <= (textView.string as NSString).length,
                   MarkdownTable.find(in: textView.string, at: range.location)?.range == range else {
-                errorMessage = "The table changed while you were editing it, so your changes were not applied."
+                errorMessage = String(localized: "The table changed while you were editing it, so your changes were not applied.")
                 return
             }
         }
@@ -159,19 +159,19 @@ extension AppModel {
             if panel.runModal() == .OK { importImages(panel.urls, at: location) }
         case "embed":
             let alert = NSAlert()
-            alert.messageText = "Embed a video"
-            alert.informativeText = "Paste a YouTube or Vimeo address."
+            alert.messageText = String(localized: "Embed a video")
+            alert.informativeText = String(localized: "Paste a YouTube or Vimeo address.")
             let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
             field.placeholderString = "https://www.youtube.com/watch?v=…"
             field.stringValue = NSPasteboard.general.string(forType: .string) ?? ""
             alert.accessoryView = field
-            alert.addButton(withTitle: "Embed")
-            alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: String(localized: "Embed"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
             if let html = SmartTyping.embed(for: field.stringValue) {
                 textView?.insertBlock(html, at: location)
             } else {
-                errorMessage = "That is not a YouTube or Vimeo address Inkwell can embed."
+                errorMessage = String(localized: "That is not a YouTube or Vimeo address Inkwell can embed.")
             }
         default:
             break

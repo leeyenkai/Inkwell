@@ -33,7 +33,7 @@ struct InkwellApp: App {
                     .disabled(model.site == nil)
             }
             CommandGroup(after: .saveItem) {
-                Button(model.publishTitle + "…") { model.beginPublish() }
+                Button(model.publishMenuTitle) { model.beginPublish() }
                     .keyboardShortcut("p", modifiers: [.command, .shift])
                     .disabled(!model.canPublish)
                 Button("Review Unpublished Changes…") { model.showChanges = true }
@@ -134,7 +134,7 @@ struct FormatCommands: Commands {
     func addImage() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
-        panel.message = "Choose an image. It is resized, cleaned of location data and copied into the site."
+        panel.message = String(localized: "Choose an image. It is resized, cleaned of location data and copied into the site.")
         guard model.editor != nil, panel.runModal() == .OK, let url = panel.url else { return }
         model.importImages([url], at: model.textView?.selectedRange().location ?? 0)
     }
@@ -243,7 +243,7 @@ enum Launch {
                     if let edit = model.tableEdit {
                         model.tableEdit = nil
                         let window = NSWindow(contentViewController: NSHostingController(rootView: TableEditorSheet(model: model, edit: edit)))
-                        window.title = "Table"
+                        window.title = String(localized: "Table")
                         window.makeKeyAndOrderFront(nil)
                     }
                 }
@@ -377,7 +377,8 @@ enum SelfTest {
             await settle()
             model.beginPublish()
             if let session = model.publishSheet {
-                ok = check(session.actionTitle == "Schedule" && session.addScheduleWorkflow == true, "publish offers to schedule") && ok
+                let schedules = session.actionTitle == String(localized: "Schedule") && session.addScheduleWorkflow == true
+                ok = check(schedules, "publish offers to schedule") && ok
                 await session.run()
                 let files = (try? await git.run(["show", "--name-only", "--format=", "HEAD"]))?.split(separator: "\n").map(String.init) ?? []
                 ok = check(files.contains(Schedule.workflowPath) && files.count == 2, "post and workflow in one commit (\(files))") && ok

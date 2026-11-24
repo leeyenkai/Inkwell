@@ -23,12 +23,12 @@ enum DocumentStatus: Equatable {
 
     var label: String {
         switch self {
-        case .published: "Published"
-        case .draft: "Draft"
-        case .edited: "Edited"
-        case .notPublished: "Not published"
-        case .hidden: "Hidden"
-        case .scheduled: "Scheduled"
+        case .published: String(localized: "Published")
+        case .draft: String(localized: "Draft")
+        case .edited: String(localized: "Edited")
+        case .notPublished: String(localized: "Not published")
+        case .hidden: String(localized: "Hidden")
+        case .scheduled: String(localized: "Scheduled")
         }
     }
 
@@ -196,7 +196,7 @@ final class AppModel {
     /// Opens a repository from the person's account, downloading it the first time.
     func open(repository repo: GitHubRepo) async {
         guard let client = account.client else { return }
-        opening = "Looking at \(repo.full_name)…"
+        opening = String(localized: "Looking at \(repo.full_name)…")
         loadError = nil
         do {
             let pages = try? await client.pages(repo.owner.login, repo.name)
@@ -224,18 +224,22 @@ final class AppModel {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.message = "Choose a folder with a Jekyll site that you already publish with git."
-        panel.prompt = "Open Site"
+        panel.message = String(localized: "Choose a folder with a Jekyll site that you already publish with git.")
+        panel.prompt = String(localized: "Open Site")
         if panel.runModal() == .OK, let url = panel.url { Task { await openFolder(url) } }
     }
 
     func openFolder(_ url: URL) async {
         guard let local = LocalGitBackend(siteRoot: url, client: account.client) else {
-            loadError = "Using a local folder needs git. Install the command line tools (xcode-select --install), or sign in with GitHub instead."
+            loadError = String(localized: """
+                Using a local folder needs git. Install the command line tools (xcode-select --install), or sign in with GitHub instead.
+                """)
             return
         }
         guard await local.prepare() else {
-            loadError = "\(url.lastPathComponent) is not a git repository. Sign in with GitHub to open your site from there instead."
+            loadError = String(localized: """
+                \(url.lastPathComponent) is not a git repository. Sign in with GitHub to open your site from there instead.
+                """)
             return
         }
         await attach(local)
@@ -332,7 +336,7 @@ final class AppModel {
             design?.reload()
             return
         }
-        themeStatus = "Getting the \(reference.repository) theme for the preview…"
+        themeStatus = String(localized: "Getting the \(reference.repository) theme for the preview…")
         let client = account.client ?? GitHubClient(token: "")
         Task {
             do {
@@ -341,7 +345,9 @@ final class AppModel {
                 if let site = self.site { rebuildDerived(site) }
                 design?.reload()
             } catch {
-                themeStatus = "The \(reference.repository) theme could not be downloaded, so the preview is unstyled: \(error.localizedDescription)"
+                themeStatus = String(localized: """
+                    The \(reference.repository) theme could not be downloaded, so the preview is unstyled: \(error.localizedDescription)
+                    """)
             }
         }
     }
@@ -503,7 +509,7 @@ final class AppModel {
         let section = site.section(sectionID ?? "") ?? site.sections.first { $0.collectionName == "posts" }
             ?? site.sections.first { $0.collectionName == "notes" } ?? site.sections.first { $0.collectionName != nil }
         guard let section, let collection = section.collectionName else {
-            errorMessage = "This site has no section for posts yet."
+            errorMessage = String(localized: "This site has no section for posts yet.")
             return
         }
         let fields = schema(for: section.id)
@@ -591,10 +597,12 @@ final class AppModel {
         return [.draft, .edited, .notPublished].contains(status(of: doc))
     }
 
-    var publishTitle: String {
-        guard let doc = editor?.document else { return "Publish" }
-        return status(of: doc) == .edited ? "Update" : "Publish"
-    }
+    private var publishUpdates: Bool { editor.map { status(of: $0.document) == .edited } ?? false }
+
+    var publishTitle: String { publishUpdates ? String(localized: "Update") : String(localized: "Publish") }
+
+    /// The menu command, with its ellipsis.
+    var publishMenuTitle: String { publishUpdates ? String(localized: "Update…") : String(localized: "Publish…") }
 
     func beginPublish() {
         guard let editor, let site, let backend, canPublish else { return }
@@ -605,10 +613,12 @@ final class AppModel {
     func deleteFromSite(_ doc: SiteDocument) {
         guard let backend, doc.origin == .repository else { return }
         let alert = NSAlert()
-        alert.messageText = "Delete “\(doc.title)” from your site?"
-        alert.informativeText = "It is removed from GitHub in one change, and the page stops working. GitHub keeps its history, so it can be brought back."
-        alert.addButton(withTitle: "Delete from Site")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Delete “\(doc.title)” from your site?")
+        alert.informativeText = String(localized: """
+            It is removed from GitHub in one change, and the page stops working. GitHub keeps its history, so it can be brought back.
+            """)
+        alert.addButton(withTitle: String(localized: "Delete from Site"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.buttons.first?.hasDestructiveAction = true
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         retireEditor(for: doc)
@@ -627,11 +637,12 @@ final class AppModel {
     func discardChanges(_ doc: SiteDocument) {
         guard let backend, changes[doc.relativePath] != nil else { return }
         let alert = NSAlert()
-        alert.messageText = "Discard the unpublished changes to “\(doc.title)”?"
+        alert.messageText = String(localized: "Discard the unpublished changes to “\(doc.title)”?")
         alert.informativeText = changes[doc.relativePath] == .added
-            ? "The file has never been published, so it is removed." : "It goes back to the version that is on your site."
-        alert.addButton(withTitle: "Discard Changes")
-        alert.addButton(withTitle: "Cancel")
+            ? String(localized: "The file has never been published, so it is removed.")
+            : String(localized: "It goes back to the version that is on your site.")
+        alert.addButton(withTitle: String(localized: "Discard Changes"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         retireEditor(for: doc)
         Task {
@@ -647,10 +658,11 @@ final class AppModel {
     func deleteDraft(_ doc: SiteDocument) {
         guard doc.origin == .localDraft else { return }
         let alert = NSAlert()
-        alert.messageText = "Delete “\(doc.title.isEmpty ? "Untitled" : doc.title)”?"
-        alert.informativeText = "The draft is moved to the Trash. It was never published."
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
+        let name = doc.title.isEmpty ? String(localized: "Untitled") : doc.title
+        alert.messageText = String(localized: "Delete “\(name)”?")
+        alert.informativeText = String(localized: "The draft is moved to the Trash. It was never published.")
+        alert.addButton(withTitle: String(localized: "Move to Trash"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         retireEditor(for: doc)
         try? FileManager.default.trashItem(at: doc.fileURL, resultingItemURL: nil)

@@ -20,7 +20,7 @@ struct TableEditorSheet: View {
             HStack {
                 Text(edit.range == nil ? "Insert a table" : "Edit table").font(.title2.weight(.semibold))
                 Spacer()
-                Text("\(table.columnCount) column\(table.columnCount == 1 ? "" : "s") · \(table.rows.count) row\(table.rows.count == 1 ? "" : "s")")
+                Text("\(table.columnCount) columns · \(table.rows.count) rows")
                     .foregroundStyle(.secondary).monospacedDigit()
             }
             ScrollView([.horizontal, .vertical]) {
@@ -32,7 +32,7 @@ struct TableEditorSheet: View {
                     GridRow {
                         Color.clear.frame(width: 24, height: 1)
                         ForEach(0 ..< table.columnCount, id: \.self) { c in
-                            cell(text(row: nil, column: c), column: c, prompt: "Heading").fontWeight(.semibold)
+                            cell(text(row: nil, column: c), column: c, prompt: String(localized: "Heading")).fontWeight(.semibold)
                         }
                     }
                     Divider().gridCellUnsizedAxes(.horizontal)
@@ -131,7 +131,7 @@ struct TableEditorSheet: View {
             Divider()
             Button("Delete Row", role: .destructive) { table.removeRow(at: r) }
         } label: {
-            Image(systemName: "ellipsis").accessibilityLabel("Row \(r + 1)")
+            Image(systemName: "ellipsis").accessibilityLabel("Row \(String(r + 1))")
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -141,10 +141,10 @@ struct TableEditorSheet: View {
 
     func alignmentName(_ alignment: MarkdownTable.Alignment) -> String {
         switch alignment {
-        case .none: "Column"
-        case .left: "Left"
-        case .center: "Centre"
-        case .right: "Right"
+        case .none: String(localized: "Column")
+        case .left: String(localized: "Left")
+        case .center: String(localized: "Centre")
+        case .right: String(localized: "Right")
         }
     }
 

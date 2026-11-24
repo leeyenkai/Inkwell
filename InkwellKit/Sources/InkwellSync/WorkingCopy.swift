@@ -58,10 +58,10 @@ public enum SyncError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .notDownloaded: "The site has not been downloaded yet."
-        case let .conflict(paths): "Changed here and on GitHub: \(paths.joined(separator: ", ")). Choose which version to keep first."
-        case .nothingToPublish: "There is nothing new to publish."
-        case let .extractFailed(message): "The site could not be unpacked: \(message)"
+        case .notDownloaded: localized("The site has not been downloaded yet.")
+        case let .conflict(paths): localized("Changed here and on GitHub: \(paths.joined(separator: ", ")). Choose which version to keep first.")
+        case .nothingToPublish: localized("There is nothing new to publish.")
+        case let .extractFailed(message): localized("The site could not be unpacked: \(message)")
         }
     }
 }
@@ -117,13 +117,13 @@ public actor WorkingCopy {
     // MARK: Download
 
     public func download(client: GitHubClient, progress: @Sendable (String) async -> Void = { _ in }) async throws {
-        await progress("Finding the latest version…")
+        await progress(localized("Finding the latest version…"))
         let head = try await client.branchHead(ref.owner, ref.name, branch: ref.branch)
         let commit = try await client.commit(ref.owner, ref.name, sha: head)
         let tree = try await client.tree(ref.owner, ref.name, sha: commit.tree.sha)
-        await progress("Downloading the site…")
+        await progress(localized("Downloading the site…"))
         let archive = try await client.tarball(ref.owner, ref.name, ref: head)
-        await progress("Unpacking…")
+        await progress(localized("Unpacking…"))
         let fm = FileManager.default
         let staging = root.deletingLastPathComponent().appending(path: "staging-\(UUID().uuidString)", directoryHint: .isDirectory)
         try fm.createDirectory(at: staging, withIntermediateDirectories: true)

@@ -63,6 +63,6 @@ public struct BuildWatcher: Sendable {
             }
             try? await Task.sleep(for: interval)
         }
-        return last ?? .unknown("The build did not report back in time.")
+        return last ?? .unknown(localized("The build did not report back in time."))
     }
 }

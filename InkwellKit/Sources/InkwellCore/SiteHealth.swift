@@ -8,11 +8,11 @@ public enum SiteHealth {
         public var id: String { rawValue }
         public var title: String {
             switch self {
-            case .content: "Posts and pages"
-            case .links: "Links"
-            case .media: "Images and size"
-            case .sharing: "Search and sharing"
-            case .repository: "Repository"
+            case .content: localized("Posts and pages")
+            case .links: localized("Links")
+            case .media: localized("Images and size")
+            case .sharing: localized("Search and sharing")
+            case .repository: localized("Repository")
             }
         }
     }
@@ -89,18 +89,19 @@ public enum SiteHealth {
             if !found.isEmpty {
                 issues.append(Issue(id: "fm:\(doc.relativePath)", category: .content,
                                     severity: found.contains { $0.severity == .error } ? .error : .warning,
-                                    title: "Properties need attention in “\(doc.title)”", detail: found.map(\.message).joined(separator: "\n"),
+                                    title: localized("Properties need attention in “\(doc.title)”"), detail: found.map(\.message).joined(separator: "\n"),
                                     paths: [doc.relativePath], fix: nil))
             }
             guard doc.publishedFlag else { continue }
             let body = front.body.trimmingCharacters(in: .whitespacesAndNewlines)
             let lower = body.lowercased()
             if !doc.isPage, body.isEmpty {
-                issues.append(Issue(id: "empty:\(doc.relativePath)", category: .content, severity: .warning, title: "“\(doc.title)” is empty",
-                                    detail: "It is live on the site with no text.", paths: [doc.relativePath], fix: nil))
+                issues.append(Issue(id: "empty:\(doc.relativePath)", category: .content, severity: .warning, title: localized("“\(doc.title)” is empty"),
+                                    detail: localized("It is live on the site with no text."), paths: [doc.relativePath], fix: nil))
             } else if let phrase = placeholders.first(where: { lower.contains($0) }) {
                 issues.append(Issue(id: "placeholder:\(doc.relativePath)", category: .content, severity: .warning,
-                                    title: "“\(doc.title)” has placeholder text", detail: "It is live and contains “\(phrase)”.",
+                                    title: localized("“\(doc.title)” has placeholder text"),
+                                    detail: localized("It is live and contains “\(phrase)”."),
                                     paths: [doc.relativePath], fix: nil))
             }
         }
@@ -109,8 +110,8 @@ public enum SiteHealth {
             byURL[normalized(doc.url), default: []].append(doc)
         }
         for (url, docs) in byURL where docs.count > 1 {
-            issues.append(Issue(id: "dup:\(url)", category: .content, severity: .error, title: "\(docs.count) files share the address \(url)",
-                                detail: "Only one of them appears on the site. Rename or move the others.",
+            issues.append(Issue(id: "dup:\(url)", category: .content, severity: .error, title: localized("\(docs.count) files share the address \(url)"),
+                                detail: localized("Only one of them appears on the site. Rename or move the others."),
                                 paths: docs.map(\.relativePath).sorted(), fix: nil))
         }
         return issues
@@ -141,7 +142,7 @@ public enum SiteHealth {
             }
             if !broken.isEmpty {
                 issues.append(Issue(id: "links:\(doc.relativePath)", category: .links, severity: .warning,
-                                    title: "\(plural(broken.count, "link")) in “\(doc.title)” \(broken.count == 1 ? "goes" : "go") nowhere",
+                                    title: localized("\(broken.count) links in “\(doc.title)” go nowhere"),
                                     detail: broken.joined(separator: "\n"), paths: [doc.relativePath], fix: nil))
             }
             let missing = ContentChecks.images(in: body).map(\.path).filter { path in
@@ -150,7 +151,7 @@ public enum SiteHealth {
             }
             if !missing.isEmpty {
                 issues.append(Issue(id: "images:\(doc.relativePath)", category: .links, severity: .error,
-                                    title: "\(plural(missing.count, "image")) in “\(doc.title)” \(missing.count == 1 ? "is" : "are") missing",
+                                    title: localized("\(missing.count) images in “\(doc.title)” are missing"),
                                     detail: missing.joined(separator: "\n"), paths: [doc.relativePath], fix: nil))
             }
         }
@@ -210,8 +211,9 @@ public enum SiteHealth {
             let missing = ContentChecks.images(in: FrontMatterDocument(text: text).body).filter { $0.alt.trimmingCharacters(in: .whitespaces).isEmpty }
             if !missing.isEmpty {
                 issues.append(Issue(id: "alt:\(doc.relativePath)", category: .media, severity: .warning,
-                                    title: "\(plural(missing.count, "image")) in “\(doc.title)” \(missing.count == 1 ? "has" : "have") no alt text",
-                                    detail: "People using screen readers hear nothing for \(missing.count == 1 ? "it" : "them"). "
+                                    title: localized("\(missing.count) images in “\(doc.title)” have no alt text"),
+                                    detail: (missing.count == 1 ? localized("People using screen readers hear nothing for it.")
+                                        : localized("People using screen readers hear nothing for them.")) + " "
                                         + missing.map(\.path).joined(separator: ", "),
                                     paths: [doc.relativePath], fix: nil))
             }
@@ -220,29 +222,25 @@ public enum SiteHealth {
         if !images.isEmpty {
             let list = images.sorted { $0.value > $1.value }.map { "\($0.key) (\(megabytes($0.value)))" }
             issues.append(Issue(id: "large-images", category: .media, severity: .warning,
-                                title: "\(images.count) image\(images.count == 1 ? " is" : "s are") over 1 MB",
-                                detail: "Large pictures load slowly on phones. Replace them from Media; Inkwell resizes new ones.\n"
+                                title: localized("\(images.count) images are over 1 MB"),
+                                detail: localized("Large pictures load slowly on phones. Replace them from Media; Inkwell resizes new ones.") + "\n"
                                     + list.joined(separator: "\n"),
                                 paths: images.keys.sorted(), fix: nil))
         }
         let huge = files.sizes.filter { $0.value > githubWarnFile }
         if !huge.isEmpty {
-            issues.append(Issue(id: "huge-files", category: .media, severity: .error, title: "Files too large for GitHub",
-                                detail: "GitHub warns above 50 MB and refuses files over 100 MB.\n"
+            issues.append(Issue(id: "huge-files", category: .media, severity: .error, title: localized("Files too large for GitHub"),
+                                detail: localized("GitHub warns above 50 MB and refuses files over 100 MB.") + "\n"
                                     + huge.keys.sorted().map { "\($0) (\(megabytes(huge[$0] ?? 0)))" }.joined(separator: "\n"),
                                 paths: huge.keys.sorted(), fix: nil))
         }
         let total = files.sizes.values.reduce(0, +)
         if total > pagesLimit * 3 / 4 {
             issues.append(Issue(id: "site-size", category: .media, severity: total > pagesLimit ? .error : .warning,
-                                title: "The site is \(megabytes(total))",
-                                detail: "GitHub Pages sites should stay under 1 GB. Delete unused images from Media.", paths: [], fix: nil))
+                                title: localized("The site is \(megabytes(total))"),
+                                detail: localized("GitHub Pages sites should stay under 1 GB. Delete unused images from Media."), paths: [], fix: nil))
         }
         return issues
-    }
-
-    public static func plural(_ count: Int, _ noun: String) -> String {
-        "\(count) \(noun)\(count == 1 ? "" : "s")"
     }
 
     static func megabytes(_ bytes: Int) -> String {
@@ -270,46 +268,46 @@ public enum SiteHealth {
         let handWrittenSEO = head.text.contains("name=\"description\"") && head.text.contains("og:")
         let seoTag = head.text.contains("{% seo") || usesThemeHead
         if !handWrittenSEO, !(plugins.contains("jekyll-seo-tag") && seoTag) {
-            issues.append(Issue(id: "seo-tag", category: .sharing, severity: .warning, title: "Pages have no description or share preview tags",
-                                detail: "Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s title, "
-                                    + "description and image.",
+            issues.append(Issue(id: "seo-tag", category: .sharing, severity: .warning, title: localized("Pages have no description or share preview tags"),
+                                detail: localized("Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s title, description and image."),
                                 paths: [], fix: pluginFix("jekyll-seo-tag", tag: seoTag ? nil : "{% seo %}",
-                                                          summary: "Adds jekyll-seo-tag to _config.yml\(seoTag ? "" : " and {% seo %} to the page head")")))
+                                                          summary: seoTag ? localized("Adds jekyll-seo-tag to _config.yml")
+                                                              : localized("Adds jekyll-seo-tag to _config.yml and {% seo %} to the page head"))))
         }
         if config.description.trimmingCharacters(in: .whitespaces).isEmpty {
-            issues.append(Issue(id: "description", category: .sharing, severity: .warning, title: "The site has no description",
-                                detail: "It is shown in search results and when the home page is shared.", paths: [], fix: .openSettings))
+            issues.append(Issue(id: "description", category: .sharing, severity: .warning, title: localized("The site has no description"),
+                                detail: localized("It is shown in search results and when the home page is shared."), paths: [], fix: .openSettings))
         }
         let shareImage = config.raw["image"] != nil || config.raw["logo"] != nil || config.raw["inkwell"]?["social_image"]?.string?.isEmpty == false
             || (head.text.contains("og:image") && !head.text.contains("site.inkwell.social_image"))
         if !shareImage {
-            issues.append(Issue(id: "share-image", category: .sharing, severity: .info, title: "No share image",
-                                detail: "Links to your site show this picture when no post has its own.", paths: [], fix: .openSettings))
+            issues.append(Issue(id: "share-image", category: .sharing, severity: .info, title: localized("No share image"),
+                                detail: localized("Links to your site show this picture when no post has its own."), paths: [], fix: .openSettings))
         }
         let feedFiles = ["feed.xml", "atom.xml", "rss.xml", "feed/index.xml", "index.xml"]
         if !plugins.contains("jekyll-feed"), !feedFiles.contains(where: files.exists) {
-            issues.append(Issue(id: "feed", category: .sharing, severity: .warning, title: "No RSS feed",
-                                detail: "Readers who follow sites in a feed reader cannot subscribe.",
+            issues.append(Issue(id: "feed", category: .sharing, severity: .warning, title: localized("No RSS feed"),
+                                detail: localized("Readers who follow sites in a feed reader cannot subscribe."),
                                 paths: [], fix: pluginFix("jekyll-feed", tag: usesThemeHead ? nil : "{% feed_meta %}",
-                                                          summary: "Adds jekyll-feed to _config.yml"
-                                                              + (usesThemeHead ? "" : " and a feed link to the page head"))))
+                                                          summary: usesThemeHead ? localized("Adds jekyll-feed to _config.yml")
+                                                              : localized("Adds jekyll-feed to _config.yml and a feed link to the page head"))))
         }
         if !plugins.contains("jekyll-sitemap"), !files.exists("sitemap.xml") {
-            issues.append(Issue(id: "sitemap", category: .sharing, severity: .info, title: "No sitemap",
-                                detail: "A sitemap helps search engines find every page.",
-                                paths: [], fix: pluginFix("jekyll-sitemap", tag: nil, summary: "Adds jekyll-sitemap to _config.yml")))
+            issues.append(Issue(id: "sitemap", category: .sharing, severity: .info, title: localized("No sitemap"),
+                                detail: localized("A sitemap helps search engines find every page."),
+                                paths: [], fix: pluginFix("jekyll-sitemap", tag: nil, summary: localized("Adds jekyll-sitemap to _config.yml"))))
         }
         let iconFiles = ["favicon.ico", "favicon.png", "favicon.svg", "assets/favicon.png", "assets/favicon.ico", "assets/favicon.svg"]
         let iconInHead = head.text.range(of: #"rel=["'](shortcut )?icon["']"#, options: .regularExpression) != nil
             && !head.text.contains("site.inkwell.favicon")
         if !iconFiles.contains(where: files.exists), !iconInHead, config.raw["inkwell"]?["favicon"]?.string?.isEmpty != false {
-            issues.append(Issue(id: "favicon", category: .sharing, severity: .info, title: "No favicon",
-                                detail: "Browsers show a blank icon in tabs and bookmarks.", paths: [], fix: .openSettings))
+            issues.append(Issue(id: "favicon", category: .sharing, severity: .info, title: localized("No favicon"),
+                                detail: localized("Browsers show a blank icon in tabs and bookmarks."), paths: [], fix: .openSettings))
         }
         if !["404.html", "404.md", "404.markdown"].contains(where: files.exists) {
-            issues.append(Issue(id: "404", category: .sharing, severity: .info, title: "No page for missing addresses",
-                                detail: "Mistyped links show GitHub’s plain 404 page instead of one in your site’s style.",
-                                paths: [], fix: .edits([ContentEdit(path: "404.md", newText: notFoundPage)], summary: "Adds 404.md")))
+            issues.append(Issue(id: "404", category: .sharing, severity: .info, title: localized("No page for missing addresses"),
+                                detail: localized("Mistyped links show GitHub’s plain 404 page instead of one in your site’s style."),
+                                paths: [], fix: .edits([ContentEdit(path: "404.md", newText: notFoundPage)], summary: localized("Adds 404.md"))))
         }
         return issues
     }
@@ -382,22 +380,22 @@ public enum SiteHealth {
         }
         let built = files.sizes.keys.filter { $0.hasPrefix("_site/") }.sorted()
         if !built.isEmpty, !ignored.contains("_site/"), !ignored.contains("_site") {
-            issues.append(Issue(id: "site-folder", category: .repository, severity: .warning, title: "Built pages are in the repository",
-                                detail: "The _site folder (\(built.count) files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size.",
+            issues.append(Issue(id: "site-folder", category: .repository, severity: .warning, title: localized("Built pages are in the repository"),
+                                detail: localized("The _site folder (\(built.count) files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size."),
                                 paths: [], fix: .edits(built.map { ContentEdit(path: $0, newText: nil) } + [withIgnores(["_site/"])].compactMap { $0 },
-                                                       summary: "Removes _site (\(built.count) files) and ignores it from now on")))
+                                                       summary: localized("Removes _site (\(built.count) files) and ignores it from now on"))))
         }
         let finder = files.sizes.keys.filter { ($0 as NSString).lastPathComponent == ".DS_Store" }.sorted()
         if !finder.isEmpty, !ignored.contains(".DS_Store") {
-            issues.append(Issue(id: "ds-store", category: .repository, severity: .info, title: "Finder files are in the repository",
+            issues.append(Issue(id: "ds-store", category: .repository, severity: .info, title: localized("Finder files are in the repository"),
                                 detail: finder.joined(separator: "\n"),
                                 paths: [], fix: .edits(finder.map { ContentEdit(path: $0, newText: nil) } + [withIgnores([".DS_Store"])].compactMap { $0 },
-                                                       summary: "Removes \(finder.count) .DS_Store file\(finder.count == 1 ? "" : "s") and ignores them")))
+                                                       summary: localized("Removes \(finder.count) .DS_Store files and ignores them"))))
         }
         if gitignore == nil {
-            issues.append(Issue(id: "gitignore", category: .repository, severity: .info, title: "No .gitignore",
-                                detail: "Without one, build output and system files can end up in the repository.",
-                                paths: [], fix: withIgnores(gitignoreLines).map { .edits([$0], summary: "Adds a .gitignore for Jekyll sites") }))
+            issues.append(Issue(id: "gitignore", category: .repository, severity: .info, title: localized("No .gitignore"),
+                                detail: localized("Without one, build output and system files can end up in the repository."),
+                                paths: [], fix: withIgnores(gitignoreLines).map { .edits([$0], summary: localized("Adds a .gitignore for Jekyll sites")) }))
         }
         return issues
     }

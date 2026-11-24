@@ -65,7 +65,7 @@ public enum PhotoStream {
         let configText = read("_config.yml") ?? ""
         var config = ConfigEditing(text: configText)
         if config.addCollection(collection, output: false) {
-            plan.append((ContentEdit(path: "_config.yml", newText: config.text), "Adds a “photos” collection: one small file per photo in _photos/."))
+            plan.append((ContentEdit(path: "_config.yml", newText: config.text), localized("Adds a “photos” collection: one small file per photo in _photos/.")))
         }
         let pagePath = ["photos.md", "photos.html", "photos/index.md"].first { read($0) != nil } ?? "photos.md"
         let old = read(pagePath)
@@ -87,20 +87,20 @@ public enum PhotoStream {
         }
         if old?.contains("site.photos") != true {
             plan.append((ContentEdit(path: pagePath, newText: front + intro + loop + "\n"),
-                         old == nil ? "A photos page that shows the newest photos first." : "Shows the photos from _photos/ instead of hand-written HTML."))
+                         old == nil ? localized("A photos page that shows the newest photos first.") : localized("Shows the photos from _photos/ instead of hand-written HTML.")))
         }
         var taken = Set<String>()
         for photo in migrated {
             let edit = file(for: photo, existing: taken, timeZone: timeZone)
             taken.insert(edit.path)
-            plan.append((edit, "Moves a photo that was written by hand in the old page."))
+            plan.append((edit, localized("Moves a photo that was written by hand in the old page.")))
         }
         let navText = read("_data/navigation.yml")
         if let navText {
             let listed = YAML.parse(navText).list?.contains { $0["url"]?.string?.hasPrefix("/photos") == true } ?? false
             if !listed {
                 let text = (navText.hasSuffix("\n") ? navText : navText + "\n") + "- title: photos\n  url: /photos\n"
-                plan.append((ContentEdit(path: "_data/navigation.yml", newText: text), "Adds Photos to the menu."))
+                plan.append((ContentEdit(path: "_data/navigation.yml", newText: text), localized("Adds Photos to the menu.")))
             }
         }
         return plan

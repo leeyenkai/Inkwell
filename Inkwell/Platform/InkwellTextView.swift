@@ -20,12 +20,12 @@ final class InkwellTextView: NSTextView {
     private var placedImages: [(range: NSRange, size: NSSize, url: URL, alt: String)] = []
     private var imageWidth: CGFloat = 0
     private lazy var tableButton: NSButton = {
-        let button = NSButton(title: "Edit Table…", target: self, action: #selector(editTableFromButton))
+        let button = NSButton(title: String(localized: "Edit Table…"), target: self, action: #selector(editTableFromButton))
         button.bezelStyle = .push
         button.controlSize = .small
         button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         button.isHidden = true
-        button.setAccessibilityHelp("Edit this table in a grid")
+        button.setAccessibilityHelp(String(localized: "Edit this table in a grid"))
         addSubview(button)
         return button
     }()
@@ -141,7 +141,7 @@ final class InkwellTextView: NSTextView {
                 view.url = placed.url
                 view.image = Thumbnails.shared.image(for: placed.url, size: 1400)
             }
-            view.setAccessibilityLabel(placed.alt.isEmpty ? "Image" : placed.alt)
+            view.setAccessibilityLabel(placed.alt.isEmpty ? String(localized: "Image") : placed.alt)
             view.isHidden = false
         }
     }
@@ -183,7 +183,7 @@ final class InkwellTextView: NSTextView {
         let menu = super.menu(for: event) ?? NSMenu()
         let index = characterIndexForInsertion(at: convert(event.locationInWindow, from: nil))
         if !sourceMode, MarkdownTable.find(in: string, at: index) != nil {
-            let item = NSMenuItem(title: "Edit Table…", action: #selector(editTableFromMenu(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: String(localized: "Edit Table…"), action: #selector(editTableFromMenu(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = index
             menu.insertItem(item, at: 0)
@@ -336,7 +336,7 @@ final class InkwellTextView: NSTextView {
     }
 
     func showSlashMenu(slashAt location: Int) {
-        let menu = NSMenu(title: "Insert")
+        let menu = NSMenu(title: String(localized: "Insert"))
         for block in SmartTyping.Block.allCases {
             let item = NSMenuItem(title: block.title, action: #selector(slashBlock(_:)), keyEquivalent: "")
             item.representedObject = [block.rawValue, location] as [Any]
@@ -344,7 +344,9 @@ final class InkwellTextView: NSTextView {
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        for (title, key) in [("Image…", "image"), ("Link to a Post…", "link"), ("Embed a Video…", "embed"), ("Footnote", "footnote")] {
+        let actions = [(String(localized: "Image…"), "image"), (String(localized: "Link to a Post…"), "link"),
+                       (String(localized: "Embed a Video…"), "embed"), (String(localized: "Footnote"), "footnote")]
+        for (title, key) in actions {
             let item = NSMenuItem(title: title, action: #selector(slashAction(_:)), keyEquivalent: "")
             item.representedObject = [key, location] as [Any]
             item.target = self
@@ -713,7 +715,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.usesFindBar = true
         textView.isIncrementalSearchingEnabled = true
         textView.delegate = context.coordinator
-        textView.setAccessibilityLabel("Post text")
+        textView.setAccessibilityLabel(String(localized: "Post text"))
         textView.registerForDraggedTypes([.fileURL, .png, .tiff])
         textView.sourceMode = sourceMode
         textView.string = text

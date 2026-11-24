@@ -1,0 +1,1593 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {},
+    "%@ already exists in the site.": {},
+    "%@ already exists. Choose another address.": {},
+    "%@ already uses the address %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ already uses the address %2$@."
+          }
+        }
+      }
+    },
+    "%@ is not a git repository. Sign in with GitHub to open your site from there instead.": {},
+    "%@ is ready": {},
+    "%@ of %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "%@ pt": {},
+    "%@ theme": {},
+    "%@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@, unused": {},
+    "%@, used %lld times": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@, used %lld time"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@, used %lld times"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%@.github.io (already used)": {},
+    "%@: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld changed in two places": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld changed in two places"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld changed in two places"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld columns · %lld rows": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@columns@ · %#@rows@"
+          },
+          "substitutions": {
+            "columns": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg column"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg columns"
+                    }
+                  }
+                }
+              }
+            },
+            "rows": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg row"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg rows"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files go to your site in one change.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld file goes to your site in one change."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld files go to your site in one change."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld images": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld image"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld images"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld images are missing alt text": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld image is missing alt text"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld images are missing alt text"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld images still have location data.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld image still has location data."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld images still have location data."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld images · %@": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld image · %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld images · %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld items": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld links to other sites in “%@” no longer work": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld link to other sites in “%@” no longer works"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld links to other sites in “%@” no longer work"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld new images (%@)": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld new image (%@)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld new images (%@)"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld not pushed · Push": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld not pushed · Push"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld not pushed · Push"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of the files could not be read as pictures.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld of the files could not be read as a picture."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld of the files could not be read as pictures."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pages": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld page"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pages"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld photo"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld posts": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld post"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld posts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld problems": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld problem"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld problems"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld problems · %lld suggestions": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@problems@ · %#@suggestions@"
+          },
+          "substitutions": {
+            "problems": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg problem"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg problems"
+                    }
+                  }
+                }
+              }
+            },
+            "suggestions": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg suggestion"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg suggestions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld unpublished changes": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld unpublished change"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld unpublished changes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld uses": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld use"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld uses"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld words · %lld min read": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@words@ · %#@minutes@"
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg min read"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg min read"
+                    }
+                  }
+                }
+              }
+            },
+            "words": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg word"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg words"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "(removed here)": {},
+    "(removed on GitHub)": {},
+    "**Check Links** asks each site your posts link to whether the page is still there.": {},
+    "**Code** opens layouts, includes and stylesheets for anything the panels do not cover. The preview follows every change.": {},
+    "**Health** looks over the whole site: properties that will not build, two files at one address, links and images that go nowhere, missing alt text, large files, and the basics search engines and link previews need.": {},
+    "**Photos** keeps a photo stream: one small file per photo, each with a caption. **Media** lists every image in the site, where it is used, and which ones nothing uses.": {},
+    "**Properties** above the text hold the title, date and the section’s other fields. A date in the future schedules the post. **Search and sharing** sets the description and picture used in search results and link previews.": {},
+    "**Publish** (⇧⌘P) checks the post, then sends it and its new pictures to GitHub as one change. Inkwell shows when GitHub Pages has the new version live.": {},
+    "**Theme & Style** switches between Inkwell’s themes and edits colours, fonts and layout. **Navigation** edits the menu; **Settings** the site’s title, description, favicon, share image and custom domain.": {},
+    "**Version History…** shows earlier versions of a post, and can bring one back.": {},
+    "/address": {},
+    "1600 pixels": {},
+    "2400 pixels": {},
+    "3200 pixels": {},
+    "A CNAME record for %@ pointing to %@.github.io": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "A CNAME record for %1$@ pointing to %2$@.github.io"
+          }
+        }
+      }
+    },
+    "A letter or emoji": {},
+    "A path in the site, such as _includes/analytics.html or assets/js/site.js.": {},
+    "A records for %@: 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153": {},
+    "A sentence for search results and link previews": {},
+    "A standalone page, such as About, Now or Contact.": {},
+    "Account": {},
+    "Add": {},
+    "Add %@": {},
+    "Add %lld Photos": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add %lld Photo"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add %lld Photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Add Column": {},
+    "Add Dark Mode": {},
+    "Add Image": {},
+    "Add Image…": {},
+    "Add Light Mode": {},
+    "Add Photos…": {},
+    "Add Row": {},
+    "Add a Link…": {},
+    "Add a Page or Section": {},
+    "Add a gallery of %lld pictures": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add a gallery of %lld picture"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add a gallery of %lld pictures"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Add a tags property to a post, such as tags: [travel, essays].": {},
+    "Add a time of day, for a post scheduled to go live at a set hour": {},
+    "Add captions": {},
+    "Add colours for readers whose system is in dark mode": {},
+    "Add colours for readers whose system is in light mode": {},
+    "Add image": {},
+    "Add photos from your Mac. Each gets a caption, and they appear newest first.": {},
+    "Add photos with captions and let the page list them, instead of editing HTML.": {},
+    "Add to the menu": {},
+    "Add, move or delete this row": {},
+    "Address": {},
+    "Alignment": {},
+    "Alignment, and adding, moving or deleting this column": {},
+    "Alt text": {},
+    "Alt text: what it shows": {},
+    "Alt text: what it shows, for people who can’t see it": {},
+    "Alt text: what the image shows, for people who can’t see it": {},
+    "Always dark": {},
+    "Always light": {},
+    "Appearance": {},
+    "Apply Theme": {},
+    "Approximate": {},
+    "Ask each site your posts link to whether the page is still there": {},
+    "At your domain registrar, add:": {},
+    "Author": {},
+    "Back": {},
+    "Body Text": {},
+    "Body text": {},
+    "Bold": {},
+    "Bulleted List": {},
+    "Bulleted list": {},
+    "Cancel": {},
+    "Caption": {},
+    "Caption (Return for the next photo)": {},
+    "Caption (optional)": {},
+    "Cards with pictures": {},
+    "Centre": {},
+    "Change %@": {},
+    "Change Share Image…": {},
+    "Change Theme…": {},
+    "Changed": {},
+    "Changed in two places": {},
+    "Changed on GitHub too: %@. Choose which version to keep, then publish again.": {},
+    "Changes are saved to your site’s files as you make them and go live when you publish.": {},
+    "Charter serif": {},
+    "Check GitHub for Changes": {},
+    "Check GitHub for changes": {},
+    "Check Links": {},
+    "Check its health": {},
+    "Check spelling while typing": {},
+    "Checked %@": {},
+    "Checking %lld of %lld links": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking %#@done@ of %#@total@"
+          },
+          "substitutions": {
+            "done": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg"
+                    }
+                  }
+                }
+              }
+            },
+            "total": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg link"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg links"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Checking GitHub…": {},
+    "Checking the site": {},
+    "Checklist": {},
+    "Choose Share Image…": {},
+    "Choose a file": {},
+    "Choose a folder with a Jekyll site that you already publish with git.": {},
+    "Choose a photo": {},
+    "Choose a post, or press ⌘N to write a new one.": {},
+    "Choose a tag": {},
+    "Choose a theme": {},
+    "Choose a version to see how it differs from the text on this Mac.": {},
+    "Choose an image": {},
+    "Choose an image. It is resized, cleaned of location data and copied into the site.": {},
+    "Choose an issue": {},
+    "Choose another picture to use in its place; links to it keep working": {},
+    "Choose photos. They are resized, turned upright and cleaned of location data.": {},
+    "Choose the picture shown when this post is shared. A wide image (1200 × 630) works best.": {},
+    "Choose the picture shown when your site is shared. A wide image (1200 × 630) works best.": {},
+    "Choose your site": {},
+    "Choose…": {},
+    "Close": {},
+    "Code": {},
+    "Colour": {},
+    "Column": {},
+    "Commit and push this post (⇧⌘P)": {},
+    "Committed and pushed": {},
+    "Committed here, but not pushed: %@": {},
+    "Committed in the folder. It has no GitHub remote to push to.": {},
+    "Compare": {},
+    "Continue": {},
+    "Continue a list; on an empty item, end it": {},
+    "Copy Code and Open GitHub": {},
+    "Copy Diagnostics": {},
+    "Copy into Site to Edit": {},
+    "Could not follow the build: %@ The change is on GitHub.": {},
+    "Could not load repositories": {},
+    "Could not save %@: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not save %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "Could not save: %@": {},
+    "Create": {},
+    "Create Page": {},
+    "Create Site": {},
+    "Create a token on GitHub": {},
+    "Create a token on GitHub with the **public_repo** and **workflow** scopes, then paste it here. It is kept in your keychain.": {},
+    "Creates a public repository, turns on GitHub Pages and publishes a first post you can edit.": {},
+    "Creating %@ on GitHub…": {},
+    "Custom": {},
+    "Custom domain": {},
+    "Custom domains are set on GitHub for sites opened from a local folder.": {},
+    "DNS changes can take up to a day. HTTPS can be turned on once GitHub has checked the domain.": {},
+    "Dark": {},
+    "Dark mode": {},
+    "Date": {},
+    "Default": {},
+    "Delete": {},
+    "Delete %@": {},
+    "Delete %@?": {},
+    "Delete %lld Unused…": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld Unused…"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld Unused…"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld unused images?": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld unused image?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld unused images?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete Column": {},
+    "Delete Draft…": {},
+    "Delete Photo…": {},
+    "Delete Row": {},
+    "Delete from Site": {},
+    "Delete from Site…": {},
+    "Delete this photo?": {},
+    "Delete “%@”": {},
+    "Delete “%@” from your site?": {},
+    "Delete “%@”?": {},
+    "Delete…": {},
+    "Description": {},
+    "Design": {},
+    "Desktop": {},
+    "Discard Changes": {},
+    "Discard Unpublished Changes…": {},
+    "Discard the unpublished changes to “%@”?": {},
+    "Done": {},
+    "Draft": {},
+    "Draft · edited %@": {},
+    "Drafts": {},
+    "Drag to reorder. The menu appears at the top of every page, in this order.": {},
+    "Drop, paste or add a picture (**⇧⌘I**). Inkwell resizes it, turns it upright, removes location and camera data, and names it after the post. Several at once become a gallery.": {},
+    "Duplicate": {},
+    "Each photo becomes a small file with its caption, and the photos page lists them newest first. Nothing goes live until you publish.": {},
+    "Edit Table…": {},
+    "Edit its caption, alt text, place and date.": {},
+    "Edit table": {},
+    "Edit the table the cursor is in as a grid, or insert a new one": {},
+    "Edit this table in a grid": {},
+    "Edited": {},
+    "Edited · not yet updated": {},
+    "Editor": {},
+    "Edits to published posts, design changes and fixes wait in **Unpublished changes** at the bottom of the sidebar until you publish them.": {},
+    "Embed": {},
+    "Embed a Video…": {},
+    "Embed a video": {},
+    "Enforce HTTPS": {},
+    "Enter this code on GitHub": {},
+    "Every 15 minutes": {},
+    "Every 2 minutes": {},
+    "Every 5 minutes": {},
+    "Every hour": {},
+    "Everything on this Mac is already on your site.": {},
+    "Everything you write is saved as you go. Nothing reaches your site until you publish it.": {},
+    "Favicon": {},
+    "File": {},
+    "Files": {},
+    "Fix": {},
+    "Follow the reader’s system": {},
+    "Follow this Mac": {},
+    "Footer": {},
+    "Footnote": {},
+    "For people who can’t see it": {},
+    "Format": {},
+    "Full posts, one after another": {},
+    "General": {},
+    "Getting started": {},
+    "Getting the %@ theme for the preview…": {},
+    "GitHub": {},
+    "GitHub Pages is building the site…": {},
+    "GitHub Pages only rebuilds when something changes. This adds a small hourly workflow to the site that rebuilds it when a scheduled post comes due. Without it, the post appears the next time you publish anything.": {},
+    "GitHub Pages site": {},
+    "GitHub could not change HTTPS yet: %@": {},
+    "Goes to %@/%@; GitHub Pages then rebuilds the site.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Goes to %1$@/%2$@; GitHub Pages then rebuilds the site."
+          }
+        }
+      }
+    },
+    "Heading": {},
+    "Heading 1": {},
+    "Heading 2": {},
+    "Heading 3": {},
+    "Heading 4": {},
+    "Headings": {},
+    "Health": {},
+    "Health found %lld things worth a look.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Health found %lld thing worth a look."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Health found %lld things worth a look."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Health watches for broken links, missing pictures and more.": {},
+    "Hidden": {},
+    "Hide": {},
+    "Hide Markdown Syntax": {},
+    "Hide Markdown syntax": {},
+    "Hide Markdown syntax away from the cursor": {},
+    "Hide from the photo stream": {},
+    "Highlight": {},
+    "History of “%@”": {},
+    "Image": {},
+    "Image not found: %@": {},
+    "Images": {},
+    "Image…": {},
+    "Includes": {},
+    "Inkwell": {},
+    "Inkwell Help": {},
+    "Inkwell also checks when you come back to it, and before every publish.": {},
+    "Inkwell checks GitHub for changes made elsewhere. If the same file changed in both places, you choose which version to keep.": {},
+    "Inkwell edits a GitHub Pages site. Sign in with GitHub, pick the site’s repository, and Inkwell keeps a copy on this Mac. You do not need git, Terminal or a folder of your own.": {},
+    "Inkwell found a %@ site with %lld sections: %@.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Inkwell found a %@ site with %lld section: %@."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Inkwell found a %@ site with %lld sections: %@."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Inkwell found a %@ site.": {},
+    "Inkwell updates these files. Nothing goes live until you publish.": {},
+    "Inline Code": {},
+    "Inline code": {},
+    "Insert": {},
+    "Insert Column Left": {},
+    "Insert Column Right": {},
+    "Insert Gallery": {},
+    "Insert Row Above": {},
+    "Insert Row Below": {},
+    "Insert Table": {},
+    "Insert a block (at the start of a line)": {},
+    "Insert a table": {},
+    "It goes back to the version that is on your site.": {},
+    "It has %@.": {},
+    "It is removed from GitHub in one change, and the page stops working. GitHub keeps its history, so it can be brought back.": {},
+    "It is used in %lld places, which will show a broken image.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "It is used in %lld place, which will show a broken image."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "It is used in %lld places, which will show a broken image."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "It leaves the photo stream when you next publish. GitHub keeps its history.": {},
+    "It will be at": {},
+    "Italic": {},
+    "Its Sass settings; your changes go in %@.": {},
+    "JPEG quality": {},
+    "Keep Mine": {},
+    "Keep photos as a stream": {},
+    "Keep the old address working": {},
+    "Keyboard Shortcuts": {},
+    "Keyboard shortcuts": {},
+    "Language": {},
+    "Layouts": {},
+    "Layouts, includes, styles and settings. Changes show in the preview as you type.": {},
+    "Left": {},
+    "Light": {},
+    "Light mode": {},
+    "Lines in red were removed since that version; green were added.": {},
+    "Link": {},
+    "Link goes nowhere on the site: %@": {},
+    "Link preview: %@. %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Link preview: %1$@. %2$@"
+          }
+        }
+      }
+    },
+    "Link to a Post…": {},
+    "Link to a post": {},
+    "Link to a post or page": {},
+    "Links to other sites are not checked yet.": {},
+    "Links to other sites checked %@": {},
+    "Links use the page’s address, so they keep working if you rename it in Inkwell.": {},
+    "List of titles": {},
+    "Live": {},
+    "Live on the site": {},
+    "Location removed": {},
+    "Longest side": {},
+    "Look": {},
+    "Look Around": {},
+    "Looking at %@…": {},
+    "Make": {},
+    "Make it yours": {},
+    "Media": {},
+    "Menu": {},
+    "Merge": {},
+    "Monospace": {},
+    "Move Down": {},
+    "Move Left": {},
+    "Move Right": {},
+    "Move Up": {},
+    "Move to Trash": {},
+    "Move “%@”": {},
+    "Move “%@” and update %lld links": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Move “%@” and update %lld link"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Move “%@” and update %lld links"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Move…": {},
+    "My notebook": {},
+    "Name": {},
+    "Navigation": {},
+    "Nest or un-nest a list item": {},
+    "New": {},
+    "New File…": {},
+    "New Page…": {},
+    "New Post": {},
+    "New Site…": {},
+    "New address": {},
+    "New file": {},
+    "New name, or an existing tag to merge into": {},
+    "New page": {},
+    "New post": {},
+    "New post (⌘N)": {},
+    "New site": {},
+    "Newest post: %@": {},
+    "Next": {},
+    "No Post Selected": {},
+    "No Results": {},
+    "No broken links": {},
+    "No photos yet": {},
+    "No post, page or stylesheet links to them. They leave the site when you next publish; GitHub keeps their history.": {},
+    "No problems": {},
+    "No problems · %lld suggestions": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No problems · %lld suggestion"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No problems · %lld suggestions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "No tags yet": {},
+    "None": {},
+    "Not published": {},
+    "Not published yet": {},
+    "Not published yet, so there is no history.": {},
+    "Not signed in. Open a site to sign in with GitHub.": {},
+    "Nothing goes live until you publish.": {},
+    "Nothing here yet": {},
+    "Nothing left to resolve.": {},
+    "Nothing links to it": {},
+    "Nothing links to it.": {},
+    "Nothing to fix": {},
+    "Now": {},
+    "OK": {},
+    "Offline": {},
+    "One sentence about the site, for search results and link previews": {},
+    "Open": {},
+    "Open Health": {},
+    "Open Live Site": {},
+    "Open Post": {},
+    "Open Repository on GitHub": {},
+    "Open Settings": {},
+    "Open Site": {},
+    "Open a Folder…": {},
+    "Open a site folder on this Mac (uses git)…": {},
+    "Open on Site": {},
+    "Open the last site when Inkwell starts": {},
+    "Optional": {},
+    "Optional; never taken from the photo": {},
+    "Options": {},
+    "Over 1 MB, slow on phones: %@": {},
+    "Page": {},
+    "Paste a YouTube or Vimeo address.": {},
+    "Phone": {},
+    "Photo": {},
+    "Photos": {},
+    "Photos could not be set up: %@": {},
+    "Pictures and photos": {},
+    "Pictures are turned upright and lose their location and camera data whatever these are set to. Settings apply to pictures added from now on.": {},
+    "Place": {},
+    "Place (optional)": {},
+    "Post text": {},
+    "Posts": {},
+    "Posts are plain Markdown. Inkwell styles it as you type and hides the markers away from the line you are on; turn that off with **View › Hide Markdown Syntax**.": {},
+    "Press ⌘N to start a post.": {},
+    "Press ⌘N. It stays a draft on this Mac until you publish.": {},
+    "Preview": {},
+    "Private repository": {},
+    "Problem": {},
+    "Properties": {},
+    "Properties are valid": {},
+    "Properties, links, images, sharing and the repository all look right.": {},
+    "Publish": {},
+    "Publish %lld": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Publish %lld"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Publish %lld"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Publish %lld Changes": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Publish %lld Change"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Publish %lld Changes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Publish Changes…": {},
+    "Publish changes": {},
+    "Publish it on time": {},
+    "Publish “%@”": {},
+    "Published": {},
+    "Publishing": {},
+    "Publishing…": {},
+    "Publish…": {},
+    "Push Again": {},
+    "Quote": {},
+    "Readers in dark mode see these colours too.": {},
+    "Remove": {},
+    "Remove Tag": {},
+    "Remove from All Posts…": {},
+    "Remove from the menu": {},
+    "Remove the tag “%@” from %lld posts?": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Remove the tag “%@” from %lld post?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Remove the tag “%@” from %lld posts?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Remove the time of day": {},
+    "Removed": {},
+    "Removed from the live site": {},
+    "Rename": {},
+    "Rename or Move…": {},
+    "Rename or merge": {},
+    "Rename or move": {},
+    "Rename or move draft": {},
+    "Rename, merge or remove a tag across every post.": {},
+    "Replace…": {},
+    "Repository": {},
+    "Resolve…": {},
+    "Restore This Version": {},
+    "Return": {},
+    "Revert": {},
+    "Revert %@ to the published version?": {},
+    "Revert to Published…": {},
+    "Review Unpublished Changes…": {},
+    "Review and Publish Design Changes…": {},
+    "Review and publish them (⌥⇧⌘P)": {},
+    "Review unpublished changes": {},
+    "Right": {},
+    "Rounded": {},
+    "Row %@": {},
+    "Save": {},
+    "Saved on GitHub": {},
+    "Schedule": {},
+    "Scheduled": {},
+    "Scheduled: the post stays off the site until %@.": {},
+    "Search": {},
+    "Search and sharing": {},
+    "Search repositories": {},
+    "Search results cut descriptions after about 160 characters.": {},
+    "Search results cut titles after about 60 characters.": {},
+    "Search results show about 60 characters of the title; this one has %lld.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Search results show about 60 characters of the title; this one has %lld."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Search results show about 60 characters of the title; this one has %lld."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Section": {},
+    "Section Break": {},
+    "Section break": {},
+    "See what is wrong and fix it.": {},
+    "See where it is used, replace it everywhere at once, or delete it.": {},
+    "Select All": {},
+    "Select None": {},
+    "Sending to GitHub…": {},
+    "Set Up Photos": {},
+    "Set Up Photos…": {},
+    "Set up Photos": {},
+    "Setting up %@…": {},
+    "Settings": {},
+    "Settings and data": {},
+    "Settings found in %@.": {},
+    "Share image": {},
+    "Show": {},
+    "Show Log in Finder": {},
+    "Show in Finder": {},
+    "Show pictures in the text": {},
+    "Show the post as it will look on the site (⌥⌘P)": {},
+    "Show the raw file (⇧⌘E)": {},
+    "Shown after the copyright line": {},
+    "Sign In": {},
+    "Sign Out": {},
+    "Sign Out of GitHub": {},
+    "Sign in with GitHub": {},
+    "Signed in as": {},
+    "Signed in as %@": {},
+    "Site": {},
+    "Site address": {},
+    "Site health": {},
+    "Site title": {},
+    "Site up to date": {},
+    "Site up to date · %lld drafts": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Site up to date · %lld draft"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Site up to date · %lld drafts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Size": {},
+    "Smart quotes change what you type into curly quotes and dashes, which Markdown keeps as they are.": {},
+    "Source": {},
+    "Strikethrough": {},
+    "Styles and scripts": {},
+    "Suggestion": {},
+    "Switch Site…": {},
+    "Switch site": {},
+    "System sans-serif": {},
+    "Tab / ⇧Tab": {},
+    "Table": {},
+    "Tables open as a grid with **Format › Table…** (⇧⌘T) or the Edit Table button beside them.": {},
+    "Table…": {},
+    "Tags": {},
+    "Text size": {},
+    "That is not a YouTube or Vimeo address Inkwell can embed.": {},
+    "The %@ theme could not be downloaded, so the preview is unstyled: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The %1$@ theme could not be downloaded, so the preview is unstyled: %2$@"
+          }
+        }
+      }
+    },
+    "The Pages build failed (%@). Open the repository’s Actions tab on GitHub for the details.": {},
+    "The date is in the future, but future: true in _config.yml shows it right away.": {},
+    "The draft is moved to the Trash. It was never published.": {},
+    "The file has never been published, so it is removed.": {},
+    "The file is new, so it is removed.": {},
+    "The fix could not be applied: %@": {},
+    "The page at %@ stops working once GitHub Pages rebuilds the site.": {},
+    "The post could not be moved: %@": {},
+    "The post leaves your site and goes back to Drafts on this Mac, where you can keep working on it.": {},
+    "The posts stay; only the tag is taken off. Changes are published with your next update.": {},
+    "The sidebar lists the site’s sections, found from its menu and collections. Pick one to see its posts, or press **⌘N** for a new post.": {},
+    "The sign-in is kept in your keychain and used only to talk to GitHub.": {},
+    "The site could not be created: %@": {},
+    "The table changed while you were editing it, so your changes were not applied.": {},
+    "The theme could not be applied: %@": {},
+    "Theme": {},
+    "Theme & Style": {},
+    "Theme & Style changes colours, fonts and layout, with a preview.": {},
+    "Theme file": {},
+    "Theme files (read-only)": {},
+    "Themes change how every page looks. Your posts and pages stay exactly as they are.": {},
+    "These files were changed on GitHub and on this Mac since they were last in step. Choose which version to keep.": {},
+    "These template tags are not run in the preview: %@": {},
+    "This Mac": {},
+    "This post changed outside Inkwell while you were editing it.": {},
+    "This site has no menu file yet. Saving here creates _data/navigation.yml; your theme’s layout has to read it (Inkwell’s themes do).": {},
+    "This site has no section for posts yet.": {},
+    "This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here.": {},
+    "Time zone": {},
+    "Title": {},
+    "Try a different search.": {},
+    "Turning on GitHub Pages…": {},
+    "Type **/** at the start of a line for headings, lists, tables, images, links and embeds. Type **[[** to link to another post by its title.": {},
+    "Typing": {},
+    "URL": {},
+    "Underline": {},
+    "Unpublish": {},
+    "Unpublish to Drafts…": {},
+    "Unpublish “%@”": {},
+    "Unpublished changes": {},
+    "Untitled": {},
+    "Unused": {},
+    "Unused only": {},
+    "Update": {},
+    "Update Table": {},
+    "Update “%@”": {},
+    "Update…": {},
+    "Use": {},
+    "Use GitHub’s": {},
+    "Use a personal access token instead": {},
+    "Use smart quotes and dashes": {},
+    "Use the Other Version": {},
+    "Used in": {},
+    "Using a local folder needs git. Install the command line tools (xcode-select --install), or sign in with GitHub instead.": {},
+    "Version History…": {},
+    "View": {},
+    "Visitors and search engines using %@ are sent to the new address. Links in your other posts are updated either way.": {},
+    "Waiting for GitHub…": {},
+    "Warning": {},
+    "What it shows, or a line about it": {},
+    "Where a fix is safe, **Fix** makes it as an unpublished change, so you can look before it goes live. Inkwell never adds a feed, sitemap or tag the site already has.": {},
+    "Width": {},
+    "Without a description, search engines and previews use the first paragraph.": {},
+    "Write a Post": {},
+    "Write a post": {},
+    "Write, design and publish your GitHub Pages site.\nSign in with GitHub to get started.": {},
+    "Writing": {},
+    "YYYY-MM-DD": {},
+    "Your current layouts with the same names are replaced; anything else in your site is left alone. Nothing goes live until you publish.": {},
+    "Your own theme": {},
+    "Your site is dark for every reader.": {},
+    "Your unpublished changes to it are discarded.": {},
+    "_includes/footer-extra.html": {},
+    "blog.example.com": {},
+    "comma, separated": {},
+    "follows the title": {},
+    "ghp_…": {},
+    "published is off: the post stays off the site, but its file is public on GitHub.": {},
+    "“%@” could not be opened: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "“%1$@” could not be opened: %2$@"
+          }
+        }
+      }
+    },
+    "“%@” is a relative image path, which may break on the live site.": {},
+    "…and %lld more": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "…and %lld more"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "…and %lld more"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

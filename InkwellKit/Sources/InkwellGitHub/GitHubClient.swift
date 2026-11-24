@@ -11,15 +11,15 @@ public enum GitHubError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .unauthorized: "GitHub did not accept the sign-in. Sign in again."
-        case let .notFound(what): "GitHub could not find \(what), or this account cannot see it."
+        case .unauthorized: localized("GitHub did not accept the sign-in. Sign in again.")
+        case let .notFound(what): localized("GitHub could not find \(what), or this account cannot see it.")
         case let .rateLimited(reset):
-            if let reset { "GitHub’s rate limit was reached. Try again after \(reset.formatted(date: .omitted, time: .shortened))." }
-            else { "GitHub’s rate limit was reached. Try again in a few minutes." }
-        case .notFastForward: "The site changed on GitHub while publishing."
-        case let .http(status, message): "GitHub answered \(status): \(message)"
-        case let .network(message): "Could not reach GitHub: \(message)"
-        case let .decoding(message): "GitHub sent something unexpected: \(message)"
+            if let reset { localized("GitHub’s rate limit was reached. Try again after \(reset.formatted(date: .omitted, time: .shortened)).") }
+            else { localized("GitHub’s rate limit was reached. Try again in a few minutes.") }
+        case .notFastForward: localized("The site changed on GitHub while publishing.")
+        case let .http(status, message): localized("GitHub answered \(String(status)): \(message)")
+        case let .network(message): localized("Could not reach GitHub: \(message)")
+        case let .decoding(message): localized("GitHub sent something unexpected: \(message)")
         }
     }
 }
@@ -86,7 +86,7 @@ public struct GitHubClient: Sendable {
             }
             return .http(status: http.statusCode, message: message)
         case 404: return .notFound(path)
-        case 409 where message.localizedCaseInsensitiveContains("empty"): return .notFound("the repository’s files (it is empty)")
+        case 409 where message.localizedCaseInsensitiveContains("empty"): return .notFound(localized("the repository’s files (it is empty)"))
         case 422 where message.localizedCaseInsensitiveContains("fast forward"): return .notFastForward
         default: return .http(status: http.statusCode, message: message)
         }

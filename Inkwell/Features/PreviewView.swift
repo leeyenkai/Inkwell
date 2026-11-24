@@ -70,7 +70,7 @@ struct SitePreview: NSViewRepresentable {
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.setValue(false, forKey: "drawsBackground")
-        web.setAccessibilityLabel("Preview")
+        web.setAccessibilityLabel(String(localized: "Preview"))
         return web
     }
 

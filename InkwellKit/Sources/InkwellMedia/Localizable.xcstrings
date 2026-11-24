@@ -1,0 +1,12 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ could not be read as an image." : {
+
+    },
+    "%@ could not be saved." : {
+
+    }
+  },
+  "version" : "1.0"
+}

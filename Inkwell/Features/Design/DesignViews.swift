@@ -11,11 +11,7 @@ struct DesignPanel: View {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(design.theme?.name ?? themeName).font(.headline)
-                        Text(design.theme?.summary ?? (design.tokens == nil
-                                ? "This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here."
-                                : design.tokens?.sassTemplate != nil
-                                ? "Its Sass settings; your changes go in \(design.tokens?.lightFile ?? "assets/main.scss")."
-                                : "Settings found in \(design.tokens?.lightFile ?? "your stylesheet")."))
+                        Text(design.theme?.summary ?? themeSummary)
                             .font(.caption).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -34,7 +30,8 @@ struct DesignPanel: View {
                 } header: {
                     Text(group)
                 } footer: {
-                    if group == "Colours", design.secondScheme == nil, design.tokens?.supportsColorSchemes == true {
+                    if entries.contains(where: { $0.kind == .color }), design.secondScheme == nil,
+                       design.tokens?.supportsColorSchemes == true {
                         HStack {
                             Text(design.defaultIsDark ? "Your site is dark for every reader." : "Readers in dark mode see these colours too.")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -72,8 +69,20 @@ struct DesignPanel: View {
 
 extension DesignPanel {
     var themeName: String {
-        if let reference = model.site.flatMap({ ThemeReference.of($0.config) }) { return reference.repository.capitalized + " theme" }
-        return "Your own theme"
+        if let reference = model.site.flatMap({ ThemeReference.of($0.config) }) {
+            return String(localized: "\(reference.repository.capitalized) theme")
+        }
+        return String(localized: "Your own theme")
+    }
+
+    var themeSummary: String {
+        guard let tokens = design.tokens else {
+            return String(localized: """
+                This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here.
+                """)
+        }
+        if tokens.sassTemplate != nil { return String(localized: "Its Sass settings; your changes go in \(tokens.lightFile).") }
+        return String(localized: "Settings found in \(tokens.lightFile).")
     }
 }
 
@@ -88,13 +97,13 @@ struct TokenRow: View {
                 HStack(spacing: 14) {
                     switch design.secondScheme {
                     case .dark?:
-                        colorWell(entry.light, scheme: .light, help: "Light")
-                        colorWell(entry.dark ?? entry.light, scheme: .dark, help: "Dark")
+                        colorWell(entry.light, scheme: .light, help: String(localized: "Light"))
+                        colorWell(entry.dark ?? entry.light, scheme: .dark, help: String(localized: "Dark"))
                     case .lightMode?:
-                        colorWell(entry.light, scheme: .light, help: "Dark")
-                        colorWell(entry.lightMode ?? entry.light, scheme: .lightMode, help: "Light")
+                        colorWell(entry.light, scheme: .light, help: String(localized: "Dark"))
+                        colorWell(entry.lightMode ?? entry.light, scheme: .lightMode, help: String(localized: "Light"))
                     default:
-                        colorWell(entry.light, scheme: .light, help: "Colour")
+                        colorWell(entry.light, scheme: .light, help: String(localized: "Colour"))
                     }
                 }
             }
@@ -119,7 +128,7 @@ struct TokenRow: View {
                     .labelsHidden()
                 Text(help).font(.system(size: 9)).foregroundStyle(.tertiary)
             }
-            .help("\(help): \(value)")
+            .help(String(localized: "\(help): \(value)"))
         } else {
             CommitField(value: value ?? "") { design.setToken(entry.name, $0, scheme: scheme) }
                 .frame(width: 110)
@@ -133,13 +142,13 @@ struct FontRow: View {
     var entry: DesignTokens.Entry
 
     static let stacks: [(String, String)] = [
-        ("System sans-serif", "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"),
-        ("Charter serif", "Charter, \"Iowan Old Style\", \"Palatino Linotype\", Georgia, serif"),
+        (String(localized: "System sans-serif"), "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"),
+        (String(localized: "Charter serif"), "Charter, \"Iowan Old Style\", \"Palatino Linotype\", Georgia, serif"),
         ("Georgia", "Georgia, \"Times New Roman\", serif"),
         ("Avenir", "Avenir, \"Avenir Next\", Montserrat, \"Segoe UI\", sans-serif"),
         ("Gill Sans", "\"Gill Sans\", \"Gill Sans MT\", Calibri, sans-serif"),
-        ("Rounded", "ui-rounded, \"SF Pro Rounded\", \"Hiragino Maru Gothic ProN\", sans-serif"),
-        ("Monospace", "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"),
+        (String(localized: "Rounded"), "ui-rounded, \"SF Pro Rounded\", \"Hiragino Maru Gothic ProN\", sans-serif"),
+        (String(localized: "Monospace"), "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"),
     ]
 
     var current: String { entry.light ?? "" }
@@ -218,12 +227,12 @@ struct OptionRow: View {
 
     func label(for value: String) -> String {
         switch (option.key, value) {
-        case ("home_style", "list"): "List of titles"
-        case ("home_style", "cards"): "Cards with pictures"
-        case ("home_style", "chain"): "Full posts, one after another"
-        case ("appearance", "auto"): "Follow the reader’s system"
-        case ("appearance", "light"): "Always light"
-        case ("appearance", "dark"): "Always dark"
+        case ("home_style", "list"): String(localized: "List of titles")
+        case ("home_style", "cards"): String(localized: "Cards with pictures")
+        case ("home_style", "chain"): String(localized: "Full posts, one after another")
+        case ("appearance", "auto"): String(localized: "Follow the reader’s system")
+        case ("appearance", "light"): String(localized: "Always light")
+        case ("appearance", "dark"): String(localized: "Always dark")
         case ("date_format", _): LiquidDate.format(Date(), value)
         default: value
         }
@@ -282,7 +291,7 @@ struct ThemeGallery: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(plan == nil ? "Choose a theme" : plan?.title ?? "").font(.title2.weight(.semibold))
+            Text(plan?.title ?? String(localized: "Choose a theme")).font(.title2.weight(.semibold))
             if let plan {
                 review(plan)
             } else {

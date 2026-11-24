@@ -40,6 +40,7 @@ final class HealthTests: XCTestCase {
         XCTAssertTrue(found.contains("placeholder:_notes/2026-07-01-broken.md"))
         let links = try XCTUnwrap(report.issues.first { $0.id == "links:_notes/2026-07-01-broken.md" })
         XCTAssertEqual(links.detail, "/notes/nowhere/")
+        XCTAssertEqual(links.title, "1 link in “Broken” goes nowhere")
         XCTAssertTrue(found.contains("images:_notes/2026-07-01-broken.md"))
         XCTAssertTrue(found.contains("alt:_notes/2026-07-01-broken.md"))
         XCTAssertTrue(found.contains("dup:/notes/sample-essay/"))

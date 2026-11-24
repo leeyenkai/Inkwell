@@ -45,7 +45,7 @@ final class DesignModel {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data(text.utf8).write(to: url, options: .atomic)
         } catch {
-            model?.errorMessage = "Could not save \(path): \(error.localizedDescription)"
+            model?.errorMessage = String(localized: "Could not save \(path): \(error.localizedDescription)")
         }
     }
 
@@ -71,7 +71,7 @@ final class DesignModel {
         do {
             try plan.apply(to: root)
         } catch {
-            model?.errorMessage = "The theme could not be applied: \(error.localizedDescription)"
+            model?.errorMessage = String(localized: "The theme could not be applied: \(error.localizedDescription)")
         }
         reload()
         changed(siteStructure: true)
@@ -259,7 +259,7 @@ final class DesignModel {
         var choices: [(String, String)] = []
         for doc in site.documents where doc.isPage { choices.append((doc.title, doc.url)) }
         if let post = site.documents.filter({ !$0.isPage }).max(by: { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }) {
-            choices.append(("Newest post: \(post.title)", post.url))
+            choices.append((String(localized: "Newest post: \(post.title)"), post.url))
         }
         return choices
     }

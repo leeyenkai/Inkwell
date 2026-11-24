@@ -10,7 +10,8 @@ struct PhotoGrid: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 6)], spacing: 6) {
                 ForEach(photos) { photo in
                     PhotoTile(model: model, photo: photo, selected: model.selectedPhotoID == photo.id)
-                        .choosable(photo.caption.isEmpty ? "Photo" : photo.caption, selected: model.selectedPhotoID == photo.id) {
+                        .choosable(photo.caption.isEmpty ? String(localized: "Photo") : photo.caption,
+                                   selected: model.selectedPhotoID == photo.id) {
                             model.selectedPhotoID = photo.id
                         }
                 }
@@ -32,7 +33,7 @@ struct PhotoGrid: View {
             HStack {
                 Button("Add Photos…") { choosePhotos() }
                 Spacer()
-                Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+                Text("\(photos.count) photos").font(.caption).foregroundStyle(.secondary)
             }
             .padding(10)
             .background(.bar)
@@ -44,7 +45,7 @@ struct PhotoGrid: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
         panel.allowsMultipleSelection = true
-        panel.message = "Choose photos. They are resized, turned upright and cleaned of location data."
+        panel.message = String(localized: "Choose photos. They are resized, turned upright and cleaned of location data.")
         if panel.runModal() == .OK { model.importPhotos(panel.urls) }
     }
 }
@@ -113,13 +114,17 @@ struct PhotoDetail: View {
             }
             Form {
                 LabeledContent("Caption") {
-                    CommitField(placeholder: "What it shows, or a line about it", value: photo.caption) { model.updatePhoto(photo, key: "caption", value: $0) }
+                    CommitField(placeholder: String(localized: "What it shows, or a line about it"), value: photo.caption) {
+                        model.updatePhoto(photo, key: "caption", value: $0)
+                    }
                 }
                 LabeledContent("Alt text") {
-                    CommitField(placeholder: "For people who can’t see it", value: photo.alt) { model.updatePhoto(photo, key: "alt", value: $0) }
+                    CommitField(placeholder: String(localized: "For people who can’t see it"), value: photo.alt) {
+                        model.updatePhoto(photo, key: "alt", value: $0)
+                    }
                 }
                 LabeledContent("Place") {
-                    CommitField(placeholder: "Optional; never taken from the photo", value: photo.location) {
+                    CommitField(placeholder: String(localized: "Optional; never taken from the photo"), value: photo.location) {
                         model.updatePhoto(photo, key: "location", value: $0)
                     }
                 }
@@ -156,7 +161,7 @@ struct CaptionSheet: View {
                 HStack {
                     Text("Add captions").font(.title2.weight(.semibold))
                     Spacer()
-                    Text("\(index + 1) of \(photos.count)").foregroundStyle(.secondary).monospacedDigit()
+                    Text("\(String(index + 1)) of \(String(photos.count))").foregroundStyle(.secondary).monospacedDigit()
                 }
                 if let image = Thumbnails.shared.image(for: photos[index].image.fileURL, size: 900) {
                     Image(nsImage: image).resizable().scaledToFit().frame(height: 320).frame(maxWidth: .infinity)
@@ -179,7 +184,7 @@ struct CaptionSheet: View {
                     Button("Cancel") { model.cancelPendingPhotos() }.keyboardShortcut(.cancelAction)
                     Spacer()
                     if index > 0 { Button("Back") { index -= 1 } }
-                    Button(index == photos.count - 1 ? "Add \(photos.count) Photo\(photos.count == 1 ? "" : "s")" : "Next", action: next)
+                    Button(index == photos.count - 1 ? "Add \(photos.count) Photos" : "Next", action: next)
                         .keyboardShortcut(.defaultAction)
                         .buttonStyle(.borderedProminent)
                 }
@@ -285,7 +290,7 @@ struct MediaGrid: View {
 
     var subtitle: String {
         let size = ByteCountFormatter.string(fromByteCount: Int64(items.reduce(0) { $0 + $1.bytes }), countStyle: .file)
-        return "\(items.count) image\(items.count == 1 ? "" : "s") · \(size)"
+        return String(localized: "\(items.count) images · \(size)")
     }
 
     var body: some View {
@@ -296,11 +301,10 @@ struct MediaGrid: View {
                         SquareThumbnail(url: model.site?.root.appending(path: item.path))
                         .clipShape(RoundedRectangle(cornerRadius: 5))
                         .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(model.selectedMedia == item.path ? Color.accentColor : .clear, lineWidth: 3))
-                        Text(item.usedBy.isEmpty ? "Unused" : "\(item.usedBy.count) use\(item.usedBy.count == 1 ? "" : "s")")
+                        Text(item.usedBy.isEmpty ? "Unused" : "\(item.usedBy.count) uses")
                             .font(.caption2).foregroundStyle(item.usedBy.isEmpty ? .orange : .secondary)
                     }
-                    .choosable("\((item.path as NSString).lastPathComponent), \(item.usedBy.isEmpty ? "unused" : "used \(item.usedBy.count) times")",
-                               selected: model.selectedMedia == item.path) { model.selectedMedia = item.path }
+                    .choosable(spokenLabel(item), selected: model.selectedMedia == item.path) { model.selectedMedia = item.path }
                 }
             }
             .padding(10)
@@ -321,6 +325,11 @@ struct MediaGrid: View {
         .task(id: model.mediaRevision) { await load() }
     }
 
+    func spokenLabel(_ item: MediaLibrary.Item) -> String {
+        let name = (item.path as NSString).lastPathComponent
+        return item.usedBy.isEmpty ? String(localized: "\(name), unused") : String(localized: "\(name), used \(item.usedBy.count) times")
+    }
+
     func load() async {
         guard let root = model.site?.root else { return }
         items = await Task.detached { MediaLibrary.scan(siteRoot: root) }.value
@@ -330,10 +339,12 @@ struct MediaGrid: View {
 
     func deleteUnused(_ unused: [MediaLibrary.Item]) {
         let alert = NSAlert()
-        alert.messageText = "Delete \(unused.count) unused image\(unused.count == 1 ? "" : "s")?"
-        alert.informativeText = "No post, page or stylesheet links to them. They leave the site when you next publish; GitHub keeps their history."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Delete \(unused.count) unused images?")
+        alert.informativeText = String(localized: """
+            No post, page or stylesheet links to them. They leave the site when you next publish; GitHub keeps their history.
+            """)
+        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, let root = model.site?.root else { return }
         for item in unused { try? FileManager.default.removeItem(at: root.appending(path: item.path)) }
         model.selectedMedia = nil
@@ -411,11 +422,12 @@ struct MediaDetail: View {
 
     func delete() {
         let alert = NSAlert()
-        alert.messageText = "Delete \((item.path as NSString).lastPathComponent)?"
-        let places = "\(item.usedBy.count) place\(item.usedBy.count == 1 ? "" : "s")"
-        alert.informativeText = item.usedBy.isEmpty ? "Nothing links to it." : "It is used in \(places), which will show a broken image."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Delete \((item.path as NSString).lastPathComponent)?")
+        alert.informativeText = item.usedBy.isEmpty
+            ? String(localized: "Nothing links to it.")
+            : String(localized: "It is used in \(item.usedBy.count) places, which will show a broken image.")
+        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, let url else { return }
         try? FileManager.default.removeItem(at: url)
         model.selectedMedia = nil

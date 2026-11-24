@@ -156,7 +156,9 @@ struct PropertiesView: View {
                         Image(systemName: timed ? "clock.badge.xmark" : "clock")
                     }
                     .buttonStyle(.borderless)
-                    .help(timed ? "Remove the time of day" : "Add a time of day, for a post scheduled to go live at a set hour")
+                    .help(timed
+                        ? String(localized: "Remove the time of day")
+                        : String(localized: "Add a time of day, for a post scheduled to go live at a set hour"))
                     if date > Date(), !editor.publishesFutureNow {
                         Text("Scheduled").font(.caption).foregroundStyle(Color.accentColor)
                     }
@@ -188,7 +190,8 @@ struct PropertiesView: View {
                     }
                 }
             case .text:
-                TextField(field.isUniversal ? "" : "Optional", text: Binding(get: { editor.string(field.key) }, set: { editor.setString(field.key, $0) }))
+                TextField(field.isUniversal ? "" : String(localized: "Optional"),
+                          text: Binding(get: { editor.string(field.key) }, set: { editor.setString(field.key, $0) }))
                     .textFieldStyle(.roundedBorder)
             }
             if let issue {

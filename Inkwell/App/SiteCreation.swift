@@ -7,10 +7,10 @@ extension AppModel {
         guard let client = account.client, let login = account.user?.login else { return }
         loadError = nil
         do {
-            opening = "Creating \(name) on GitHub…"
+            opening = String(localized: "Creating \(name) on GitHub…")
             let repo = try await client.createRepository(name: name, description: "\(title). Made with Inkwell.", isPrivate: false)
             let branch = repo.default_branch ?? "main"
-            opening = "Waiting for GitHub…"
+            opening = String(localized: "Waiting for GitHub…")
             var ready = false
             for _ in 0 ..< 15 where !ready {
                 ready = (try? await client.branchHead(login, name, branch: branch)) != nil
@@ -20,15 +20,15 @@ extension AppModel {
             let copy = WorkingCopy(ref: ref, container: GitHubBackend.container)
             try await copy.download(client: client) { [weak self] message in await MainActor.run { self?.opening = message } }
 
-            opening = "Setting up \(theme.name)…"
+            opening = String(localized: "Setting up \(theme.name)…")
             let isUserSite = name.lowercased() == "\(login.lowercased()).github.io"
             try writeStarterSite(at: copy.siteRoot, title: title, login: login, baseurl: isUserSite ? "" : "/\(name)")
             try ThemeApplier.plan(theme: theme, siteRoot: copy.siteRoot).apply(to: copy.siteRoot)
 
-            opening = "Publishing…"
+            opening = String(localized: "Publishing…")
             let paths = try await copy.changes().keys.sorted()
             _ = try await copy.publish(paths: paths, message: "Create site with Inkwell", client: client)
-            opening = "Turning on GitHub Pages…"
+            opening = String(localized: "Turning on GitHub Pages…")
             for attempt in 0 ..< 3 {
                 do {
                     _ = try await client.enablePages(login, name, branch: branch)
@@ -44,7 +44,7 @@ extension AppModel {
             showSitePicker = false
             await account.loadRepositories()
         } catch {
-            loadError = "The site could not be created: \(error.localizedDescription)"
+            loadError = String(localized: "The site could not be created: \(error.localizedDescription)")
         }
         opening = nil
     }

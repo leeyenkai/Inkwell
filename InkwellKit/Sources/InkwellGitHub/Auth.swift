@@ -32,8 +32,8 @@ public struct DeviceFlow: Sendable {
 
         public var errorDescription: String? {
             switch self {
-            case .expired: "The code expired. Start again."
-            case .denied: "Access was declined on GitHub."
+            case .expired: localized("The code expired. Start again.")
+            case .denied: localized("Access was declined on GitHub.")
             case let .other(message): message
             }
         }
@@ -42,7 +42,7 @@ public struct DeviceFlow: Sendable {
     public func start() async throws -> Code {
         let (data, _) = try await post("device/code", ["client_id": clientID, "scope": scopes.joined(separator: " ")])
         if let code = try? JSONDecoder().decode(Code.self, from: data) { return code }
-        throw Failure.other(Self.message(data) ?? "GitHub did not start the sign-in.")
+        throw Failure.other(Self.message(data) ?? localized("GitHub did not start the sign-in."))
     }
 
     /// Waits until the person approves (or declines) on GitHub, following GitHub's polling interval.
@@ -61,7 +61,7 @@ public struct DeviceFlow: Sendable {
             case "slow_down": interval += max(minimumInterval, 1)
             case "expired_token": throw Failure.expired
             case "access_denied": throw Failure.denied
-            default: throw Failure.other(reply.error_description ?? reply.error ?? "Sign-in failed.")
+            default: throw Failure.other(reply.error_description ?? reply.error ?? localized("Sign-in failed."))
             }
         }
         throw Failure.expired
@@ -111,7 +111,7 @@ public struct TokenStore: Sendable {
             kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
         ]
         let status = SecItemAdd(query as CFDictionary, nil)
-        guard status == errSecSuccess else { throw GitHubError.http(status: Int(status), message: "Could not save the sign-in to the keychain.") }
+        guard status == errSecSuccess else { throw GitHubError.http(status: Int(status), message: localized("Could not save the sign-in to the keychain.")) }
     }
 
     public func load() -> (account: String, token: String)? {

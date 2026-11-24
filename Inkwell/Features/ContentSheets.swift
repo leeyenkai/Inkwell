@@ -24,7 +24,8 @@ struct MoveSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(doc.origin == .localDraft ? "Rename or move draft" : "Rename or move").font(.title2.weight(.semibold))
+            Text(doc.origin == .localDraft ? String(localized: "Rename or move draft") : String(localized: "Rename or move"))
+                .font(.title2.weight(.semibold))
             Form {
                 TextField("Title", text: $title)
                 TextField("Address", text: $slug, prompt: Text(Slug.make(title)))
@@ -46,7 +47,7 @@ struct MoveSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(isPublished ? "Move…" : "Save") {
+                Button(isPublished ? String(localized: "Move…") : String(localized: "Save")) {
                     let (t, s, section, keep) = (title, slug, sectionID, keepOld)
                     dismiss()
                     DispatchQueue.main.async { model.applyMove(doc, title: t, slug: s, sectionID: section, keepOldAddress: keep) }
@@ -230,7 +231,7 @@ struct TagsList: View {
                 HStack {
                     Label(tag.name, systemImage: "tag")
                     Spacer()
-                    Text("\(tag.count)").foregroundStyle(.secondary).monospacedDigit()
+                    Text(tag.count, format: .number).foregroundStyle(.secondary).monospacedDigit()
                 }
                 .tag(tag.name)
             }
@@ -255,21 +256,23 @@ struct TagDetail: View {
             Section("Rename or merge") {
                 HStack {
                     TextField("", text: $newName, prompt: Text("New name, or an existing tag to merge into")).labelsHidden()
-                    Button(model.tagIndex[newName] != nil && newName != tag ? "Merge" : "Rename") {
+                    Button(model.tagIndex[newName] != nil && newName != tag ? String(localized: "Merge") : String(localized: "Rename")) {
                         model.renameTag(tag, to: newName.trimmingCharacters(in: .whitespaces))
                     }
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty || newName == tag)
                 }
                 Button("Remove from All Posts…", role: .destructive) {
                     let alert = NSAlert()
-                    alert.messageText = "Remove the tag “\(tag)” from \(docs.count) post\(docs.count == 1 ? "" : "s")?"
-                    alert.informativeText = "The posts stay; only the tag is taken off. Changes are published with your next update."
-                    alert.addButton(withTitle: "Remove Tag")
-                    alert.addButton(withTitle: "Cancel")
+                    alert.messageText = String(localized: "Remove the tag “\(tag)” from \(docs.count) posts?")
+                    alert.informativeText = String(localized: """
+                    The posts stay; only the tag is taken off. Changes are published with your next update.
+                    """)
+                    alert.addButton(withTitle: String(localized: "Remove Tag"))
+                    alert.addButton(withTitle: String(localized: "Cancel"))
                     if alert.runModal() == .alertFirstButtonReturn { model.renameTag(tag, to: nil) }
                 }
             }
-            Section("\(docs.count) post\(docs.count == 1 ? "" : "s")") {
+            Section("\(docs.count) posts") {
                 ForEach(docs) { doc in
                     Button {
                         model.sidebarSelection = .section(doc.sectionID)
@@ -277,7 +280,7 @@ struct TagDetail: View {
                     } label: {
                         HStack {
                             Image(systemName: model.status(of: doc).symbol).foregroundStyle(model.status(of: doc).color)
-                            Text(doc.title.isEmpty ? "Untitled" : doc.title)
+                            Text(doc.title.isEmpty ? String(localized: "Untitled") : doc.title)
                             Spacer()
                             Text(doc.date?.formatted(date: .abbreviated, time: .omitted) ?? "").foregroundStyle(.secondary)
                         }

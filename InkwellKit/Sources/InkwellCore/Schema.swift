@@ -95,23 +95,23 @@ public enum Validation {
             let continuation = doc.rawLines(span.key).dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
             let value = ([YAML.stripComment(raw).trimmingCharacters(in: .whitespaces)] + continuation).joined(separator: " ")
             if let quote = value.first, quote == "\"" || quote == "'", !isClosed(value, quote: quote) {
-                issues.append(Issue(.error, field: span.key, "The \(span.key) has an opening \(quote) but no closing one."))
+                issues.append(Issue(.error, field: span.key, localized("The \(span.key) has an opening \(String(quote)) but no closing one.")))
             }
         }
         let values = doc.values
         if inCollection, values["title"]?.string?.isEmpty ?? true {
-            issues.append(Issue(.warning, field: "title", "The post has no title."))
+            issues.append(Issue(.warning, field: "title", localized("The post has no title.")))
         }
         let parts = Filename.parse(filename)
         if let raw = values["date"]?.string {
             if SiteDate.parse(raw) == nil {
-                issues.append(Issue(.error, field: "date", "“\(raw)” is not a date. Use YYYY-MM-DD."))
+                issues.append(Issue(.error, field: "date", localized("“\(raw)” is not a date. Use YYYY-MM-DD.")))
             } else if let fileDate = parts.dateText, normalised(raw) != normalised(fileDate) {
-                issues.append(Issue(.warning, field: "date", "The date \(raw) does not match the filename’s \(fileDate)."))
+                issues.append(Issue(.warning, field: "date", localized("The date \(raw) does not match the filename’s \(fileDate).")))
             }
         }
         if inCollection, parts.dateText != nil, !parts.isZeroPadded {
-            issues.append(Issue(.error, field: "date", "The filename date is not zero-padded (\(parts.dateText ?? ""))."))
+            issues.append(Issue(.error, field: "date", localized("The filename date is not zero-padded (\(parts.dateText ?? "")).")))
         }
         return issues
     }

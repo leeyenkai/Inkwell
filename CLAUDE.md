@@ -47,7 +47,7 @@ InkwellKit/Sources/
   InkwellMedia           ImageImport
   InkwellPublish         Git, PagesStatus
 InkwellKit/Tests         XCTest, with a synthetic fixture site in Fixtures/site
-scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
+scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, readme/screenshots.sh
 ```
 
 ## Build and test
@@ -87,6 +87,11 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 - **Image import strips location and camera metadata** and never keeps the original file in the site.
 - Text views: formatting commands go through `Formatting` (pure, tested) and `InkwellTextView.apply`, so each is one undo step.
 - User-facing copy: plain and short, no exclamation marks, no emoji.
+- Localisation: text a person reads goes through the string catalogs. SwiftUI literals are keys already; a `String` shown on
+  screen needs `String(localized:)` in the app and `localized(...)` in InkwellKit (each module's own bundle). One key per
+  whole sentence, counts inside it (`"\(n) posts"`) with English singulars added as plural forms in the catalog
+  (`LocalizationTests` fails without them). Run `scripts/sync-strings.sh` after adding strings. Site content (commit
+  messages, files written to the site) stays in English.
 - Never name other applications in UI copy or code identifiers (the spec's landscape table is the exception).
 
 ## Gotchas

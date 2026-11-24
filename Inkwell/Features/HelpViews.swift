@@ -37,13 +37,13 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .start: "Getting started"
-        case .writing: "Writing"
-        case .images: "Pictures and photos"
-        case .publishing: "Publishing"
-        case .design: "Design"
-        case .health: "Site health"
-        case .shortcuts: "Keyboard shortcuts"
+        case .start: String(localized: "Getting started")
+        case .writing: String(localized: "Writing")
+        case .images: String(localized: "Pictures and photos")
+        case .publishing: String(localized: "Publishing")
+        case .design: String(localized: "Design")
+        case .health: String(localized: "Site health")
+        case .shortcuts: String(localized: "Keyboard shortcuts")
         }
     }
 
@@ -62,46 +62,76 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
     var paragraphs: [String] {
         switch self {
         case .start: [
-            "Inkwell edits a GitHub Pages site. Sign in with GitHub, pick the site’s repository, and Inkwell keeps a copy on this "
-                + "Mac. You do not need git, Terminal or a folder of your own.",
-            "The sidebar lists the site’s sections, found from its menu and collections. Pick one to see its posts, or press **⌘N** "
-                + "for a new post.",
-            "Everything you write is saved as you go. Nothing reaches your site until you publish it.",
+            String(localized: """
+                Inkwell edits a GitHub Pages site. Sign in with GitHub, pick the site’s repository, and Inkwell keeps a copy on this \
+                Mac. You do not need git, Terminal or a folder of your own.
+                """),
+            String(localized: """
+                The sidebar lists the site’s sections, found from its menu and collections. Pick one to see its posts, or press **⌘N** \
+                for a new post.
+                """),
+            String(localized: "Everything you write is saved as you go. Nothing reaches your site until you publish it."),
         ]
         case .writing: [
-            "Posts are plain Markdown. Inkwell styles it as you type and hides the markers away from the line you are on; turn that "
-                + "off with **View › Hide Markdown Syntax**.",
-            "Type **/** at the start of a line for headings, lists, tables, images, links and embeds. Type **[[** to link to another "
-                + "post by its title.",
-            "**Properties** above the text hold the title, date and the section’s other fields. A date in the future schedules the "
-                + "post. **Search and sharing** sets the description and picture used in search results and link previews.",
-            "Tables open as a grid with **Format › Table…** (⇧⌘T) or the Edit Table button beside them.",
+            String(localized: """
+                Posts are plain Markdown. Inkwell styles it as you type and hides the markers away from the line you are on; turn that \
+                off with **View › Hide Markdown Syntax**.
+                """),
+            String(localized: """
+                Type **/** at the start of a line for headings, lists, tables, images, links and embeds. Type **[[** to link to another \
+                post by its title.
+                """),
+            String(localized: """
+                **Properties** above the text hold the title, date and the section’s other fields. A date in the future schedules the \
+                post. **Search and sharing** sets the description and picture used in search results and link previews.
+                """),
+            String(localized: "Tables open as a grid with **Format › Table…** (⇧⌘T) or the Edit Table button beside them."),
         ]
         case .images: [
-            "Drop, paste or add a picture (**⇧⌘I**). Inkwell resizes it, turns it upright, removes location and camera data, and "
-                + "names it after the post. Several at once become a gallery.",
-            "**Photos** keeps a photo stream: one small file per photo, each with a caption. **Media** lists every image in the site,"
-                + " where it is used, and which ones nothing uses.",
+            String(localized: """
+                Drop, paste or add a picture (**⇧⌘I**). Inkwell resizes it, turns it upright, removes location and camera data, and \
+                names it after the post. Several at once become a gallery.
+                """),
+            String(localized: """
+                **Photos** keeps a photo stream: one small file per photo, each with a caption. **Media** lists every image in the site, \
+                where it is used, and which ones nothing uses.
+                """),
         ]
         case .publishing: [
-            "**Publish** (⇧⌘P) checks the post, then sends it and its new pictures to GitHub as one change. Inkwell shows when GitHub"
-                + " Pages has the new version live.",
-            "Edits to published posts, design changes and fixes wait in **Unpublished changes** at the bottom of the sidebar until "
-                + "you publish them.",
-            "Inkwell checks GitHub for changes made elsewhere. If the same file changed in both places, you choose which version to keep.",
-            "**Version History…** shows earlier versions of a post, and can bring one back.",
+            String(localized: """
+                **Publish** (⇧⌘P) checks the post, then sends it and its new pictures to GitHub as one change. Inkwell shows when GitHub \
+                Pages has the new version live.
+                """),
+            String(localized: """
+                Edits to published posts, design changes and fixes wait in **Unpublished changes** at the bottom of the sidebar until \
+                you publish them.
+                """),
+            String(localized: """
+                Inkwell checks GitHub for changes made elsewhere. If the same file changed in both places, you choose which version to \
+                keep.
+                """),
+            String(localized: "**Version History…** shows earlier versions of a post, and can bring one back."),
         ]
         case .design: [
-            "**Theme & Style** switches between Inkwell’s themes and edits colours, fonts and layout. **Navigation** edits the menu; "
-                + "**Settings** the site’s title, description, favicon, share image and custom domain.",
-            "**Code** opens layouts, includes and stylesheets for anything the panels do not cover. The preview follows every change.",
+            String(localized: """
+                **Theme & Style** switches between Inkwell’s themes and edits colours, fonts and layout. **Navigation** edits the menu; \
+                **Settings** the site’s title, description, favicon, share image and custom domain.
+                """),
+            String(localized: """
+                **Code** opens layouts, includes and stylesheets for anything the panels do not cover. The preview follows every \
+                change.
+                """),
         ]
         case .health: [
-            "**Health** looks over the whole site: properties that will not build, two files at one address, links and images that go"
-                + " nowhere, missing alt text, large files, and the basics search engines and link previews need.",
-            "Where a fix is safe, **Fix** makes it as an unpublished change, so you can look before it goes live. Inkwell never adds "
-                + "a feed, sitemap or tag the site already has.",
-            "**Check Links** asks each site your posts link to whether the page is still there.",
+            String(localized: """
+                **Health** looks over the whole site: properties that will not build, two files at one address, links and images that go \
+                nowhere, missing alt text, large files, and the basics search engines and link previews need.
+                """),
+            String(localized: """
+                Where a fix is safe, **Fix** makes it as an unpublished change, so you can look before it goes live. Inkwell never adds \
+                a feed, sitemap or tag the site already has.
+                """),
+            String(localized: "**Check Links** asks each site your posts link to whether the page is still there."),
         ]
         case .shortcuts: []
         }
@@ -110,14 +140,44 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
 
 struct ShortcutList: View {
     static let groups: [(String, [(String, String)])] = [
-        ("Posts", [("⌘N", "New post"), ("⇧⌘N", "New page"), ("⇧⌘P", "Publish"), ("⌥⇧⌘P", "Review unpublished changes"), ("⌘R", "Check GitHub for changes"),
-                   ("⌘O", "Switch site")]),
-        ("View", [("⌥⌘P", "Preview"), ("⇧⌘E", "Source"), ("⌥⌘H", "Hide Markdown syntax"), ("⌥⌘I", "Properties")]),
-        ("Format", [("⌘B", "Bold"), ("⌘I", "Italic"), ("⌘U", "Underline"), ("⇧⌘X", "Strikethrough"), ("⇧⌘H", "Highlight"), ("⌘E", "Inline code"),
-                    ("⌘K", "Link"), ("⌘1–⌘4", "Headings"), ("⌘0", "Body text"), ("⌘'", "Quote"), ("⇧⌘L", "Bulleted list"), ("⌥⌘L", "Checklist"),
-                    ("⇧⌘F", "Footnote"), ("⇧⌘↩", "Section break"), ("⇧⌘I", "Add image"), ("⇧⌘T", "Table")]),
-        ("Typing", [("/", "Insert a block (at the start of a line)"), ("[[", "Link to a post"), ("Tab / ⇧Tab", "Nest or un-nest a list item"),
-                    ("Return", "Continue a list; on an empty item, end it")]),
+        (String(localized: "Posts"), [
+            ("⌘N", String(localized: "New post")),
+            ("⇧⌘N", String(localized: "New page")),
+            ("⇧⌘P", String(localized: "Publish")),
+            ("⌥⇧⌘P", String(localized: "Review unpublished changes")),
+            ("⌘R", String(localized: "Check GitHub for changes")),
+            ("⌘O", String(localized: "Switch site")),
+        ]),
+        (String(localized: "View"), [
+            ("⌥⌘P", String(localized: "Preview")),
+            ("⇧⌘E", String(localized: "Source")),
+            ("⌥⌘H", String(localized: "Hide Markdown syntax")),
+            ("⌥⌘I", String(localized: "Properties")),
+        ]),
+        (String(localized: "Format"), [
+            ("⌘B", String(localized: "Bold")),
+            ("⌘I", String(localized: "Italic")),
+            ("⌘U", String(localized: "Underline")),
+            ("⇧⌘X", String(localized: "Strikethrough")),
+            ("⇧⌘H", String(localized: "Highlight")),
+            ("⌘E", String(localized: "Inline code")),
+            ("⌘K", String(localized: "Link")),
+            ("⌘1–⌘4", String(localized: "Headings")),
+            ("⌘0", String(localized: "Body text")),
+            ("⌘'", String(localized: "Quote")),
+            ("⇧⌘L", String(localized: "Bulleted list")),
+            ("⌥⌘L", String(localized: "Checklist")),
+            ("⇧⌘F", String(localized: "Footnote")),
+            ("⇧⌘↩", String(localized: "Section break")),
+            ("⇧⌘I", String(localized: "Add image")),
+            ("⇧⌘T", String(localized: "Table")),
+        ]),
+        (String(localized: "Typing"), [
+            ("/", String(localized: "Insert a block (at the start of a line)")),
+            ("[[", String(localized: "Link to a post")),
+            (String(localized: "Tab / ⇧Tab"), String(localized: "Nest or un-nest a list item")),
+            (String(localized: "Return"), String(localized: "Continue a list; on an empty item, end it")),
+        ]),
     ]
 
     var body: some View {
@@ -153,7 +213,7 @@ struct SiteSummarySheet: View {
                     step("paintpalette", "Make it yours", "Theme & Style changes colours, fonts and layout, with a preview.")
                     step("stethoscope", "Check its health", model.healthProblems == 0
                         ? "Health watches for broken links, missing pictures and more."
-                        : "Health found \(SiteHealth.plural(model.healthProblems, "thing")) worth a look.")
+                        : "Health found \(model.healthProblems) things worth a look.")
                 }
                 HStack {
                     Button("Open Health") {
@@ -181,15 +241,17 @@ struct SiteSummarySheet: View {
 
     func summary(_ site: Site, sections: [SiteSection], posts: Int) -> String {
         let names = sections.map(\.label)
-        let list = names.count <= 1 ? names.joined() : names.dropLast().joined(separator: ", ") + " and " + (names.last ?? "")
-        let images = imageCount == 0 ? "" : ", \(SiteHealth.plural(imageCount, "image"))"
-        var text = "Inkwell found a \(site.generator) site with \(SiteHealth.plural(sections.count, "section"))"
-        if !names.isEmpty { text += " (\(list))" }
-        text += ", \(SiteHealth.plural(posts, "post"))\(images) and \(SiteHealth.plural(site.documents.filter(\.isPage).count, "page"))."
-        return text
+        let list = names.formatted(.list(type: .and))
+        let found = names.isEmpty
+            ? String(localized: "Inkwell found a \(site.generator) site.")
+            : String(localized: "Inkwell found a \(site.generator) site with \(names.count) sections: \(list).")
+        var counts = [String(localized: "\(posts) posts")]
+        if imageCount > 0 { counts.append(String(localized: "\(imageCount) images")) }
+        counts.append(String(localized: "\(site.documents.filter(\.isPage).count) pages"))
+        return found + " " + String(localized: "It has \(counts.formatted(.list(type: .and))).")
     }
 
-    func step(_ symbol: String, _ title: String, _ detail: String) -> some View {
+    func step(_ symbol: String, _ title: LocalizedStringKey, _ detail: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol).font(.title2).foregroundStyle(Color.accentColor).frame(width: 30)
             VStack(alignment: .leading, spacing: 2) {

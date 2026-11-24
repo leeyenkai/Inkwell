@@ -1,0 +1,27 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Changed here and on GitHub: %@. Choose which version to keep first." : {
+
+    },
+    "Downloading the site…" : {
+
+    },
+    "Finding the latest version…" : {
+
+    },
+    "The site could not be unpacked: %@" : {
+
+    },
+    "The site has not been downloaded yet." : {
+
+    },
+    "There is nothing new to publish." : {
+
+    },
+    "Unpacking…" : {
+
+    }
+  },
+  "version" : "1.0"
+}

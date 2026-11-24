@@ -34,7 +34,7 @@ final class EditorDocument {
         do {
             text = try String(contentsOf: document.fileURL, encoding: .utf8)
         } catch {
-            loadError = "“\(document.filename)” could not be opened: \(error.localizedDescription)"
+            loadError = String(localized: "“\(document.filename)” could not be opened: \(error.localizedDescription)")
         }
         frontMatter = FrontMatterDocument(text: text)
         lastSaved = text
@@ -208,7 +208,7 @@ final class EditorDocument {
             try Data(text.utf8).write(to: document.fileURL, options: .atomic)
             lastSaved = text
         } catch {
-            model?.errorMessage = "Could not save: \(error.localizedDescription)"
+            model?.errorMessage = String(localized: "Could not save: \(error.localizedDescription)")
             return
         }
         if document.origin == .localDraft {

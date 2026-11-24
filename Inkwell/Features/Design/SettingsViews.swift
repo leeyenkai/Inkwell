@@ -15,9 +15,9 @@ struct NavigationEditor: View {
                     ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
                         HStack {
                             Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
-                            CommitField(placeholder: "Title", value: entry.title) { entries[index].title = $0; save() }
+                            CommitField(placeholder: String(localized: "Title"), value: entry.title) { entries[index].title = $0; save() }
                                 .frame(width: 160)
-                            CommitField(placeholder: "/address", value: entry.url) { entries[index].url = $0; save() }
+                            CommitField(placeholder: String(localized: "/address"), value: entry.url) { entries[index].url = $0; save() }
                             Button {
                                 entries.remove(at: index)
                                 save()
@@ -102,7 +102,8 @@ struct SiteSettingsView: View {
         Form {
             Section("Site") {
                 field("Title", "title")
-                field("Description", "description", prompt: "One sentence about the site, for search results and link previews")
+                field("Description", "description",
+                      prompt: String(localized: "One sentence about the site, for search results and link previews"))
                 field("Author", "author")
                 field("Language", "lang", prompt: "en")
                 Picker("Time zone", selection: Binding(get: { design.string("timezone").isEmpty ? TimeZone.current.identifier : design.string("timezone") },
@@ -113,10 +114,11 @@ struct SiteSettingsView: View {
 
             if design.isInkwellTheme {
                 Section("Look") {
-                    field("Footer", "inkwell.footer", prompt: "Shown after the copyright line")
+                    field("Footer", "inkwell.footer", prompt: String(localized: "Shown after the copyright line"))
                     LabeledContent("Share image") {
                         HStack {
-                            Text(design.string("inkwell.social_image").isEmpty ? "None" : design.string("inkwell.social_image"))
+                            let image = design.string("inkwell.social_image")
+                            Text(image.isEmpty ? String(localized: "None") : image)
                                 .font(.caption.monospaced()).foregroundStyle(.secondary)
                             Button("Choose…") { chooseShareImage() }
                         }
@@ -154,7 +156,7 @@ struct SiteSettingsView: View {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
-    func field(_ label: String, _ path: String, prompt: String = "") -> some View {
+    func field(_ label: LocalizedStringKey, _ path: String, prompt: String = "") -> some View {
         LabeledContent(label) {
             CommitField(placeholder: prompt, value: design.string(path)) { design.setString(path, $0) }
                 .frame(minWidth: 260)
@@ -164,7 +166,7 @@ struct SiteSettingsView: View {
     func chooseShareImage() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
-        panel.message = "Choose the picture shown when your site is shared. A wide image (1200 × 630) works best."
+        panel.message = String(localized: "Choose the picture shown when your site is shared. A wide image (1200 × 630) works best.")
         guard panel.runModal() == .OK, let url = panel.url, let path = design.importImage(url, slug: "share") else { return }
         design.setString("inkwell.social_image", path)
     }
@@ -247,7 +249,7 @@ struct CustomDomainSection: View {
             try await client.setHTTPSEnforced(owner, repository, enforced)
             await load()
         } catch {
-            message = "GitHub could not change HTTPS yet: \(error.localizedDescription)"
+            message = String(localized: "GitHub could not change HTTPS yet: \(error.localizedDescription)")
         }
         busy = false
     }

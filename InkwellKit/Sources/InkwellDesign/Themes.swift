@@ -59,12 +59,22 @@ public struct ThemeManifest: Decodable, Sendable, Identifiable, Equatable {
         let folders = (try? FileManager.default.contentsOfDirectory(at: themesFolder, includingPropertiesForKeys: nil)) ?? []
         let themes = folders.compactMap { folder -> ThemeManifest? in
             guard let data = try? Data(contentsOf: folder.appending(path: "theme.json")) else { return nil }
-            return try? JSONDecoder().decode(ThemeManifest.self, from: data)
+            return try? JSONDecoder().decode(ThemeManifest.self, from: data).translated()
         }
         return themes.sorted { (order.firstIndex(of: $0.id) ?? 99, $0.name) < (order.firstIndex(of: $1.id) ?? 99, $1.name) }
     }
 
     public static func named(_ id: String) -> ThemeManifest? { bundled().first { $0.id == id } }
+
+    /// Labels and the summary in the person's language, from the Themes table (theme.json stays in English).
+    func translated() -> ThemeManifest {
+        func text(_ english: String) -> String { Bundle.module.localizedString(forKey: english, value: english, table: "Themes") }
+        var copy = self
+        copy.summary = text(summary)
+        copy.tokens = tokens.map { var t = $0; t.label = text(t.label); t.group = text(t.group); return t }
+        copy.options = options.map { var o = $0; o.label = text(o.label); return o }
+        return copy
+    }
 
     func tokenBlock(_ scheme: ColorSchemeKind) -> String {
         var out = ":root {\n"
@@ -95,9 +105,9 @@ public struct FileChange: Sendable, Equatable, Identifiable {
 
     public var kind: String {
         switch (oldText, newText) {
-        case (nil, _): "Add"
-        case (_, nil): "Remove"
-        default: "Change"
+        case (nil, _): localized("Add")
+        case (_, nil): localized("Remove")
+        default: localized("Change")
         }
     }
 }
@@ -132,19 +142,19 @@ public enum ThemeApplier {
         }
         let base = ThemeManifest.baseFolder
         let reasons = [
-            "_layouts/default.html": "The page frame: header, navigation and footer.",
-            "_layouts/post.html": "How a post looks: title, byline, date and text.",
-            "_layouts/page.html": "How a standalone page looks.",
-            "_layouts/home.html": "A home page that lists your latest posts.",
-            "_includes/inkwell-header.html": "The site title and navigation.",
-            "_includes/inkwell-footer.html": "The footer line.",
-            "_includes/inkwell-post-list.html": "The list of posts used on the home page.",
+            "_layouts/default.html": localized("The page frame: header, navigation and footer."),
+            "_layouts/post.html": localized("How a post looks: title, byline, date and text."),
+            "_layouts/page.html": localized("How a standalone page looks."),
+            "_layouts/home.html": localized("A home page that lists your latest posts."),
+            "_includes/inkwell-header.html": localized("The site title and navigation."),
+            "_includes/inkwell-footer.html": localized("The footer line."),
+            "_includes/inkwell-post-list.html": localized("The list of posts used on the home page."),
         ]
         for (path, reason) in reasons.sorted(by: { $0.key < $1.key }) {
             propose(path, try? String(contentsOf: base.appending(path: path), encoding: .utf8), reason)
         }
         propose("assets/css/inkwell.css", theme.stylesheet, "The \(theme.name) colours, fonts and styles.")
-        propose("assets/css/inkwell-dark.css", theme.darkStylesheet, "The dark palette, used when the reader’s Mac or phone is in dark mode.")
+        propose("assets/css/inkwell-dark.css", theme.darkStylesheet, localized("The dark palette, used when the reader’s Mac or phone is in dark mode."))
 
         let configURL = siteRoot.appending(path: "_config.yml")
         let configText = (try? String(contentsOf: configURL, encoding: .utf8)) ?? ""
@@ -156,13 +166,13 @@ public enum ThemeApplier {
         if config.value("inkwell.home_collection") == nil {
             config.set("inkwell.home_collection", raw: YAMLFormat.quoted(homeCollection(siteRoot: siteRoot, config: config)))
         }
-        propose("_config.yml", config.text, "Remembers the theme and its options under “inkwell:”.")
+        propose("_config.yml", config.text, localized("Remembers the theme and its options under “inkwell:”."))
 
         if !FileManager.default.fileExists(atPath: siteRoot.appending(path: "_data/navigation.yml").path) {
             propose("_data/navigation.yml", NavigationDocument(entries: suggestedNavigation(siteRoot: siteRoot, config: config)).text,
-                    "The menu at the top of every page.")
+                    localized("The menu at the top of every page."))
         }
-        return AdoptionPlan(title: "Switch to \(theme.name)", changes: changes)
+        return AdoptionPlan(title: localized("Switch to \(theme.name)"), changes: changes)
     }
 
     static func homeCollection(siteRoot: URL, config: ConfigDocument) -> String {
@@ -224,7 +234,7 @@ public struct DesignTokens: Sendable {
                 let spec = specs.first { $0.name == name }
                 let light = lightDoc.value(name, scheme: .light)
                 return Entry(name: name, label: spec?.label ?? label(for: name), kind: spec?.kind ?? TokenKind.infer(name: name, value: light ?? ""),
-                             group: spec?.group ?? "Other", light: light, dark: darkDoc.value(name, scheme: .light))
+                             group: spec?.group ?? localized("Other"), light: light, dark: darkDoc.value(name, scheme: .light))
             }
             return DesignTokens(entries: entries, lightFile: "assets/css/inkwell.css", darkFile: "assets/css/inkwell-dark.css", theme: theme)
         }
@@ -287,7 +297,7 @@ public struct DesignTokens: Sendable {
             guard updated != existing else { return nil }
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data(updated.utf8).write(to: url, options: .atomic)
-            return FileChange(path: lightFile, oldText: existing, newText: updated, reason: "Design change")
+            return FileChange(path: lightFile, oldText: existing, newText: updated, reason: localized("Design change"))
         }
         let path = scheme == .dark ? darkFile : lightFile
         let url = siteRoot.appending(path: path)
@@ -298,7 +308,7 @@ public struct DesignTokens: Sendable {
         doc.set(name, to: value, scheme: target)
         guard doc.text != old else { return nil }
         try Data(doc.text.utf8).write(to: url, options: .atomic)
-        return FileChange(path: path, oldText: old, newText: doc.text, reason: "Design change")
+        return FileChange(path: path, oldText: old, newText: doc.text, reason: localized("Design change"))
     }
 
     /// A starting point for the other palette: the same hues with lightness turned over (dark grey ↔ light grey).
@@ -356,10 +366,10 @@ public struct DesignTokens: Sendable {
 
     static func group(for kind: TokenKind) -> String {
         switch kind {
-        case .color: "Colours"
-        case .font: "Type"
-        case .length, .number: "Layout"
-        case .other: "Other"
+        case .color: localized("Colours")
+        case .font: localized("Fonts")
+        case .length, .number: localized("Layout")
+        case .other: localized("Other")
         }
     }
 }

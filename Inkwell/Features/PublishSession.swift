@@ -62,11 +62,11 @@ final class PublishSession: Identifiable {
     var hasErrors: Bool { checks.contains { $0.level == .error } }
     var actionTitle: String {
         switch kind {
-        case .publish: scheduledFor == nil ? "Publish" : "Schedule"
-        case .update: "Update"
-        case .delete: "Delete from Site"
-        case .unpublish: "Unpublish"
-        case .changes: "Publish \(paths.count) Change\(paths.count == 1 ? "" : "s")"
+        case .publish: scheduledFor == nil ? String(localized: "Publish") : String(localized: "Schedule")
+        case .update: String(localized: "Update")
+        case .delete: String(localized: "Delete from Site")
+        case .unpublish: String(localized: "Unpublish")
+        case .changes: String(localized: "Publish \(paths.count) Changes")
         }
     }
 
@@ -77,7 +77,9 @@ final class PublishSession: Identifiable {
         let title = FrontMatterDocument(text: text).value("title")?.string ?? document.title
         let isUpdate = document.origin == .repository && model.changes[document.relativePath] == .modified
         let name = title.isEmpty ? "Untitled" : title
-        let session = PublishSession(kind: isUpdate ? .update : .publish, heading: "\(isUpdate ? "Update" : "Publish") “\(name)”",
+        let shown = title.isEmpty ? String(localized: "Untitled") : title
+        let heading = isUpdate ? String(localized: "Update “\(shown)”") : String(localized: "Publish “\(shown)”")
+        let session = PublishSession(kind: isUpdate ? .update : .publish, heading: heading,
                                      message: "\(isUpdate ? "Update" : "Publish"): \(name)", paths: [document.relativePath],
                                      displayURL: Permalink.display(document.url, config: site.config), backend: backend, model: model)
         session.editor = editor
@@ -101,10 +103,12 @@ final class PublishSession: Identifiable {
     }
 
     static func delete(document: SiteDocument, backend: any SiteBackend, model: AppModel) -> PublishSession {
-        let session = PublishSession(kind: .delete, heading: "Delete “\(document.title)”", message: "Delete: \(document.title)",
+        let session = PublishSession(kind: .delete, heading: String(localized: "Delete “\(document.title)”"),
+                                     message: "Delete: \(document.title)",
                                      paths: [document.relativePath], displayURL: nil, backend: backend, model: model)
         var saved: Data?
-        session.checks = [CheckItem(level: .info, text: "The page at \(document.url) stops working once GitHub Pages rebuilds the site.")]
+        let note = String(localized: "The page at \(document.url) stops working once GitHub Pages rebuilds the site.")
+        session.checks = [CheckItem(level: .info, text: note)]
         session.prepare = {
             saved = try Data(contentsOf: document.fileURL)
             try FileManager.default.removeItem(at: document.fileURL)
@@ -114,9 +118,11 @@ final class PublishSession: Identifiable {
     }
 
     static func unpublish(document: SiteDocument, draftURL: URL, backend: any SiteBackend, model: AppModel) -> PublishSession {
-        let session = PublishSession(kind: .unpublish, heading: "Unpublish “\(document.title)”", message: "Unpublish: \(document.title)",
+        let session = PublishSession(kind: .unpublish, heading: String(localized: "Unpublish “\(document.title)”"),
+                                     message: "Unpublish: \(document.title)",
                                      paths: [document.relativePath], displayURL: nil, backend: backend, model: model)
-        session.checks = [CheckItem(level: .info, text: "The post leaves your site and goes back to Drafts on this Mac, where you can keep working on it.")]
+        let note = String(localized: "The post leaves your site and goes back to Drafts on this Mac, where you can keep working on it.")
+        session.checks = [CheckItem(level: .info, text: note)]
         var saved: Data?
         session.prepare = {
             let data = try Data(contentsOf: document.fileURL)
@@ -132,12 +138,12 @@ final class PublishSession: Identifiable {
         return session
     }
 
-    static func changes(paths: [String], message: String, backend: any SiteBackend, model: AppModel, heading: String = "Publish changes",
-                        selecting: String? = nil) -> PublishSession {
+    static func changes(paths: [String], message: String, backend: any SiteBackend, model: AppModel,
+                        heading: String = String(localized: "Publish changes"), selecting: String? = nil) -> PublishSession {
         let session = PublishSession(kind: .changes, heading: heading, message: message, paths: paths, displayURL: nil,
                                      backend: backend, model: model)
         session.selectAfter = selecting
-        session.checks = [CheckItem(level: .info, text: "\(paths.count) file\(paths.count == 1 ? "" : "s") go to your site in one change.")]
+        session.checks = [CheckItem(level: .info, text: String(localized: "\(paths.count) files go to your site in one change."))]
         return session
     }
 
@@ -148,15 +154,16 @@ final class PublishSession: Identifiable {
         var items: [CheckItem] = []
         let issues = Validation.frontMatter(doc, filename: document.filename, inCollection: !document.isPage)
         if issues.isEmpty {
-            items.append(CheckItem(level: .ok, text: "Properties are valid"))
+            items.append(CheckItem(level: .ok, text: String(localized: "Properties are valid")))
         } else {
             for issue in issues { items.append(CheckItem(level: issue.severity == .error ? .error : .warning, text: issue.message)) }
         }
         if doc.value("published")?.bool == false {
-            items.append(CheckItem(level: .warning, text: "published is off: the post stays off the site, but its file is public on GitHub."))
+            let note = String(localized: "published is off: the post stays off the site, but its file is public on GitHub.")
+            items.append(CheckItem(level: .warning, text: note))
         }
         if document.origin == .localDraft, FileManager.default.fileExists(atPath: site.root.appending(path: document.relativePath).path) {
-            items.append(CheckItem(level: .error, text: "\(document.relativePath) already exists in the site."))
+            items.append(CheckItem(level: .error, text: String(localized: "\(document.relativePath) already exists in the site.")))
         }
 
         var imagePaths: [String] = []
@@ -173,7 +180,8 @@ final class PublishSession: Identifiable {
             if ref.alt.trimmingCharacters(in: .whitespaces).isEmpty { missingAlt += 1 }
             if ref.path.hasPrefix("http://") || ref.path.hasPrefix("https://") || ref.path.hasPrefix("//") { continue }
             guard ref.path.hasPrefix("/") else {
-                items.append(CheckItem(level: .warning, text: "“\(ref.path)” is a relative image path, which may break on the live site."))
+                let note = String(localized: "“\(ref.path)” is a relative image path, which may break on the live site.")
+                items.append(CheckItem(level: .warning, text: note))
                 continue
             }
             var relative = String(ref.path.dropFirst())
@@ -182,7 +190,7 @@ final class PublishSession: Identifiable {
             }
             let file = site.root.appending(path: relative)
             guard FileManager.default.fileExists(atPath: file.path) else {
-                items.append(CheckItem(level: .error, text: "Image not found: \(ref.path)"))
+                items.append(CheckItem(level: .error, text: String(localized: "Image not found: \(ref.path)")))
                 continue
             }
             if changes[relative] == .added || changes[relative] == .modified, !imagePaths.contains(relative) {
@@ -195,47 +203,54 @@ final class PublishSession: Identifiable {
         }
         if !imagePaths.isEmpty {
             let size = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
-            items.append(CheckItem(level: .ok, text: "\(imagePaths.count) new image\(imagePaths.count == 1 ? "" : "s") (\(size))"))
+            items.append(CheckItem(level: .ok, text: String(localized: "\(imagePaths.count) new images (\(size))")))
         }
         if withLocation > 0 {
-            items.append(CheckItem(level: .warning, text: "\(withLocation) image\(withLocation == 1 ? " still has" : "s still have") location data."))
+            items.append(CheckItem(level: .warning, text: String(localized: "\(withLocation) images still have location data.")))
         }
         if !large.isEmpty {
-            items.append(CheckItem(level: .warning, text: "Over 1 MB, slow on phones: \(large.joined(separator: ", "))"))
+            let names = large.joined(separator: ", ")
+            items.append(CheckItem(level: .warning, text: String(localized: "Over 1 MB, slow on phones: \(names)")))
         }
         if missingAlt > 0 {
-            items.append(CheckItem(level: .warning, text: "\(missingAlt) image\(missingAlt == 1 ? " is" : "s are") missing alt text"))
+            items.append(CheckItem(level: .warning, text: String(localized: "\(missingAlt) images are missing alt text")))
         }
         let address = SiteHealth.normalized(document.url)
         if let twin = site.documents.first(where: {
             $0.relativePath != document.relativePath && $0.publishedFlag && SiteHealth.normalized($0.url) == address
         }) {
-            items.append(CheckItem(level: .error, text: "\(twin.relativePath) already uses the address \(document.url)."))
+            let note = String(localized: "\(twin.relativePath) already uses the address \(document.url).")
+            items.append(CheckItem(level: .error, text: note))
         }
         let title = doc.value("title")?.string ?? ""
         let fullTitle = site.config.title.isEmpty ? title : "\(title) | \(site.config.title)"
         if fullTitle.count > 60 {
-            items.append(CheckItem(level: .info, text: "Search results show about 60 characters of the title; this one has \(fullTitle.count)."))
+            let note = String(localized: "Search results show about 60 characters of the title; this one has \(fullTitle.count).")
+            items.append(CheckItem(level: .info, text: note))
         }
         let broken = brokenInternalLinks(doc.body, site: site)
         if broken.isEmpty {
-            items.append(CheckItem(level: .ok, text: "No broken links"))
+            items.append(CheckItem(level: .ok, text: String(localized: "No broken links")))
         } else {
-            for link in broken { items.append(CheckItem(level: .warning, text: "Link goes nowhere on the site: \(link)")) }
+            for link in broken {
+                items.append(CheckItem(level: .warning, text: String(localized: "Link goes nowhere on the site: \(link)")))
+            }
         }
         if let date = doc.value("date")?.string.flatMap({ SiteDate.parse($0, timeZone: site.config.timeZone) }) ?? document.date,
            Schedule.isScheduled(date) {
             if Schedule.publishesFutureNow(site.config) {
-                items.append(CheckItem(level: .warning, text: "The date is in the future, but future: true in _config.yml shows it right away."))
+                let note = String(localized: "The date is in the future, but future: true in _config.yml shows it right away.")
+                items.append(CheckItem(level: .warning, text: note))
             } else {
                 scheduledFor = date
                 let when = date.formatted(Date.FormatStyle(date: .long, time: .shortened, timeZone: site.config.timeZone))
-                items.append(CheckItem(level: .info, text: "Scheduled: the post stays off the site until \(when)."))
+                items.append(CheckItem(level: .info, text: String(localized: "Scheduled: the post stays off the site until \(when).")))
                 if !Schedule.hasWorkflow(siteRoot: site.root) { addScheduleWorkflow = true }
             }
         }
         if let repo = backend.repository {
-            items.append(CheckItem(level: .info, text: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site."))
+            let note = String(localized: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site.")
+            items.append(CheckItem(level: .info, text: note))
         }
         checks = items
         paths = [document.relativePath] + imagePaths
