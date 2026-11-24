@@ -3,8 +3,8 @@
     {
       "value": {
         "linear-gradient": [
-          "srgb:0.18039,0.17647,0.38431,1.00000",
-          "srgb:0.05490,0.05490,0.15294,1.00000"
+          "srgb:0.20784,0.20392,0.49020,1.00000",
+          "srgb:0.05882,0.05882,0.18039,1.00000"
         ],
         "orientation": {
           "start": {
@@ -22,8 +22,8 @@
       "appearance": "dark",
       "value": {
         "linear-gradient": [
-          "srgb:0.11765,0.11373,0.26275,1.00000",
-          "srgb:0.02745,0.02745,0.07059,1.00000"
+          "srgb:0.12549,0.12157,0.31373,1.00000",
+          "srgb:0.02745,0.02745,0.07843,1.00000"
         ],
         "orientation": {
           "start": {
@@ -43,13 +43,13 @@
       "layers": [
         {
           "glass": true,
-          "image-name": "ink.svg",
-          "name": "ink",
+          "image-name": "grip.svg",
+          "name": "grip",
           "opacity": 1.0
         }
       ],
       "lighting": "combined",
-      "name": "Ink",
+      "name": "Grip",
       "shadow": {
         "kind": "layer-color",
         "opacity": 0.35
@@ -64,13 +64,73 @@
       "layers": [
         {
           "glass": true,
-          "image-name": "front.svg",
-          "name": "front",
+          "image-name": "core.svg",
+          "name": "core",
+          "opacity": 1.0
+        },
+        {
+          "glass": true,
+          "image-name": "roller.svg",
+          "name": "roller",
+          "opacity": 1.0
+        },
+        {
+          "glass": true,
+          "image-name": "fork.svg",
+          "name": "fork",
           "opacity": 1.0
         }
       ],
       "lighting": "combined",
-      "name": "Front",
+      "name": "Roller",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.45
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "ink.svg",
+          "name": "ink",
+          "opacity": 1.0
+        }
+      ],
+      "lighting": "combined",
+      "name": "Ink",
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.2
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.15
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "lines.svg",
+          "name": "lines",
+          "opacity": 1.0
+        },
+        {
+          "glass": true,
+          "image-name": "page.svg",
+          "name": "page",
+          "opacity": 1.0
+        }
+      ],
+      "lighting": "combined",
+      "name": "Page",
       "shadow": {
         "kind": "neutral",
         "opacity": 0.45
@@ -85,13 +145,13 @@
       "layers": [
         {
           "glass": true,
-          "image-name": "middle.svg",
-          "name": "middle",
-          "opacity": 0.6
+          "image-name": "sheet.svg",
+          "name": "sheet",
+          "opacity": 0.5
         }
       ],
       "lighting": "combined",
-      "name": "Middle",
+      "name": "Sheet",
       "shadow": {
         "kind": "neutral",
         "opacity": 0.45
@@ -100,27 +160,6 @@
       "translucency": {
         "enabled": true,
         "value": 0.45
-      }
-    },
-    {
-      "layers": [
-        {
-          "glass": true,
-          "image-name": "back.svg",
-          "name": "back",
-          "opacity": 0.35
-        }
-      ],
-      "lighting": "combined",
-      "name": "Back",
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.45
-      },
-      "specular": true,
-      "translucency": {
-        "enabled": true,
-        "value": 0.5
       }
     }
   ],

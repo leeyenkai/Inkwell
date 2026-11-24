@@ -60,7 +60,8 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 - `MarkdownScanner.regex` caches compiled patterns behind a lock; `MarkdownRenderer.match` reuses it.
 - Collection URLs come from the filename slug (`permalink: /:collection/:title/`), not the title. A draft's filename follows its title; a published file is never renamed.
 - The preview serves site files through the `inkwell-site://site/` scheme, so `/assets/...` resolves as on the live site. Updates replace `<body>` in place to keep the scroll position.
-- The app icon is `AppIcon.icon`, not an asset-catalog icon set. Preview a change with
-  `xcrun actool Inkwell/Resources/AppIcon.icon --compile <out> --platform macosx --minimum-deployment-target 26.0 --app-icon AppIcon --output-partial-info-plist <out>/p.plist`,
-  then `iconutil -c iconset <out>/AppIcon.icns` (the largest image is 256 px).
+- The app icon is `AppIcon.icon` (Icon Composer format: `icon.json` + SVG layers in `Assets/`), not an asset-catalog icon set.
+  Groups front to back: Grip, Roller (core, roller, fork), Ink, Page (lines, page), Sheet. Shapes stay flat; the system adds
+  glass, highlights and shadows. `scripts/icon/render.sh` renders every appearance with Icon Composer's `ictool` and writes a
+  contact sheet to `~/Library/Caches/InkwellBuild/icon/`; `docs/images/icon.png` is the Default render at 256 px.
 - This folder is in an iCloud-synced Desktop. iCloud can leave duplicates named `File 2.swift`; `.gitignore` excludes them, but check before deleting one.

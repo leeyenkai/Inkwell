@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><linearGradient id="w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3FC6E0"/><stop offset="1" stop-color="#6A5CFF"/></linearGradient>
-<radialGradient id="s" cx="0.35" cy="0.3" r="0.85"><stop offset="0" stop-color="#FFD27A"/><stop offset="1" stop-color="#FF8A5C"/></radialGradient></defs>
-<g transform="rotate(4 512 530)">
-<rect x="334" y="314" width="250" height="28" rx="14" fill="#C8CEDF"/>
-<rect x="334" y="378" width="180" height="28" rx="14" fill="#C8CEDF"/>
-<path d="M 330 664 C 372 560, 428 520, 462 574 C 490 620, 450 672, 432 632 C 412 586, 500 520, 548 584 C 580 626, 622 640, 676 600" fill="none" stroke="url(#w)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M 664 330 C 694 374, 714 404, 714 432 A 50 50 0 1 1 614 432 C 614 404, 634 374, 664 330 Z" fill="url(#s)"/>
-</g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><linearGradient id="i" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3FC6E0"/><stop offset="1" stop-color="#6A5CFF"/></linearGradient></defs><g transform="translate(35,42) scale(0.88)"><rect x="190" y="470" width="440" height="220" fill="url(#i)" transform="rotate(-10 480 560)"/></g></svg>
