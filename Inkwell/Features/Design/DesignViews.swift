@@ -22,6 +22,20 @@ struct DesignPanel: View {
                 Text("Theme")
             }
 
+            if design.isInkwellTheme {
+                Section {
+                    PaletteGrid(design: design)
+                } header: {
+                    Text("Palettes")
+                } footer: {
+                    Text("A palette sets every colour below, for light and dark mode. You can still change each one.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Font Pairings") {
+                    FontPairingGrid(design: design)
+                }
+            }
+
             ForEach(design.groups, id: \.0) { group, entries in
                 Section {
                     ForEach(entries) { entry in
@@ -141,15 +155,7 @@ struct FontRow: View {
     var design: DesignModel
     var entry: DesignTokens.Entry
 
-    static let stacks: [(String, String)] = [
-        (String(localized: "System sans-serif"), "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"),
-        (String(localized: "Charter serif"), "Charter, \"Iowan Old Style\", \"Palatino Linotype\", Georgia, serif"),
-        ("Georgia", "Georgia, \"Times New Roman\", serif"),
-        ("Avenir", "Avenir, \"Avenir Next\", Montserrat, \"Segoe UI\", sans-serif"),
-        ("Gill Sans", "\"Gill Sans\", \"Gill Sans MT\", Calibri, sans-serif"),
-        (String(localized: "Rounded"), "ui-rounded, \"SF Pro Rounded\", \"Hiragino Maru Gothic ProN\", sans-serif"),
-        (String(localized: "Monospace"), "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"),
-    ]
+    static var stacks: [(String, String)] { DesignPresets.fontStacks.map { ($0.name, $0.value) } }
 
     var current: String { entry.light ?? "" }
     var match: String? { Self.stacks.first { normalize($0.1) == normalize(current) }?.1 }
@@ -164,7 +170,7 @@ struct FontRow: View {
                 })
                 Picker(entry.label, selection: choice) {
                     ForEach(Self.stacks, id: \.1) { name, stack in
-                        Text(name).font(.custom(stack.components(separatedBy: ",")[0].trimmingCharacters(in: CharacterSet(charactersIn: "\" ")), size: 13))
+                        Text(name).font(.stack(stack, size: 13))
                             .tag(stack)
                     }
                     Text("Custom").tag("custom")
@@ -230,6 +236,8 @@ struct OptionRow: View {
         case ("home_style", "list"): String(localized: "List of titles")
         case ("home_style", "cards"): String(localized: "Cards with pictures")
         case ("home_style", "chain"): String(localized: "Full posts, one after another")
+        case ("home_style", "grid"): String(localized: "Grid of pictures")
+        case ("home_style", "front"): String(localized: "Lead story, then a grid")
         case ("appearance", "auto"): String(localized: "Follow the reader’s system")
         case ("appearance", "light"): String(localized: "Always light")
         case ("appearance", "dark"): String(localized: "Always dark")
@@ -245,6 +253,8 @@ struct OptionRow: View {
                 if case let .flag(b)? = design.option(option.key) { return b }
                 return false
             }, set: { design.setOption(option.key, .flag($0)) }))
+        case "image":
+            ImageOptionRow(design: design, option: option)
         default:
             Picker(option.label, selection: Binding(get: {
                 if case let .text(s)? = design.option(option.key) { return s }
@@ -276,98 +286,6 @@ struct CommitField: View {
             .onChange(of: value) { if !focused { text = value } }
             .onSubmit { if text != value { commit(text) } }
             .onChange(of: focused) { if !focused, text != value { commit(text) } }
-    }
-}
-
-// MARK: Theme gallery
-
-struct ThemeGallery: View {
-    var design: DesignModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var chosen: ThemeManifest?
-    @State private var plan: AdoptionPlan?
-    @State private var expanded: String?
-    let themes = ThemeManifest.bundled()
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(plan?.title ?? String(localized: "Choose a theme")).font(.title2.weight(.semibold))
-            if let plan {
-                review(plan)
-            } else {
-                Text("Themes change how every page looks. Your posts and pages stay exactly as they are.")
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 12) {
-                    ForEach(themes) { theme in
-                        ThemeCard(theme: theme, selected: theme.id == (chosen?.id ?? design.theme?.id))
-                            .choosable(theme.name, selected: theme.id == (chosen?.id ?? design.theme?.id)) { chosen = theme }
-                    }
-                }
-                HStack {
-                    Spacer()
-                    Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                    Button("Continue") {
-                        if let chosen { plan = design.plan(for: chosen) }
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(chosen == nil || chosen?.id == design.theme?.id)
-                }
-            }
-        }
-        .padding(24)
-        .frame(width: 720)
-    }
-
-    func review(_ plan: AdoptionPlan) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(design.isInkwellTheme
-                ? "Inkwell updates these files. Nothing goes live until you publish."
-                : "Your current layouts with the same names are replaced; anything else in your site is left alone. Nothing goes live until you publish.")
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(plan.changes) { change in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(change.kind).font(.caption.weight(.semibold))
-                                    .foregroundStyle(change.oldText == nil ? .green : .orange)
-                                    .frame(width: 54, alignment: .leading)
-                                Text(change.path).font(.callout.monospaced())
-                                Spacer()
-                                Button(expanded == change.path ? "Hide" : "Show") {
-                                    expanded = expanded == change.path ? nil : change.path
-                                }
-                                .buttonStyle(.link)
-                            }
-                            Text(change.reason).font(.caption).foregroundStyle(.secondary).padding(.leading, 62)
-                            if expanded == change.path {
-                                Text(change.newText ?? "")
-                                    .font(.caption.monospaced())
-                                    .lineLimit(40)
-                                    .textSelection(.enabled)
-                                    .padding(8)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
-                            }
-                        }
-                    }
-                }
-            }
-            .frame(maxHeight: 340)
-            HStack {
-                Button("Back") { self.plan = nil }
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Apply Theme") {
-                    design.apply(plan)
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-            }
-        }
     }
 }
 

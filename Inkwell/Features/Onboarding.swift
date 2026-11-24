@@ -212,9 +212,9 @@ struct NewSiteSheet: View {
             .formStyle(.grouped)
             .scrollDisabled(true)
             Text("Theme").font(.headline)
-            HStack(spacing: 12) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                 ForEach(themes) { theme in
-                    ThemeCard(theme: theme, selected: theme.id == themeID)
+                    ThemeTile(theme: theme, selected: theme.id == themeID)
                         .choosable(theme.name, selected: theme.id == themeID) { themeID = theme.id }
                 }
             }
@@ -235,48 +235,8 @@ struct NewSiteSheet: View {
             }
         }
         .padding(24)
-        .frame(width: 720)
+        .frame(width: 760)
         .onAppear { if userSiteTaken { userSite = false } }
-    }
-}
-
-struct ThemeCard: View {
-    var theme: ThemeManifest
-    var selected: Bool
-
-    func color(_ name: String, dark: Bool = false) -> Color {
-        let token = theme.tokens.first { $0.name == name }
-        return Color(hex: (dark ? token?.dark : token?.light) ?? "#888888")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 0) {
-                miniPage(dark: false)
-                miniPage(dark: true)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            Text(theme.name).font(.headline)
-            Text(theme.summary).font(.caption).foregroundStyle(.secondary).lineLimit(3).frame(height: 44, alignment: .top)
-        }
-        .padding(10)
-        .frame(width: 158)
-        .background(RoundedRectangle(cornerRadius: 12).fill(selected ? Color.accentColor.opacity(0.12) : Color.clear))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? Color.accentColor : Color(nsColor: .separatorColor), lineWidth: selected ? 2 : 1))
-        .contentShape(Rectangle())
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-    }
-
-    func miniPage(dark: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            RoundedRectangle(cornerRadius: 2).fill(color("--text", dark: dark)).frame(width: 40, height: 6)
-            RoundedRectangle(cornerRadius: 2).fill(color("--accent", dark: dark)).frame(width: 52, height: 4)
-            RoundedRectangle(cornerRadius: 2).fill(color("--muted", dark: dark)).frame(width: 60, height: 3)
-            RoundedRectangle(cornerRadius: 2).fill(color("--muted", dark: dark)).frame(width: 48, height: 3)
-        }
-        .padding(8)
-        .frame(width: 69, height: 64, alignment: .topLeading)
-        .background(color("--bg", dark: dark))
     }
 }
 
