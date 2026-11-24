@@ -88,7 +88,8 @@ struct FormatCommands: Commands {
     }
 }
 
-/// Launch arguments: `--fresh` (do not reopen the last site), `--site <folder>`, `--open <path in site>`, `--section <id>`, `--preview`,
+/// Launch arguments: `--fresh` (do not reopen the last site), `--pane design|navigation|settings`, `--apply-theme <id>`, `--site <folder>`,
+/// `--open <path in site>`, `--section <id>`, `--preview`,
 /// `--source`, `--publish-sheet`,
 /// `--new-draft <title>` with optional `--draft-body <file>`, and `--selftest-publish` (needs a site whose remote is not GitHub).
 enum Launch {
@@ -117,6 +118,21 @@ enum Launch {
             exit(ok ? 0 : 1)
         }
         if let section = value("--section") { model.sidebarSelection = .section(section) }
+        if let id = value("--apply-theme"), let theme = ThemeManifest.named(id), let design = model.design {
+            design.apply(design.plan(for: theme))
+        }
+        if args.contains("--selftest-design") {
+            let ok = await SelfTest.design(model)
+            print(ok ? "SELFTEST PASS" : "SELFTEST FAIL")
+            exit(ok ? 0 : 1)
+        }
+        if args.contains("--theme-gallery") { model.showThemeGallery = true }
+        switch value("--pane") {
+        case "design": model.sidebarSelection = .design
+        case "navigation": model.sidebarSelection = .navigation
+        case "settings": model.sidebarSelection = .settings
+        default: break
+        }
         if let title = value("--new-draft") {
             model.newPost()
             model.editor?.title = title
@@ -142,6 +158,37 @@ enum Launch {
 }
 
 enum SelfTest {
+    /// Applies a theme, changes a colour, an option and the menu, and checks the files, the preview and the change list.
+    /// Refuses a site whose remote is GitHub, like the publish self-test.
+    static func design(_ model: AppModel) async -> Bool {
+        guard let site = model.site, let design = model.design, let git = Git(root: site.root) else { return false }
+        if let remote = await git.remoteURL(), remote.contains("github.com") { return false }
+        func check(_ ok: Bool, _ what: String) -> Bool {
+            print("design selftest: \(ok ? "ok" : "FAILED") \(what)")
+            return ok
+        }
+        guard let theme = ThemeManifest.named("notebook") else { return false }
+        design.apply(design.plan(for: theme))
+        var ok = check(design.theme?.id == "notebook", "theme applied")
+        design.setToken("--accent", "#123456", scheme: .light)
+        design.setToken("--accent", "#ABCDEF", scheme: .dark)
+        let css = design.read("assets/css/inkwell.css") ?? "", dark = design.read("assets/css/inkwell-dark.css") ?? ""
+        ok = check(css.contains("--accent: #123456;") && dark.contains("--accent: #ABCDEF;"), "colours written") && ok
+        design.setOption("home_style", .text("cards"))
+        design.setString("title", "Design Self-test")
+        let config = design.read("_config.yml") ?? ""
+        ok = check(config.contains("home_style: \"cards\"") && config.contains("title: \"Design Self-test\""), "settings written") && ok
+        design.saveNavigation(design.navigation.entries + [NavigationEntry(title: "Elsewhere", url: "https://example.com")])
+        ok = check(design.read("_data/navigation.yml")?.contains("https://example.com") == true, "menu written") && ok
+        let preview = design.previewHTML()?.html ?? ""
+        ok = check(preview.contains("inkwell.css") && preview.contains("Design Self-test") && preview.contains("Elsewhere"), "preview") && ok
+        try? await Task.sleep(for: .seconds(2))
+        let changed = Set(model.changes.keys)
+        ok = check(["assets/css/inkwell.css", "_config.yml", "_data/navigation.yml", "_layouts/post.html"].allSatisfy(changed.contains),
+                   "unpublished changes listed (\(changed.count))") && ok
+        return ok
+    }
+
     /// Writes a draft with an image, publishes it to the site's (local) remote and checks that the commit holds
     /// exactly the post and the image. Refuses to run against a GitHub remote, so a real site is never touched.
     static func publish(_ model: AppModel) async -> Bool {

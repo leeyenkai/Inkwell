@@ -34,10 +34,25 @@ struct SiteWindow: View {
             SidebarView(model: model)
                 .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 280)
         } content: {
-            DocumentListView(model: model)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
+            if let design = model.design, model.sidebarSelection?.isDesign == true {
+                Group {
+                    switch model.sidebarSelection {
+                    case .navigation?: NavigationEditor(design: design, model: model)
+                    case .settings?: SiteSettingsView(design: design, model: model)
+                    default: DesignPanel(design: design, model: model)
+                    }
+                }
+                .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 520)
+            } else {
+                DocumentListView(model: model)
+                    .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
+            }
         } detail: {
-            DetailView(model: model)
+            if let design = model.design, model.sidebarSelection?.isDesign == true {
+                DesignPreview(design: design, model: model)
+            } else {
+                DetailView(model: model)
+            }
         }
         .navigationTitle(model.site?.name ?? "Inkwell")
         .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search")
@@ -113,6 +128,11 @@ struct SidebarView: View {
                     Image(systemName: "circle.lefthalf.filled")
                 }
                 .tag(SidebarSelection.drafts)
+            }
+            Section("Design") {
+                Label("Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
+                Label("Navigation", systemImage: "menubar.rectangle").tag(SidebarSelection.navigation)
+                Label("Settings", systemImage: "gearshape").tag(SidebarSelection.settings)
             }
         }
         .listStyle(.sidebar)
@@ -217,6 +237,9 @@ struct DocumentListView: View {
         switch model.sidebarSelection {
         case let .section(id)?: model.site?.section(id)?.label ?? ""
         case .drafts?: "Drafts"
+        case .design?: "Design"
+        case .navigation?: "Navigation"
+        case .settings?: "Settings"
         case nil: ""
         }
     }

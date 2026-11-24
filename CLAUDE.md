@@ -22,6 +22,8 @@ If a request conflicts with the spec, say so and update the spec before the code
 Inkwell/                 app target (synchronized folder)
   App/                   InkwellApp (scenes, commands, launch flags, self-test), AppModel, AccountModel, Backends (GitHub / local git),
                          EditorDocument, SiteCreation
+  Features/Design/       DesignModel, DesignViews (panel, token rows, theme gallery, preview), SettingsViews (navigation, settings,
+                         custom domain)
   Features/              ContentView (window, sidebar, list, detail, site menu), Onboarding (welcome, sign-in, site picker, new site),
                          EditorView (+ Properties), PreviewView, PublishSession (publish/update/delete/unpublish/changes), Sheets
   Platform/              InkwellTextView (NSTextView, MarkdownStyler, MarkdownEditor representable)
@@ -50,7 +52,10 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 - Live GitHub check (read-only): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_REPO=owner/name swift test --filter LiveGitHubTests`.
   Live publishing (writes!): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_WRITE_REPO=leeyenkai/inkwell-publish-test swift test --filter LivePublishTests`.
   That private repository is a throwaway the user agreed to; never point the write test at a real site.
-- Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
+- Design self-test: `--site <sample-site> --selftest-design` (applies a theme, edits colours, options and the menu, checks files,
+  preview and the change list; refuses GitHub remotes).
+- Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--pane design|navigation|settings`,
+  `--apply-theme <id>`, `--theme-gallery`, `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
 - README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
 ## Rules

@@ -281,8 +281,10 @@ struct ThemeCard: View {
 
 extension Color {
     init(hex: String) {
+        var digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# "))
+        if digits.count == 3 || digits.count == 4 { digits = String(digits.prefix(3).flatMap { [$0, $0] }) }
         var value: UInt64 = 0
-        Scanner(string: hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))).scanHexInt64(&value)
+        Scanner(string: String(digits.prefix(6))).scanHexInt64(&value)
         self.init(.sRGB, red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
     }
 }

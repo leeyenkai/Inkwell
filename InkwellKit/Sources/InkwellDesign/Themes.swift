@@ -258,7 +258,8 @@ public struct DesignTokens: Sendable {
     }
 
     static func label(for name: String) -> String {
-        let words = name.trimmingCharacters(in: CharacterSet(charactersIn: "-")).split(separator: "-").map(String.init)
+        let expansions = ["bg": "background", "fg": "foreground", "txt": "text", "col": "colour", "clr": "colour"]
+        let words = name.trimmingCharacters(in: CharacterSet(charactersIn: "-")).split(separator: "-").map { expansions[String($0)] ?? String($0) }
         let text = words.filter { $0 != "color" }.joined(separator: " ")
         return text.prefix(1).uppercased() + text.dropFirst()
     }

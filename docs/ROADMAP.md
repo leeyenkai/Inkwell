@@ -27,7 +27,15 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
   - Audit fixes done: CRLF/BOM, wrapped YAML, permalink styles and `_posts`, time zone, Pages section, repo-keyed drafts, `site.baseurl` images and preview, IME guard, undo across Liquid chips, stable editor identity, disk reload with conflict banner, no saving after a failed load, no ghost drafts, preview, search and image import off the main thread.
   - Verified live against the private throwaway `leeyenkai/inkwell-publish-test`: seeding a site with a binary file, an edit made on GitHub being picked up during a publish, a real conflict resolved with Keep mine, and deletion. A fresh download matches exactly. This run found and fixed a stale-branch-head bug (HTTP caching of the ref).
   - Left: the OAuth App client ID (from the user); incremental restyling for very long posts. App Sandbox is deferred: the local-folder mode needs the user’s own git configuration and credential helpers, which the sandbox blocks. GitHub mode keeps everything in Application Support and is sandbox-ready.
-- **M3 design engine: done** (`InkwellDesign`, see [DESIGN-ENGINE.md](DESIGN-ENGINE.md)). The Design panel, navigation editor, settings form and theme gallery UI are next.
+- **M3 Site design: core done.**
+  - Engine: `InkwellDesign`, see [DESIGN-ENGINE.md](DESIGN-ENGINE.md).
+  - UI: the Design section in the sidebar.
+    - *Theme & Style:* the theme gallery with a reviewable file-by-file change list; colour wells for light and dark palettes; font, size, width and radius controls; theme options; and "Add Dark Mode" for hand-made themes.
+    - *Navigation:* reorder, rename, add and remove menu items.
+    - *Settings:* title, description, author, language and time zone; footer; share image; a favicon made from a letter or emoji; and a custom domain with DNS records and HTTPS through the Pages API.
+    - A live preview of any page, at desktop or phone width.
+  - Checked by `--selftest-design`.
+  - Left: the code editor for layouts and CSS; SCSS and remote-theme preview; whole-site browsing in the preview; offering a light palette for dark-only sites (the token editor only knows "default + dark mode" today).
 
 ---
 

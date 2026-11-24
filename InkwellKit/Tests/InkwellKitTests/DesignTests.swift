@@ -170,7 +170,7 @@ final class ThemeTests: XCTestCase {
         let found = try XCTUnwrap(DesignTokens.load(siteRoot: other))
         XCTAssertNil(found.theme)
         XCTAssertEqual(found.lightFile, "assets/css/style.css")
-        XCTAssertEqual(found.entries.first { $0.name == "--bg-color" }?.label, "Bg")
+        XCTAssertEqual(found.entries.first { $0.name == "--bg-color" }?.label, "Background")
         try found.set("--bg-color", to: "#fafafa", scheme: .dark, siteRoot: other)
         let css = try String(contentsOf: other.appending(path: "assets/css/style.css"), encoding: .utf8)
         XCTAssertTrue(css.contains("@media (prefers-color-scheme: dark)"), "a hand-made theme gets a dark block")

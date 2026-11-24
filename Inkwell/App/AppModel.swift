@@ -41,6 +41,11 @@ enum DocumentStatus: Equatable {
 enum SidebarSelection: Hashable {
     case section(String)
     case drafts
+    case design
+    case navigation
+    case settings
+
+    var isDesign: Bool { [.design, .navigation, .settings].contains(self) }
 }
 
 enum SyncStatus: Equatable {
@@ -94,10 +99,12 @@ final class AppModel {
     var showChanges = false
     var showConflicts = false
     var showSitePicker = false
+    var showThemeGallery = false
     var pendingImage: PendingImage?
     var errorMessage: String?
 
     private(set) var previewBuilder: PreviewBuilder?
+    private(set) var design: DesignModel?
     private var searchIndex: [String: String] = [:]
     weak var textView: InkwellTextView?
     private var draftStore: DraftStore?
@@ -193,6 +200,7 @@ final class AppModel {
             let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appending(path: "Inkwell/Drafts", directoryHint: .isDirectory)
             draftStore = DraftStore(base: support, key: backend.draftKey)
+            design = DesignModel(root: root, model: self)
             reloadDrafts()
             if case let .section(id)? = sidebarSelection, site.section(id) != nil {} else {
                 let first = site.sections.first { $0.collectionName != nil } ?? site.sections.first
@@ -244,6 +252,11 @@ final class AppModel {
         }
     }
 
+    /// After a sync or discard, files may have changed under the Design panel too.
+    func reloadDesign() {
+        design?.reload()
+    }
+
     func reloadDrafts() {
         guard let site, let draftStore else { return }
         drafts = draftStore.drafts(for: site)
@@ -285,6 +298,7 @@ final class AppModel {
             syncStatus = .upToDate(Date())
             if !outcome.updated.isEmpty {
                 reloadSite()
+                reloadDesign()
                 editor?.reloadIfChangedOnDisk()
             }
             if !outcome.conflicts.isEmpty { showConflicts = true }
@@ -317,7 +331,7 @@ final class AppModel {
             site.documents(in: id) + drafts.filter { $0.sectionID == id }
         case .drafts?:
             drafts + site.documents.filter { !$0.publishedFlag || changes[$0.relativePath] == .added }
-        case nil:
+        case nil, .design?, .navigation?, .settings?:
             []
         }
         docs.sort { a, b in

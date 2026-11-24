@@ -27,7 +27,8 @@ final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-        task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": mime])!)
+        let headers = ["Content-Type": mime, "Cache-Control": "no-store"]
+        task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!)
         task.didReceive(data)
         task.didFinish()
     }
@@ -40,6 +41,8 @@ struct SitePreview: NSViewRepresentable {
     var pageURL: String
     var root: URL
     var baseurl = ""
+    /// Changing this reloads the whole page, for changes the HTML does not show (stylesheets, images).
+    var reloadToken = 0
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -60,6 +63,10 @@ struct SitePreview: NSViewRepresentable {
         let c = context.coordinator
         c.handler?.root = root
         c.handler?.baseurl = baseurl
+        if c.reloadToken != reloadToken {
+            c.reloadToken = reloadToken
+            c.html = nil
+        }
         guard c.html != html else { return }
         let base = URL(string: "\(SiteSchemeHandler.scheme)://site\(pageURL.hasPrefix("/") ? pageURL : "/" + pageURL)")
         // Same page: swap the body in place so the scroll position stays where the writer is reading.
@@ -90,6 +97,7 @@ struct SitePreview: NSViewRepresentable {
         var html: String?
         var loadedURL: String?
         var isLoaded = false
+        var reloadToken = 0
 
         func webView(_: WKWebView, didFinish _: WKNavigation!) {
             isLoaded = true

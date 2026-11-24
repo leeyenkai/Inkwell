@@ -149,11 +149,27 @@ public struct GitHubClient: Sendable {
         var source: Source
     }
 
-    public func updatePages(_ owner: String, _ name: String, cname: String?, httpsEnforced: Bool?) async throws {
-        _ = try await data("PUT", "repos/\(owner)/\(name)/pages", body: UpdatePages(cname: cname, https_enforced: httpsEnforced))
+    /// Sets the custom domain, or removes it when `domain` is nil.
+    public func setCustomDomain(_ owner: String, _ name: String, domain: String?) async throws {
+        _ = try await data("PUT", "repos/\(owner)/\(name)/pages", body: DomainBody(cname: domain))
     }
 
-    struct UpdatePages: Encodable { var cname: String?; var https_enforced: Bool? }
+    public func setHTTPSEnforced(_ owner: String, _ name: String, _ enforced: Bool) async throws {
+        _ = try await data("PUT", "repos/\(owner)/\(name)/pages", body: HTTPSBody(https_enforced: enforced))
+    }
+
+    struct DomainBody: Encodable {
+        var cname: String?
+        func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            // GitHub removes the domain only when cname is an explicit null.
+            if let cname { try c.encode(cname, forKey: .cname) } else { try c.encodeNil(forKey: .cname) }
+        }
+
+        enum CodingKeys: String, CodingKey { case cname }
+    }
+
+    struct HTTPSBody: Encodable { var https_enforced: Bool }
 
     public func workflowRuns(_ owner: String, _ name: String, headSHA: String) async throws -> [GitHubWorkflowRun] {
         try await json(WorkflowRuns.self, "GET", "repos/\(owner)/\(name)/actions/runs", query: ["head_sha": headSHA, "per_page": "20"]).workflow_runs
