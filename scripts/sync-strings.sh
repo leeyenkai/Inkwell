@@ -25,7 +25,7 @@ import json, re, sys
 for path in sys.argv[1:]:
     strings = json.load(open(path))["strings"]
     for key, entry in strings.items():
-        if entry.get("extractionState") == "stale" or not re.search(r"%(\d\$)?lld", key):
+        if entry.get("extractionState") == "stale" or not re.search(r"%(\d\$)?lld", key) or "(inflect: true)" in key:
             continue
         english = entry.get("localizations", {}).get("en", {})
         if "variations" not in english and "substitutions" not in english:

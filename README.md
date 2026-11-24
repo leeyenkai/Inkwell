@@ -15,10 +15,11 @@
 - **Writes clean Markdown.** The editor styles Markdown as you type but saves exactly what you wrote, so untouched lines never change. Liquid tags show as chips you can't break by accident.
 - **Properties instead of YAML.** Title, date, byline and the rest as fields, inferred per section, with warnings for unclosed quotes, bad dates and filename mismatches.
 - **Images done for you.** Paste or drop a photo: it is resized, turned upright, cleaned of location data, named after the post and linked with `relative_url`. Drop several for a gallery.
-- **Photos and media.** Keep a photo stream with a caption for each photo, and see every image in the site, where it is used, and which ones nothing uses.
+- **Photos, albums and media.** Keep a photo stream with a caption for each photo, group photos into albums that get their own pages, and see every image in the site, where it is used, and which ones nothing uses.
 - **A real preview.** Posts render through the site's own layouts, theme and styles (Sass included) as you type. Browse the whole site, at desktop or phone width, in light or dark mode.
-- **Design without code, or with it.** Pick one of four themes, change colours, fonts and layout, edit the menu and site settings, set a custom domain, or open the code editor for layouts and styles. GitHub Pages themes such as minima work too.
-- **Edit like a notes app.** Markdown markers fade away off the line you are on, lists continue on Return, `/` opens a menu of blocks, `[[` links to another post, pictures show in place, and tables open as a grid. Rename a post and its old address keeps working.
+- **Design your site.** Six themes that differ in layout, not just colour (an essay column, a notebook with a sidebar, a photo grid, plain monospaced text, a magazine front page, a portfolio), each shown as it really looks and tried on your own posts before you switch. Then palettes, font pairings, colours, fonts and layout, the menu, site settings and a custom domain, or the code editor for layouts and styles. GitHub Pages themes such as minima work too.
+- **Pages with elements.** New pages start from templates (About, Now, Contact, Projects, Links, Timeline, Places, a landing page, an archive, albums, slides). Add galleries, slideshows, maps, timelines, callouts, columns, toggles, tabs, buttons, cards, banners, recent posts and more to any page; each stays plain text that GitHub Pages builds on its own, with a form for its settings.
+- **Edit like a notes app.** A formatting bar, ⌘K to link any words to another post, a heading or the web (search included), ⌘-click to follow a link, checklists you tick with a click, find and replace. Markdown markers fade away off the line you are on, lists continue on Return, `/` opens a menu of blocks and elements, pictures show in place, and tables open as a grid. Rename a post and its old address keeps working.
 - **Keeps the site healthy.** Health finds broken links and images, missing alt text, oversized pictures and missing search and sharing basics, and fixes the safe ones in one click. Each post gets a description, share image and link preview.
 - **Private drafts, one-click publish.** Drafts stay on your Mac until you publish. Publishing checks the post, sends only its own files in one change, and tells you when GitHub Pages has it live. Update, unpublish or delete posts the same way, or date one in the future to schedule it; changes made on GitHub come in automatically.
 
@@ -27,6 +28,8 @@
 | ![A new draft with a footnote, a list and an image, previewed beside it](docs/images/draft.png) | ![The publish checklist: valid properties, one new image, no broken links, and the files to commit](docs/images/publish.png) |
 | **Sidenotes** | **Source** |
 | ![A sidenote of quotes, styled in the editor and in the preview](docs/images/sidenotes.png) | ![The raw file, front matter included](docs/images/source.png) |
+
+![The six themes: Essayist, Notebook, Photo journal, Minimal, Magazine and Studio](docs/images/themes.png)
 
 The screenshots show [leeyenkai.github.io](https://leeyenkai.github.io), the site Inkwell was built for.
 

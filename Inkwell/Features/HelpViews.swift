@@ -32,13 +32,14 @@ struct HelpWindow: View {
 }
 
 enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
-    case start, writing, images, publishing, design, health, privacy, shortcuts
+    case start, writing, pages, images, publishing, design, health, privacy, shortcuts
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .start: String(localized: "Getting started")
         case .writing: String(localized: "Writing")
+        case .pages: String(localized: "Pages and elements")
         case .images: String(localized: "Pictures and photos")
         case .publishing: String(localized: "Publishing")
         case .design: String(localized: "Design")
@@ -52,6 +53,7 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .start: "flag"
         case .writing: "square.and.pencil"
+        case .pages: "square.grid.3x2"
         case .images: "photo"
         case .publishing: "paperplane"
         case .design: "paintpalette"
@@ -89,6 +91,26 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
                 """),
             String(localized: "Tables open as a grid with **Format › Table…** (⇧⌘T) or the Edit Table button beside them."),
         ]
+        case .pages: [
+            String(localized: """
+                **New Page** (⇧⌘N) starts from a template: About, Now, Contact, Projects, Links, Timeline, Places, a landing \
+                page, an archive, photo albums or slides. Everything in a template can be changed.
+                """),
+            String(localized: """
+                **Elements** add galleries, slideshows, maps, timelines, callouts, columns, toggles, tabs, buttons, cards, banners, \
+                recent posts, an archive, a table of contents and social links to any page or post. Insert one with \
+                **Format › Insert Element…** (⌥⌘E), the Insert button above the text, or **/** at the start of a line.
+                """),
+            String(localized: """
+                An element is plain text in the page, so GitHub Pages builds it without Inkwell. Its outer lines show small and \
+                grey; the text inside is edited like any other. **Edit…** beside the element (⌥⇧⌘E) changes its settings, \
+                pictures, places or entries.
+                """),
+            String(localized: """
+                The first element adds a few files the site needs (a stylesheet, a small script and some includes). They go out \
+                with the post that uses them.
+                """),
+        ]
         case .images: [
             String(localized: """
                 Drop, paste or add a picture (**⇧⌘I**). Inkwell resizes it, turns it upright, removes location and camera data, and \
@@ -97,6 +119,10 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
             String(localized: """
                 **Photos** keeps a photo stream: one small file per photo, each with a caption. **Media** lists every image in the site, \
                 where it is used, and which ones nothing uses.
+                """),
+            String(localized: """
+                **Albums** group photos. Choose photos (⌘-click or ⇧-click for several) and use **Add to Album**, or drop them on an \
+                album. Each album gets its own page, and the photos page lists them all. A gallery element can show an album.
                 """),
         ]
         case .publishing: [
@@ -115,6 +141,10 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
             String(localized: "**Version History…** shows earlier versions of a post, and can bring one back."),
         ]
         case .design: [
+            String(localized: """
+                **Choose a theme** shows each of the six themes as it really looks, then previews the one you pick with your own \
+                posts before anything changes. Palettes and font pairings restyle the site in one click.
+                """),
             String(localized: """
                 **Theme & Style** switches between Inkwell’s themes and edits colours, fonts and layout. **Navigation** edits the menu; \
                 **Settings** the site’s title, description, favicon, share image and custom domain.
@@ -146,7 +176,8 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
             String(localized: """
                 Once a day it asks GitHub whether a newer Inkwell is out; turn that off in **Settings › General**. **Check Links** \
                 contacts the sites your posts link to, only when you click it. The preview loads whatever your layouts load, \
-                such as web fonts and embedded videos.
+                such as web fonts and embedded videos. Searching for a place to add to a map asks Apple Maps; maps on your pages \
+                load from OpenStreetMap.
                 """),
             String(localized: """
                 Pictures lose their location and camera details before they are saved. The error log in ~/Library/Logs/Inkwell \
@@ -191,6 +222,16 @@ struct ShortcutList: View {
             ("⇧⌘↩", String(localized: "Section break")),
             ("⇧⌘I", String(localized: "Add image")),
             ("⇧⌘T", String(localized: "Table")),
+            ("⌥⌘E", String(localized: "Insert an element")),
+            ("⌥⇧⌘E", String(localized: "Edit the element at the cursor")),
+        ]),
+        (String(localized: "Editing"), [
+            ("⌘] / ⌘[", String(localized: "Indent or outdent")),
+            ("⌥⌘↑ / ⌥⌘↓", String(localized: "Move lines up or down")),
+            ("⌘F / ⌥⌘F", String(localized: "Find, or find and replace")),
+            ("⌘G / ⇧⌘G", String(localized: "Find next or previous")),
+            ("⌘+ / ⌘- / ⇧⌘0", String(localized: "Make text bigger, smaller, or actual size")),
+            (String(localized: "⌘-click"), String(localized: "Open a link")),
         ]),
         (String(localized: "Typing"), [
             ("/", String(localized: "Insert a block (at the start of a line)")),

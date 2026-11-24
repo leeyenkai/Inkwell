@@ -72,7 +72,8 @@ public enum PhotoStream {
         let configText = read("_config.yml") ?? ""
         var config = ConfigEditing(text: configText)
         if config.addCollection(collection, output: false) {
-            plan.append((ContentEdit(path: "_config.yml", newText: config.text), localized("Adds a “photos” collection: one small file per photo in _photos/.")))
+            let reason = localized("Adds a “photos” collection: one small file per photo in _photos/.")
+            plan.append((ContentEdit(path: "_config.yml", newText: config.text), reason))
         }
         let pagePath = Self.pagePath(siteRoot: siteRoot) ?? "photos.md"
         let old = read(pagePath)
@@ -94,7 +95,8 @@ public enum PhotoStream {
         }
         if old?.contains("site.photos") != true {
             plan.append((ContentEdit(path: pagePath, newText: front + intro + loop + "\n"),
-                         old == nil ? localized("A photos page that shows the newest photos first.") : localized("Shows the photos from _photos/ instead of hand-written HTML.")))
+                         old == nil ? localized("A photos page that shows the newest photos first.")
+                             : localized("Shows the photos from _photos/ instead of hand-written HTML.")))
         }
         var taken = Set<String>()
         for photo in migrated {

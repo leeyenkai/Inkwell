@@ -1,7 +1,372 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "2024" : {
 
+    },
+    "2025" : {
+
+    },
+    "A banner, three columns and a button." : {
+
+    },
+    "A big welcome" : {
+
+    },
+    "A book" : {
+
+    },
+    "A column of buttons to your other places." : {
+
+    },
+    "A heading that opens to show more." : {
+
+    },
+    "A large title over a picture, for the top of a page." : {
+
+    },
+    "A link that looks like a button." : {
+
+    },
+    "A map of places you have been." : {
+
+    },
+    "A note, tip or warning that stands out." : {
+
+    },
+    "A presentation: each section break is a slide." : {
+
+    },
+    "A question or heading" : {
+
+    },
+    "A sentence about it." : {
+
+    },
+    "A sentence about the first thing." : {
+
+    },
+    "A sentence about the second thing." : {
+
+    },
+    "A sentence about the third thing." : {
+
+    },
+    "A short paragraph about your work." : {
+
+    },
+    "A title for the talk" : {
+
+    },
+    "About" : {
+
+    },
+    "Albums" : {
+
+    },
+    "All your photo albums." : {
+
+    },
+    "An empty page." : {
+
+    },
+    "An idea" : {
+
+    },
+    "Another thing" : {
+
+    },
+    "Archive" : {
+
+    },
+    "Banner" : {
+
+    },
+    "Blank" : {
+
+    },
+    "Bulleted List" : {
+
+    },
+    "Button" : {
+
+    },
+    "Callout" : {
+
+    },
+    "Cards" : {
+
+    },
+    "Checklist" : {
+
+    },
+    "Code Block" : {
+
+    },
+    "Columns" : {
+
+    },
+    "Contact" : {
+
+    },
+    "Contents" : {
+
+    },
+    "Copied address" : {
+
+    },
+    "Dated events down a line." : {
+
+    },
+    "Elsewhere" : {
+
+    },
+    "Email" : {
+
+    },
+    "Email address" : {
+
+    },
+    "Every post of a section, by year." : {
+
+    },
+    "Every post, by year." : {
+
+    },
+    "Find me here." : {
+
+    },
+    "First" : {
+
+    },
+    "First column" : {
+
+    },
+    "First project" : {
+
+    },
+    "Gallery" : {
+
+    },
+    "Heading 1" : {
+
+    },
+    "Heading 2" : {
+
+    },
+    "Heading 3" : {
+
+    },
+    "Hello. Write a few sentences about who you are and what this site is for." : {
+
+    },
+    "How I got here." : {
+
+    },
+    "How to reach you." : {
+
+    },
+    "In this post" : {
+
+    },
+    "Landing Page" : {
+
+    },
+    "Links" : {
+
+    },
+    "Links to the headings of this page." : {
+
+    },
+    "Links to your profiles elsewhere." : {
+
+    },
+    "Make" : {
+
+    },
+    "Map" : {
+
+    },
+    "My writing" : {
+
+    },
+    "New column" : {
+
+    },
+    "Now" : {
+
+    },
+    "Numbered List" : {
+
+    },
+    "One line about this page." : {
+
+    },
+    "One thing" : {
+
+    },
+    "Photo Albums" : {
+
+    },
+    "Pictures in a grid. Click one to see it large." : {
+
+    },
+    "Pictures one at a time, with arrows." : {
+
+    },
+    "Places" : {
+
+    },
+    "Places I have been. Add them with Edit on the map." : {
+
+    },
+    "Places on a map, with a list below it." : {
+
+    },
+    "Projects" : {
+
+    },
+    "Projects or links as cards with pictures." : {
+
+    },
+    "Quote" : {
+
+    },
+    "Read more" : {
+
+    },
+    "Reading" : {
+
+    },
+    "Recent Posts" : {
+
+    },
+    "Second" : {
+
+    },
+    "Second column" : {
+
+    },
+    "Second project" : {
+
+    },
+    "Section Break" : {
+
+    },
+    "Sections the reader switches between." : {
+
+    },
+    "Send an Email" : {
+
+    },
+    "Share" : {
+
+    },
+    "Slides" : {
+
+    },
+    "Slideshow" : {
+
+    },
+    "Social Links" : {
+
+    },
+    "Something worth noticing." : {
+
+    },
+    "Something you are making" : {
+
+    },
+    "Table" : {
+
+    },
+    "Table of Contents" : {
+
+    },
+    "Tabs" : {
+
+    },
+    "Text for the first tab." : {
+
+    },
+    "Text for the second tab." : {
+
+    },
+    "Text side by side; stacked on phones." : {
+
+    },
+    "Thank you" : {
+
+    },
+    "The best way to reach me is by email." : {
+
+    },
+    "The first point" : {
+
+    },
+    "The latest posts of a section, kept up to date." : {
+
+    },
+    "The text shown when it opens." : {
+
+    },
+    "Things I have made." : {
+
+    },
+    "Thinking about" : {
+
+    },
+    "Third project" : {
+
+    },
+    "Timeline" : {
+
+    },
+    "Title" : {
+
+    },
+    "Toggle" : {
+
+    },
+    "Updated %@" : {
+
+    },
+    "Web address" : {
+
+    },
+    "What I do" : {
+
+    },
+    "What happened" : {
+
+    },
+    "What happened next" : {
+
+    },
+    "What it is, in a sentence." : {
+
+    },
+    "What you are doing these days." : {
+
+    },
+    "Who you are, with a picture and a few links." : {
+
+    },
+    "Working on" : {
+
+    },
+    "Write" : {
+
+    },
+    "Your name" : {
+
+    },
+    "Your story or CV as dated steps." : {
+
+    },
+    "Your work as cards with pictures." : {
+
+    }
   },
   "version" : "1.0"
 }

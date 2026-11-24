@@ -4,19 +4,61 @@
     "A home page that lists your latest posts." : {
 
     },
+    "A theme preview cannot be made in the site’s own folder." : {
+
+    },
     "Add" : {
+
+    },
+    "Black and white" : {
+
+    },
+    "Butter" : {
 
     },
     "Change" : {
 
     },
+    "Charcoal and amber" : {
+
+    },
+    "Charter serif" : {
+
+    },
+    "Classic serif" : {
+
+    },
     "Colours" : {
+
+    },
+    "Darkroom" : {
 
     },
     "Design change" : {
 
     },
+    "Display serif" : {
+
+    },
+    "Dusk" : {
+
+    },
+    "Editorial" : {
+
+    },
+    "Finds a post’s picture for cards and grids." : {
+
+    },
     "Fonts" : {
+
+    },
+    "Forest" : {
+
+    },
+    "Geometric" : {
+
+    },
+    "Graphite" : {
 
     },
     "How a post looks: title, byline, date and text." : {
@@ -25,10 +67,64 @@
     "How a standalone page looks." : {
 
     },
+    "Humanist" : {
+
+    },
+    "Ink blue" : {
+
+    },
+    "Ivory and ink" : {
+
+    },
+    "Lavender" : {
+
+    },
     "Layout" : {
 
     },
+    "Magenta" : {
+
+    },
+    "Mint" : {
+
+    },
+    "Modern sans" : {
+
+    },
+    "Mono" : {
+
+    },
+    "Monospace" : {
+
+    },
+    "Moss" : {
+
+    },
+    "Navy" : {
+
+    },
+    "Ocean" : {
+
+    },
+    "Ochre" : {
+
+    },
+    "Old style" : {
+
+    },
+    "Original" : {
+
+    },
     "Other" : {
+
+    },
+    "Part of the %@ theme." : {
+
+    },
+    "Peach" : {
+
+    },
+    "Plum" : {
 
     },
     "Remembers the theme and its options under “inkwell:”." : {
@@ -37,7 +133,37 @@
     "Remove" : {
 
     },
+    "Rose" : {
+
+    },
+    "Rounded" : {
+
+    },
+    "Sage" : {
+
+    },
+    "Sand" : {
+
+    },
+    "Sepia" : {
+
+    },
+    "Silver" : {
+
+    },
+    "Sky" : {
+
+    },
+    "Slate" : {
+
+    },
     "Switch to %@" : {
+
+    },
+    "System sans-serif" : {
+
+    },
+    "Teal" : {
 
     },
     "The dark palette, used when the reader’s Mac or phone is in dark mode." : {
@@ -55,7 +181,13 @@
     "The page frame: header, navigation and footer." : {
 
     },
+    "The page title, description, link preview and stylesheets." : {
+
+    },
     "The site title and navigation." : {
+
+    },
+    "Used by page elements such as galleries, maps and timelines." : {
 
     }
   },

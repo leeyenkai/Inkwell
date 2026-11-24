@@ -13,10 +13,13 @@
 - **Editor.** Markers hidden off the current line, smart lists, a slash menu, `[[` post links, rich-text paste as Markdown, embeds, pictures shown inline, and a grid editor for tables.
 - **Photos and media.** A photo stream with one file per photo and a caption screen for batch imports; galleries in posts; a media library with where-used, unused, replace and delete.
 - **Health and polish.** Site health with one-click fixes and an on-request external link check; description, share image and link preview per post; a Settings window, Help with guides and shortcuts, a first-open site summary, and Copy Diagnostics. All text comes from string catalogs, ready for translation.
+- **Pages and elements.** Twelve page templates and fifteen page elements (gallery, slideshow, map, timeline, callout, columns, toggle, tabs, button, cards, banner, recent posts, archive, table of contents, social links), edited in place with a form for their settings; see §4.7a.
+- **Albums.** Photos in albums with their own pages, an album bar in Photos, several photos chosen at once.
+- **Editor additions.** A formatting bar, a link popover that searches posts and headings, ⌘-click to follow links, clickable checklists, moving lines, find and replace, zoom.
 - **Release.** Version 0.9.0 as an ad-hoc signed disk image (`scripts/make-dmg.sh`), an update check against GitHub releases, and a privacy note.
-- **Design.** Four bundled themes with a reviewable switch; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
+- **Design.** Six bundled themes that differ in layout, shown as real renders and tried on your own posts before a reviewable switch; palette and font presets; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
-Verified by 110 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+Verified by 163 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 

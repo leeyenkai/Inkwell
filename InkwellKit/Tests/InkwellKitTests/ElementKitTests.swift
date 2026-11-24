@@ -81,7 +81,8 @@ final class ElementKitTests: XCTestCase {
         let template = PageTemplate(rawValue: ProcessInfo.processInfo.environment["INKWELL_RENDER_TEMPLATE"] ?? "") 
         var body = PageElement.allCases.filter { $0 != .map }.map { "### \($0.title)\n\n" + $0.template(collection: "notes") }.joined(separator: "\n\n")
         body = body.replacingOccurrences(of: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n</div>",
-                                         with: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n![A](/assets/a.png)\n![B](/assets/a.png)\n![C](/assets/a.png)\n</div>")
+                                         with: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n"
+                                             + "![A](/assets/a.png)\n![B](/assets/a.png)\n![C](/assets/a.png)\n</div>")
         if let template { body = template.body(collection: "notes") }
         let text = FrontMatterDocument(fields: [("layout", template?.layout ?? "page"), ("title", "Elements")] + (template?.fields ?? []), body: body).text
         let html = PreviewBuilder(site: try SiteLoader.load(temp)).render(text: text, relativePath: "e.md", url: "/e/").html

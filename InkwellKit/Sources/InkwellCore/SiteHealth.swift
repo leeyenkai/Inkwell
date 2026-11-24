@@ -269,7 +269,10 @@ public enum SiteHealth {
         let seoTag = head.text.contains("{% seo") || usesThemeHead
         if !handWrittenSEO, !(plugins.contains("jekyll-seo-tag") && seoTag) {
             issues.append(Issue(id: "seo-tag", category: .sharing, severity: .warning, title: localized("Pages have no description or share preview tags"),
-                                detail: localized("Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s title, description and image."),
+                                detail: localized("""
+                                    Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s \
+                                    title, description and image.
+                                    """),
                                 paths: [], fix: pluginFix("jekyll-seo-tag", tag: seoTag ? nil : "{% seo %}",
                                                           summary: seoTag ? localized("Adds jekyll-seo-tag to _config.yml")
                                                               : localized("Adds jekyll-seo-tag to _config.yml and {% seo %} to the page head"))))
@@ -393,7 +396,10 @@ public enum SiteHealth {
         let built = files.sizes.keys.filter { $0.hasPrefix("_site/") }.sorted()
         if !built.isEmpty, !ignored.contains("_site/"), !ignored.contains("_site") {
             issues.append(Issue(id: "site-folder", category: .repository, severity: .warning, title: localized("Built pages are in the repository"),
-                                detail: localized("The _site folder (\(built.count) files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size."),
+                                detail: localized("""
+                                    The _site folder (\(built.count) files) is Jekyll’s output. GitHub Pages builds its own, so this copy \
+                                    only adds size.
+                                    """),
                                 paths: [], fix: .edits(built.map { ContentEdit(path: $0, newText: nil) } + [withIgnores(["_site/"])].compactMap { $0 },
                                                        summary: localized("Removes _site (\(built.count) files) and ignores it from now on"))))
         }

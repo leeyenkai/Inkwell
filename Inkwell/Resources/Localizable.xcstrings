@@ -52,6 +52,28 @@
         }
       }
     },
+    "%@, %lld photos" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@, %lld photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@, %lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@, unused" : {
 
     },
@@ -77,6 +99,16 @@
         }
       }
     },
+    "%@. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. %2$@"
+          }
+        }
+      }
+    },
     "%@.github.io (already used)" : {
 
     },
@@ -86,6 +118,28 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld"
+                }
+              }
+            }
           }
         }
       }
@@ -362,6 +416,28 @@
         }
       }
     },
+    "%lld of %lld chosen" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld of %lld chosen"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld of %lld chosen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld of the files could not be read as pictures." : {
       "localizations" : {
         "en" : {
@@ -421,6 +497,28 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos chosen" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo chosen"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos chosen"
                 }
               }
             }
@@ -626,13 +724,25 @@
     "(removed on GitHub)" : {
 
     },
+    "**Albums** group photos. Choose photos (⌘-click or ⇧-click for several) and use **Add to Album**, or drop them on an album. Each album gets its own page, and the photos page lists them all. A gallery element can show an album." : {
+
+    },
     "**Check Links** asks each site your posts link to whether the page is still there." : {
+
+    },
+    "**Choose a theme** shows each of the six themes as it really looks, then previews the one you pick with your own posts before anything changes. Palettes and font pairings restyle the site in one click." : {
 
     },
     "**Code** opens layouts, includes and stylesheets for anything the panels do not cover. The preview follows every change." : {
 
     },
+    "**Elements** add galleries, slideshows, maps, timelines, callouts, columns, toggles, tabs, buttons, cards, banners, recent posts, an archive, a table of contents and social links to any page or post. Insert one with **Format › Insert Element…** (⌥⌘E), the Insert button above the text, or **/** at the start of a line." : {
+
+    },
     "**Health** looks over the whole site: properties that will not build, two files at one address, links and images that go nowhere, missing alt text, large files, and the basics search engines and link previews need." : {
+
+    },
+    "**New Page** (⇧⌘N) starts from a template: About, Now, Contact, Projects, Links, Timeline, Places, a landing page, an archive, photo albums or slides. Everything in a template can be changed." : {
 
     },
     "**Photos** keeps a photo stream: one small file per photo, each with a caption. **Media** lists every image in the site, where it is used, and which ones nothing uses." : {
@@ -656,10 +766,19 @@
     "1600 pixels" : {
 
     },
+    "2" : {
+
+    },
     "2400 pixels" : {
 
     },
+    "3" : {
+
+    },
     "3200 pixels" : {
+
+    },
+    "4" : {
 
     },
     "A CNAME record for %@ pointing to %@.github.io" : {
@@ -675,19 +794,37 @@
     "A letter or emoji" : {
 
     },
+    "A page" : {
+
+    },
+    "A palette sets every colour below, for light and dark mode. You can still change each one." : {
+
+    },
     "A path in the site, such as _includes/analytics.html or assets/js/site.js." : {
+
+    },
+    "A post" : {
+
+    },
+    "A question or heading" : {
 
     },
     "A records for %@: 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153" : {
 
     },
+    "A sentence about it" : {
+
+    },
     "A sentence for search results and link previews" : {
 
     },
-    "A standalone page, such as About, Now or Contact." : {
+    "A standalone page, such as About, Now or Contact. Start from a template; everything in it can be changed." : {
 
     },
     "Account" : {
+
+    },
+    "Actual Size" : {
 
     },
     "Add" : {
@@ -718,10 +855,16 @@
         }
       }
     },
+    "Add Card" : {
+
+    },
     "Add Column" : {
 
     },
     "Add Dark Mode" : {
+
+    },
+    "Add Entry" : {
 
     },
     "Add Image" : {
@@ -733,10 +876,22 @@
     "Add Light Mode" : {
 
     },
+    "Add Link" : {
+
+    },
+    "Add Link…" : {
+
+    },
     "Add Photos…" : {
 
     },
+    "Add Pictures…" : {
+
+    },
     "Add Row" : {
+
+    },
+    "Add Tab" : {
 
     },
     "Add a Link…" : {
@@ -785,10 +940,16 @@
     "Add image" : {
 
     },
+    "Add photos from your Mac" : {
+
+    },
     "Add photos from your Mac. Each gets a caption, and they appear newest first." : {
 
     },
     "Add photos with captions and let the page list them, instead of editing HTML." : {
+
+    },
+    "Add to Album" : {
 
     },
     "Add to the menu" : {
@@ -800,11 +961,83 @@
     "Address" : {
 
     },
+    "Adds the files that page elements need (%lld)." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adds the files that page elements need (%lld)."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adds the files that page elements need (%lld)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Album %@, %lld photos" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Album %@, %lld photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Album %@, %lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Album title" : {
+
+    },
     "Alignment" : {
 
     },
     "Alignment, and adding, moving or deleting this column" : {
 
+    },
+    "All Photos" : {
+
+    },
+    "Also adds %lld site files that show albums" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Also adds %lld site file that shows albums"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Also adds %lld site files that show albums"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Alt text" : {
 
@@ -822,6 +1055,12 @@
 
     },
     "Always light" : {
+
+    },
+    "An album gets its own page on your site and is listed on the photos page. Nothing goes live until you publish." : {
+
+    },
+    "An element is plain text in the page, so GitHub Pages builds it without Inkwell. Its outer lines show small and grey; the text inside is edited like any other. **Edit…** beside the element (⌥⇧⌘E) changes its settings, pictures, places or entries." : {
 
     },
     "Appearance" : {
@@ -843,6 +1082,12 @@
 
     },
     "Back" : {
+
+    },
+    "Background picture" : {
+
+    },
+    "Body" : {
 
     },
     "Body Text" : {
@@ -872,6 +1117,9 @@
     "Caption (optional)" : {
 
     },
+    "Cards" : {
+
+    },
     "Cards with pictures" : {
 
     },
@@ -887,6 +1135,12 @@
     "Change Theme…" : {
 
     },
+    "Change this element’s settings" : {
+
+    },
+    "Change where the link goes" : {
+
+    },
     "Changed" : {
 
     },
@@ -899,7 +1153,7 @@
     "Changes are saved to your site’s files as you make them and go live when you publish." : {
 
     },
-    "Charter serif" : {
+    "Change…" : {
 
     },
     "Check GitHub for Changes" : {
@@ -993,6 +1247,9 @@
     "Choose Share Image…" : {
 
     },
+    "Choose a cover" : {
+
+    },
     "Choose a file" : {
 
     },
@@ -1000,6 +1257,9 @@
 
     },
     "Choose a photo" : {
+
+    },
+    "Choose a picture of you or your work. A square picture works best." : {
 
     },
     "Choose a post, or press ⌘N to write a new one." : {
@@ -1029,6 +1289,9 @@
     "Choose photos. They are resized, turned upright and cleaned of location data." : {
 
     },
+    "Choose pictures. They are resized, cleaned of location data and copied into the site." : {
+
+    },
     "Choose the picture shown when this post is shared. A wide image (1200 × 630) works best." : {
 
     },
@@ -1041,16 +1304,40 @@
     "Choose…" : {
 
     },
+    "Chosen photo" : {
+
+    },
+    "City" : {
+
+    },
+    "Clear Formatting" : {
+
+    },
     "Close" : {
 
     },
     "Code" : {
 
     },
+    "Code Block" : {
+
+    },
+    "Code Language" : {
+
+    },
+    "Code language" : {
+
+    },
     "Colour" : {
 
     },
     "Column" : {
+
+    },
+    "Columns" : {
+
+    },
+    "Columns sit side by side on wide screens and stack on phones. Columns with text are never removed here." : {
 
     },
     "Commit and push this post (⇧⌘P)" : {
@@ -1068,9 +1355,6 @@
     "Compare" : {
 
     },
-    "Continue" : {
-
-    },
     "Continue a list; on an empty item, end it" : {
 
     },
@@ -1078,6 +1362,9 @@
 
     },
     "Copy Diagnostics" : {
+
+    },
+    "Copy Link Address" : {
 
     },
     "Copy into Site to Edit" : {
@@ -1105,7 +1392,16 @@
     "Could not save: %@" : {
 
     },
+    "Country" : {
+
+    },
+    "Cover" : {
+
+    },
     "Create" : {
+
+    },
+    "Create Album" : {
 
     },
     "Create Page" : {
@@ -1203,6 +1499,12 @@
         }
       }
     },
+    "Delete Album" : {
+
+    },
+    "Delete Album…" : {
+
+    },
     "Delete Column" : {
 
     },
@@ -1221,6 +1523,9 @@
     "Delete from Site…" : {
 
     },
+    "Delete the album “%@”?" : {
+
+    },
     "Delete this photo?" : {
 
     },
@@ -1237,6 +1542,9 @@
 
     },
     "Description" : {
+
+    },
+    "Description (optional)" : {
 
     },
     "Design" : {
@@ -1269,6 +1577,9 @@
     "Drafts" : {
 
     },
+    "Drag photos onto the album, or choose some in All Photos and use Add to Album. Photos you add now join it." : {
+
+    },
     "Drag to reorder. The menu appears at the top of every page, in this order." : {
 
     },
@@ -1278,7 +1589,22 @@
     "Duplicate" : {
 
     },
+    "Each ### heading inside the element starts a tab. Add one here, or type a ### heading in the text." : {
+
+    },
     "Each photo becomes a small file with its caption, and the photos page lists them newest first. Nothing goes live until you publish." : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit %@…" : {
+
+    },
+    "Edit Element…" : {
+
+    },
+    "Edit Link…" : {
 
     },
     "Edit Table…" : {
@@ -1288,6 +1614,9 @@
 
     },
     "Edit table" : {
+
+    },
+    "Edit the element at the cursor" : {
 
     },
     "Edit the table the cursor is in as a grid, or insert a new one" : {
@@ -1302,10 +1631,19 @@
     "Edited · not yet updated" : {
 
     },
+    "Editing" : {
+
+    },
     "Editor" : {
 
     },
     "Edits to published posts, design changes and fixes wait in **Unpublished changes** at the bottom of the sidebar until you publish them." : {
+
+    },
+    "Elements are written into the page as plain text that GitHub Pages builds as it is. Edit one later with its Edit button." : {
+
+    },
+    "Email" : {
 
     },
     "Embed" : {
@@ -1323,16 +1661,34 @@
     "Enter this code on GitHub" : {
 
     },
+    "Entries" : {
+
+    },
+    "Even grid" : {
+
+    },
     "Every 15 minutes" : {
 
     },
     "Every 2 minutes" : {
 
     },
+    "Every 3 seconds" : {
+
+    },
     "Every 5 minutes" : {
 
     },
+    "Every 5 seconds" : {
+
+    },
+    "Every 8 seconds" : {
+
+    },
     "Every hour" : {
+
+    },
+    "Every photo is in an album" : {
 
     },
     "Everything on this Mac is already on your site." : {
@@ -1350,6 +1706,36 @@
     "Files" : {
 
     },
+    "Filled" : {
+
+    },
+    "Find" : {
+
+    },
+    "Find Next" : {
+
+    },
+    "Find Previous" : {
+
+    },
+    "Find a place" : {
+
+    },
+    "Find a place to add" : {
+
+    },
+    "Find and Replace…" : {
+
+    },
+    "Find next or previous" : {
+
+    },
+    "Find, or find and replace" : {
+
+    },
+    "Find…" : {
+
+    },
     "Fix" : {
 
     },
@@ -1357,6 +1743,9 @@
 
     },
     "Follow this Mac" : {
+
+    },
+    "Font Pairings" : {
 
     },
     "Footer" : {
@@ -1369,6 +1758,9 @@
 
     },
     "Format" : {
+
+    },
+    "Formatting Bar" : {
 
     },
     "Full posts, one after another" : {
@@ -1411,6 +1803,9 @@
         }
       }
     },
+    "Grid of pictures" : {
+
+    },
     "Heading" : {
 
     },
@@ -1428,6 +1823,16 @@
     },
     "Headings" : {
 
+    },
+    "Headings in %@, text in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Headings in %1$@, text in %2$@"
+          }
+        }
+      }
     },
     "Health" : {
 
@@ -1481,6 +1886,12 @@
     "History of “%@”" : {
 
     },
+    "Home" : {
+
+    },
+    "How many" : {
+
+    },
     "Image" : {
 
     },
@@ -1493,7 +1904,19 @@
     "Image…" : {
 
     },
+    "Important" : {
+
+    },
+    "In use" : {
+
+    },
     "Includes" : {
+
+    },
+    "Indent" : {
+
+    },
+    "Indent or outdent" : {
 
     },
     "Inkwell" : {
@@ -1506,6 +1929,9 @@
 
     },
     "Inkwell also checks when you come back to it, and before every publish." : {
+
+    },
+    "Inkwell cannot open the link %@." : {
 
     },
     "Inkwell checks GitHub for changes made elsewhere. If the same file changed in both places, you choose which version to keep." : {
@@ -1566,7 +1992,13 @@
     "Insert Column Right" : {
 
     },
+    "Insert Element…" : {
+
+    },
     "Insert Gallery" : {
+
+    },
+    "Insert Link…" : {
 
     },
     "Insert Row Above" : {
@@ -1582,6 +2014,9 @@
 
     },
     "Insert a table" : {
+
+    },
+    "Insert an element" : {
 
     },
     "It goes back to the version that is on your site." : {
@@ -1630,7 +2065,13 @@
     "Its Sass settings; your changes go in %@." : {
 
     },
+    "Its address: %@" : {
+
+    },
     "JPEG quality" : {
+
+    },
+    "Jump to Selection" : {
 
     },
     "Keep Mine" : {
@@ -1648,13 +2089,25 @@
     "Keyboard shortcuts" : {
 
     },
+    "Kind" : {
+
+    },
+    "Label" : {
+
+    },
     "Language" : {
+
+    },
+    "Layout" : {
 
     },
     "Layouts" : {
 
     },
     "Layouts, includes, styles and settings. Changes show in the preview as you type." : {
+
+    },
+    "Lead story, then a grid" : {
 
     },
     "Left" : {
@@ -1685,13 +2138,19 @@
         }
       }
     },
-    "Link to a Post…" : {
+    "Link to" : {
+
+    },
+    "Link to %@" : {
 
     },
     "Link to a post" : {
 
     },
     "Link to a post or page" : {
+
+    },
+    "Links" : {
 
     },
     "Links to other sites are not checked yet." : {
@@ -1703,6 +2162,12 @@
     "Links use the page’s address, so they keep working if you rename it in Inkwell." : {
 
     },
+    "Link…" : {
+
+    },
+    "List" : {
+
+    },
     "List of titles" : {
 
     },
@@ -1710,6 +2175,9 @@
 
     },
     "Live on the site" : {
+
+    },
+    "Loads those styles and the script on every page." : {
 
     },
     "Location removed" : {
@@ -1733,6 +2201,15 @@
     "Make it yours" : {
 
     },
+    "Make text bigger, smaller, or actual size" : {
+
+    },
+    "Maps use OpenStreetMap. Without a connection, readers see the list of places." : {
+
+    },
+    "Masonry (keeps each picture’s shape)" : {
+
+    },
     "Media" : {
 
     },
@@ -1742,7 +2219,7 @@
     "Merge" : {
 
     },
-    "Monospace" : {
+    "Monospaced" : {
 
     },
     "Move Down" : {
@@ -1751,10 +2228,19 @@
     "Move Left" : {
 
     },
+    "Move Line Down" : {
+
+    },
+    "Move Line Up" : {
+
+    },
     "Move Right" : {
 
     },
     "Move Up" : {
+
+    },
+    "Move lines up or down" : {
 
     },
     "Move to Trash" : {
@@ -1785,6 +2271,9 @@
         }
       }
     },
+    "Moves on by itself" : {
+
+    },
     "Move…" : {
 
     },
@@ -1803,6 +2292,12 @@
     "New" : {
 
     },
+    "New Album" : {
+
+    },
+    "New Album…" : {
+
+    },
     "New File…" : {
 
     },
@@ -1818,6 +2313,9 @@
     "New address" : {
 
     },
+    "New album" : {
+
+    },
     "New file" : {
 
     },
@@ -1825,6 +2323,9 @@
 
     },
     "New page" : {
+
+    },
+    "New photos join “%@”" : {
 
     },
     "New post" : {
@@ -1836,10 +2337,22 @@
     "New site" : {
 
     },
+    "New tab" : {
+
+    },
+    "Newest first" : {
+
+    },
+    "Newest photo" : {
+
+    },
     "Newest post: %@" : {
 
     },
     "Next" : {
+
+    },
+    "No" : {
 
     },
     "No Post Selected" : {
@@ -1851,10 +2364,19 @@
     "No broken links" : {
 
     },
+    "No photos in “%@”" : {
+
+    },
     "No photos yet" : {
 
     },
+    "No post or page of this site has the address %@." : {
+
+    },
     "No post, page or stylesheet links to them. They leave the site when you next publish; GitHub keeps their history." : {
+
+    },
+    "No posts or pages match." : {
 
     },
     "No problems" : {
@@ -1894,6 +2416,9 @@
     "Not Now" : {
 
     },
+    "Not in an Album" : {
+
+    },
     "Not published" : {
 
     },
@@ -1904,6 +2429,9 @@
 
     },
     "Not signed in. Open a site to sign in with GitHub." : {
+
+    },
+    "Note" : {
 
     },
     "Nothing goes live until you publish." : {
@@ -1927,13 +2455,19 @@
     "Now" : {
 
     },
+    "Numbered List" : {
+
+    },
     "OK" : {
 
     },
     "Offline" : {
 
     },
-    "Once a day it asks GitHub whether a newer Inkwell is out; turn that off in **Settings › General**. **Check Links** contacts the sites your posts link to, only when you click it. The preview loads whatever your layouts load, such as web fonts and embedded videos." : {
+    "Oldest first" : {
+
+    },
+    "Once a day it asks GitHub whether a newer Inkwell is out; turn that off in **Settings › General**. **Check Links** contacts the sites your posts link to, only when you click it. The preview loads whatever your layouts load, such as web fonts and embedded videos. Searching for a place to add to a map asks Apple Maps; maps on your pages load from OpenStreetMap." : {
 
     },
     "Once a day, Inkwell asks GitHub for its latest release. Nothing about you or your sites is sent." : {
@@ -1946,6 +2480,9 @@
 
     },
     "Open Health" : {
+
+    },
+    "Open Link" : {
 
     },
     "Open Live Site" : {
@@ -1966,6 +2503,9 @@
     "Open a Folder…" : {
 
     },
+    "Open a link" : {
+
+    },
     "Open a site folder on this Mac (uses git)…" : {
 
     },
@@ -1975,19 +2515,49 @@
     "Open the last site when Inkwell starts" : {
 
     },
+    "Open the linked page" : {
+
+    },
+    "Opens album photos large, with the keyboard and on phones." : {
+
+    },
     "Optional" : {
 
     },
     "Optional; never taken from the photo" : {
 
     },
+    "Optional; shown under the title" : {
+
+    },
     "Options" : {
+
+    },
+    "Outdent" : {
+
+    },
+    "Outline" : {
 
     },
     "Over 1 MB, slow on phones: %@" : {
 
     },
     "Page" : {
+
+    },
+    "Page Elements" : {
+
+    },
+    "Pages and Posts" : {
+
+    },
+    "Pages and elements" : {
+
+    },
+    "Palettes" : {
+
+    },
+    "Paragraph style" : {
 
     },
     "Paste a YouTube or Vimeo address." : {
@@ -1999,10 +2569,19 @@
     "Photo" : {
 
     },
+    "Photo order" : {
+
+    },
     "Photos" : {
 
     },
     "Photos could not be set up: %@" : {
+
+    },
+    "Picture" : {
+
+    },
+    "Pictures" : {
 
     },
     "Pictures and photos" : {
@@ -2014,10 +2593,16 @@
     "Pictures lose their location and camera details before they are saved. The error log in ~/Library/Logs/Inkwell holds error messages only, and Copy Diagnostics only puts a summary on your clipboard." : {
 
     },
+    "Pictures without alt text are silent for people using screen readers." : {
+
+    },
     "Place" : {
 
     },
     "Place (optional)" : {
+
+    },
+    "Places" : {
 
     },
     "Post text" : {
@@ -2029,6 +2614,9 @@
     "Posts are plain Markdown. Inkwell styles it as you type and hides the markers away from the line you are on; turn that off with **View › Hide Markdown Syntax**." : {
 
     },
+    "Preparing preview…" : {
+
+    },
     "Press ⌘N to start a post." : {
 
     },
@@ -2036,6 +2624,9 @@
 
     },
     "Preview" : {
+
+    },
+    "Preview of %@ with your posts" : {
 
     },
     "Privacy" : {
@@ -2130,22 +2721,40 @@
     "Push Again" : {
 
     },
+    "Put the cursor in a page element to edit it." : {
+
+    },
     "Quote" : {
 
     },
     "Readers in dark mode see these colours too." : {
 
     },
+    "Region" : {
+
+    },
     "Remove" : {
 
     },
+    "Remove Link" : {
+
+    },
     "Remove Tag" : {
+
+    },
+    "Remove from Album" : {
 
     },
     "Remove from All Posts…" : {
 
     },
     "Remove from the menu" : {
+
+    },
+    "Remove from “%@”" : {
+
+    },
+    "Remove the link and keep its text" : {
 
     },
     "Remove the tag “%@” from %lld posts?" : {
@@ -2212,6 +2821,9 @@
     "Return" : {
 
     },
+    "Return to link, Esc to close" : {
+
+    },
     "Revert" : {
 
     },
@@ -2236,9 +2848,6 @@
     "Right" : {
 
     },
-    "Rounded" : {
-
-    },
     "Row %@" : {
 
     },
@@ -2261,6 +2870,9 @@
 
     },
     "Search and sharing" : {
+
+    },
+    "Search posts, or paste a link" : {
 
     },
     "Search repositories" : {
@@ -2348,6 +2960,12 @@
     "Show Log in Finder" : {
 
     },
+    "Show an Album Instead" : {
+
+    },
+    "Show as" : {
+
+    },
     "Show in Finder" : {
 
     },
@@ -2361,6 +2979,18 @@
 
     },
     "Shown after the copyright line" : {
+
+    },
+    "Shows an album’s photos, on its own page or in any post." : {
+
+    },
+    "Shows its photos. Drop photos here to add them." : {
+
+    },
+    "Shows one of your photo albums here, and leaves these pictures out" : {
+
+    },
+    "Shows the albums above the photo stream." : {
 
     },
     "Sign In" : {
@@ -2433,22 +3063,37 @@
     "Source" : {
 
     },
+    "Street" : {
+
+    },
     "Strikethrough" : {
+
+    },
+    "Style" : {
 
     },
     "Styles and scripts" : {
 
     },
+    "Styles for albums and page elements." : {
+
+    },
+    "Subheading" : {
+
+    },
+    "Subscript" : {
+
+    },
     "Suggestion" : {
+
+    },
+    "Superscript" : {
 
     },
     "Switch Site…" : {
 
     },
     "Switch site" : {
-
-    },
-    "System sans-serif" : {
 
     },
     "Tab / ⇧Tab" : {
@@ -2464,6 +3109,12 @@
 
     },
     "Tags" : {
+
+    },
+    "Text" : {
+
+    },
+    "Text for this tab." : {
 
     },
     "Text size" : {
@@ -2482,7 +3133,35 @@
         }
       }
     },
+    "The %lld chosen photos go into it. It gets its own page and is listed on the photos page." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %lld chosen photo goes into it. It gets its own page and is listed on the photos page."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %lld chosen photos go into it. It gets its own page and is listed on the photos page."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "The Pages build failed (%@). Open the repository’s Actions tab on GitHub for the details." : {
+
+    },
+    "The album could not be saved: %@" : {
+
+    },
+    "The code block’s language, used for colouring it on the site" : {
 
     },
     "The date is in the future, but future: true in _config.yml shows it right away." : {
@@ -2491,16 +3170,37 @@
     "The draft is moved to the Trash. It was never published." : {
 
     },
+    "The element changed while its settings were open, so the changes were not applied." : {
+
+    },
     "The file has never been published, so it is removed." : {
 
     },
     "The file is new, so it is removed." : {
 
     },
+    "The first element adds a few files the site needs (a stylesheet, a small script and some includes). They go out with the post that uses them." : {
+
+    },
     "The fix could not be applied: %@" : {
 
     },
+    "The list inside was changed by hand. Edit it in the text." : {
+
+    },
+    "The list of albums at the top of the photos page." : {
+
+    },
     "The page at %@ stops working once GitHub Pages rebuilds the site." : {
+
+    },
+    "The page each album gets: its title, description and photos." : {
+
+    },
+    "The photos stay in your photo stream" : {
+
+    },
+    "The photos stay in your photo stream. The album and its page leave the site when you next publish." : {
 
     },
     "The post could not be moved: %@" : {
@@ -2527,7 +3227,16 @@
     "The table changed while you were editing it, so your changes were not applied." : {
 
     },
+    "The table of contents lists this page’s headings. It has no settings." : {
+
+    },
+    "The text under the heading in the editor is what opens." : {
+
+    },
     "The theme could not be applied: %@" : {
+
+    },
+    "The title and line of text are in the editor. Without a picture, the banner uses the theme’s panel colour." : {
 
     },
     "Theme" : {
@@ -2572,10 +3281,19 @@
     "This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here." : {
 
     },
+    "This theme is always dark. You can change that in its options." : {
+
+    },
     "Time zone" : {
 
     },
+    "Tip" : {
+
+    },
     "Title" : {
+
+    },
+    "Title, such as Japan 2025" : {
 
     },
     "Try a different search." : {
@@ -2585,6 +3303,9 @@
 
     },
     "Type **/** at the start of a line for headings, lists, tables, images, links and embeds. Type **[[** to link to another post by its title." : {
+
+    },
+    "Type to find a post, or paste a link." : {
 
     },
     "Typing" : {
@@ -2635,10 +3356,25 @@
     "Use GitHub’s" : {
 
     },
+    "Use Selection for Find" : {
+
+    },
+    "Use This Theme…" : {
+
+    },
     "Use a personal access token instead" : {
 
     },
+    "Use as Album Cover" : {
+
+    },
     "Use smart quotes and dashes" : {
+
+    },
+    "Use the %@ colours" : {
+
+    },
+    "Use the Newest Photo" : {
 
     },
     "Use the Other Version" : {
@@ -2668,7 +3404,16 @@
     "Warning" : {
 
     },
+    "What happened" : {
+
+    },
     "What it shows, or a line about it" : {
+
+    },
+    "What the picture shows" : {
+
+    },
+    "When" : {
 
     },
     "Where a fix is safe, **Fix** makes it as an unpublished change, so you can look before it goes live. Inkwell never adds a feed, sitemap or tag the site already has." : {
@@ -2695,6 +3440,9 @@
     "YYYY-MM-DD" : {
 
     },
+    "You can also drag them onto an album above the photos." : {
+
+    },
     "You have %@. Download the new version, quit Inkwell, then drag the new one into Applications." : {
 
     },
@@ -2713,6 +3461,25 @@
     "Your unpublished changes to it are discarded." : {
 
     },
+    "Zoom In" : {
+
+    },
+    "Zoom Out" : {
+
+    },
+    "Zoom for one place" : {
+
+    },
+    "^[%lld words](inflect: true), ^[%lld characters](inflect: true) selected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld words](inflect: true), ^[%2$lld characters](inflect: true) selected"
+          }
+        }
+      }
+    },
     "_includes/footer-extra.html" : {
 
     },
@@ -2726,6 +3493,12 @@
 
     },
     "ghp_…" : {
+
+    },
+    "https://" : {
+
+    },
+    "https:// or /about/" : {
 
     },
     "published is off: the post stays off the site, but its file is public on GitHub." : {
@@ -2765,6 +3538,9 @@
           }
         }
       }
+    },
+    "⌘-click" : {
+
     }
   },
   "version" : "1.0"

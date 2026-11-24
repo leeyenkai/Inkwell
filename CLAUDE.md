@@ -68,6 +68,12 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
 - Content self-test: `--site <sample-site> --selftest-content` (move with redirect and publish, history, duplicate, new page, tags,
   Photos setup and import, the media library, a scheduled post published with its workflow, an inline image, and a table edit
   undone in one step, quick restyle matching a full one, a health fix; refuses GitHub remotes).
+- Designer flags: `--new-page <template>` (blank, about, now, contact, projects, links, timeline, places, landing, archive, albums,
+  slides), `--element-picker`, `--edit-element` (form of the first wrapped element in the open post), `--select <text>`,
+  `--link-popover <text>`, `--album <id|none>`, `--photo a,b` (several), `--gallery-theme <id>` before `--theme-gallery`,
+  `--render-theme-previews <folder>` (with `--site`; regenerates the gallery pictures in `Themes/<id>/preview*.png`).
+- Screenshots: `scripts/capture-window.sh <out.png> "<title or empty>" <args>` launches through Launch Services and captures
+  only its own instance. Web views (the preview) come out blank in captures; check pages in a browser instead.
 - Release: `scripts/make-dmg.sh` (steps in docs/RELEASING.md). Update check: `--update-feed <url or file URL>` with
   `--check-updates` shows the Software Update window against a test release JSON.
 - Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--pane design|navigation|settings|media|health` (`--issue <id>`)
@@ -88,6 +94,8 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
 - **Drafts stay out of the repo** until publish (`DraftStore`, Application Support). Images are written into the site when added; they are committed only with the post that uses them.
 - **Image import strips location and camera metadata** and never keeps the original file in the site.
 - Text views: formatting commands go through `Formatting` (pure, tested) and `InkwellTextView.apply`, so each is one undo step.
+- Page elements are plain Markdown/HTML that GitHub Pages builds without Inkwell (`PageElements`, `ElementKit`). New element
+  styles go in `ElementKit/assets/css/inkwell-blocks.css` using theme tokens with fallbacks, so they work on any theme.
 - User-facing copy: plain and short, no exclamation marks, no emoji.
 - Localisation: text a person reads goes through the string catalogs. SwiftUI literals are keys already; a `String` shown on
   screen needs `String(localized:)` in the app and `localized(...)` in InkwellKit (each module's own bundle). One key per

@@ -21,7 +21,13 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
 
 ## Progress (24 Nov 2026)
 
-- **M6 Designer: in progress.** The site designer: six distinct themes with rendered previews (and a try-on with your own posts), palette and font presets, page elements, page templates, photo albums, and a fuller editor (formatting toolbar, link popover with post search, clickable checklists, moving lines, superscript and subscript). See SPEC §4.7a.
+- **M6 Designer: done.** See SPEC §4.7a.
+  - Themes: Essayist, Notebook (sidebar), Photo journal (picture grid), Minimal (monospaced), Magazine (lead story and cards) and Studio (portfolio), each with its own layouts and stylesheet over a shared base. The gallery shows renders made from the themes' real files (`--render-theme-previews`), and choosing one previews it on a temporary copy of your own site (home, a post, a page; desktop or phone; light or dark). Palettes (contrast-checked in tests) and font pairings are one-click presets.
+  - Elements: fifteen, in Markdown with `markdown="1"` or includes, from the slash menu, the Insert button and Format › Insert Element…; each has an Edit button and form (Apple Maps search for places). The preview renders `markdown="1"` and `{:toc}`. The element kit (stylesheet, script, includes, slides and album layouts) is installed on first use, loaded into other themes' heads, and published with the first post that uses it. Checked in a browser: lightbox, slideshow, tabs, Leaflet maps.
+  - Pages: twelve templates; pages in folders (such as `albums/`) load.
+  - Albums: `albums:` on photos, `_data/albums.yml`, an album page each, an album index on the photos page, an album bar and multi-select in Photos.
+  - Editor: formatting bar, link popover (posts, headings, addresses), ⌘-click links, paste a link over text, clickable checklists, move lines, indent, renumbered lists, superscript and subscript, find and replace, zoom, code block language.
+  - Not checked by hand: real mouse clicks on checklists and ⌘-click (covered by synthetic events in the self-test), dragging photos onto albums, the themes' light mode in the app's own UI.
 
 - **M0 Icon: done.** The ink-roller Liquid Glass icon (four groups, the most Xcode allows), checked in every appearance with `ictool`.
 - **M1 Foundation: mostly done.**

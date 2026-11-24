@@ -20,7 +20,9 @@ final class LocalizationTests: XCTestCase {
             let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
             let strings = try XCTUnwrap(json["strings"] as? [String: [String: Any]])
             for (key, entry) in strings where key.range(of: #"%(\d\$)?lld"#, options: .regularExpression) != nil {
-                guard entry["extractionState"] as? String != "stale", entry["shouldTranslate"] as? Bool != false else { continue }
+                // Automatic grammar agreement (`^[…](inflect: true)`) needs no plural forms of its own.
+                guard entry["extractionState"] as? String != "stale", entry["shouldTranslate"] as? Bool != false,
+                      !key.contains("(inflect: true)") else { continue }
                 let english = (entry["localizations"] as? [String: Any])?["en"] as? [String: Any]
                 XCTAssertNotNil(english?["variations"] ?? english?["substitutions"], "\(url.lastPathComponent): no plural forms for “\(key)”")
             }

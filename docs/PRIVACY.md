@@ -8,6 +8,8 @@ Inkwell has no server and no account of its own. It sends nothing to its develop
 - **Update check.** Once a day (you can turn this off in Settings › General), and when you choose Check for Updates, Inkwell asks GitHub for the latest Inkwell release. The request carries nothing about you or your sites.
 - **Themes.** When a site uses a GitHub Pages theme, Inkwell downloads that theme's files from GitHub once, so the preview matches the live site.
 - **Check Links.** Only when you click it, Inkwell asks each site your posts link to whether the page still exists. Those sites see an ordinary request from your Mac.
+- **Place search.** When you search for a place to put on a map, the words you type go to Apple Maps. Only the place's name and coordinates are written into your page.
+- **Maps on your site.** A map element loads its map from OpenStreetMap, and its map script from unpkg.com, in your readers' browsers (and in the preview). Readers without a connection see the list of places instead.
 - **Preview.** The preview shows your pages as a browser would, so anything your site's layouts load from elsewhere (web fonts, embedded videos, scripts) is loaded too. Nothing is kept between launches.
 
 ## What stays on your Mac
