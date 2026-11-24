@@ -185,7 +185,14 @@ enum Launch {
             exit(ok ? 0 : 1)
         }
         if let section = value("--section") { model.sidebarSelection = .section(section) }
-        if let photo = value("--photo") { model.selectedPhotoID = model.photos.first { $0.doc.relativePath == photo }?.id }
+        if let photo = value("--photo") {
+            // Several photos, comma-separated, are chosen together.
+            let paths = photo.split(separator: ",").map(String.init)
+            let ids = model.photos.filter { paths.contains($0.doc.relativePath) }.map(\.id)
+            model.selectedPhotoIDs = Set(ids)
+            model.selectedPhotoID = ids.first
+        }
+        if let album = value("--album") { model.albumFilter = album == "none" ? .none : .album(album) }
         if let id = value("--apply-theme"), let theme = ThemeManifest.named(id), let design = model.design {
             design.apply(design.plan(for: theme))
         }
@@ -397,6 +404,42 @@ enum SelfTest {
         } else {
             ok = check(false, "photo imported") && ok
         }
+
+        // Albums: a second photo, then an album holding both. Its page shows them, the photos page lists it, and one publish
+        // carries the album's page and list, the photo files, their pictures and the site files albums need.
+        try? FileManager.default.removeItem(at: source)
+        try? FileManager.default.copyItem(at: root.appending(path: "assets/images/estonia.jpg"), to: source)
+        model.importPhotos([source])
+        for _ in 0..<20 where model.pendingPhotos == nil { try? await Task.sleep(for: .milliseconds(250)) }
+        if var pending = model.pendingPhotos, !pending.isEmpty {
+            pending[0].caption = "Self-test harbour"
+            model.savePendingPhotos(pending)
+            await settle()
+        }
+        let pair = model.photos.filter { $0.caption.hasPrefix("Self-test ") }
+        let albumID = model.createAlbum(title: "Self-test album", description: "Two photos", adding: pair.map(\.doc.relativePath)) ?? ""
+        await settle()
+        let album = model.albums.first { $0.id == albumID }
+        let members = model.photos.filter { $0.albums.contains(albumID) }
+        ok = check(album != nil && pair.count == 2 && members.count == 2 && model.albumFilter == .album(albumID),
+                   "album created with two photos (\(members.count))") && ok
+        let albumPage = album.flatMap(model.albumPreview)?.html ?? ""
+        let showsBoth = pair.allSatisfy { albumPage.contains($0.image) } && albumPage.contains("inkwell-lightbox")
+        ok = check(showsBoth && albumPage.contains("Self-test album"), "album page shows both photos") && ok
+        let listed = model.previewBuilder?.page(at: "/photos/")?.html.contains("/albums/\(albumID)/") == true
+        ok = check(listed, "photos page lists the album") && ok
+        let kit = Albums.kitFiles + [ElementKit.stylesheet, ElementKit.script]
+        let required = Set([Albums.dataPath, Albums.pagePath(albumID)] + pair.map(\.doc.relativePath) + kit)
+        let setup = ["_config.yml", "photos.md", "_layouts/default.html", "_includes/head.html", "_includes/head-custom.html"]
+        let pictures = pair.map { String($0.image.drop { $0 == "/" }) }
+        let paths = Array(required) + (setup + pictures).filter { model.changes[$0] != nil }
+        let session = PublishSession.changes(paths: paths, message: "Self-test album", backend: backend, model: model)
+        await session.run()
+        let shown = (try? await git.run(["show", "--name-only", "--format=", "HEAD"])) ?? ""
+        let published = Set(shown.split(separator: "\n").map(String.init))
+        ok = check(session.phase == .pushed && published.isSuperset(of: required) && published.isSuperset(of: pictures),
+                   "album published as one commit (\(published.count) files, \(session.phase))") && ok
+        await settle()
 
         // Scheduling: a post dated tomorrow publishes as "Schedule", with the hourly workflow in the same commit.
         model.sidebarSelection = .section("notes")

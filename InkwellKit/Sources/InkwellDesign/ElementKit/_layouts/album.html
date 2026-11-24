@@ -1,0 +1,23 @@
+---
+layout: default
+---
+{%- comment -%}
+  One photo album: albums/<id>.md has `layout: album` and `album: <id>`. The title, description and cover live in
+  _data/albums.yml; the photos join through `albums:` in their own files. Written by Inkwell, plain Liquid.
+{%- endcomment -%}
+{%- assign inkwell_album = site.data.albums | where: "id", page.album | first -%}
+{%- assign inkwell_listed = site.photos | where: "albums", page.album -%}
+{%- assign inkwell_single = site.photos | where: "album", page.album -%}
+{%- assign inkwell_count = inkwell_listed | concat: inkwell_single | where_exp: "photo", "photo.hidden != true" | size -%}
+<article class="inkwell-album-page">
+<header class="inkwell-album-header">
+<p class="inkwell-album-back"><a href="{{ '/photos' | relative_url }}">Photos</a></p>
+<h1 class="inkwell-album-title">{{ inkwell_album.title | default: page.title | escape }}</h1>
+{%- if inkwell_album.description %}
+<p class="inkwell-album-description">{{ inkwell_album.description | escape }}</p>
+{%- endif %}
+<p class="inkwell-album-count">{{ inkwell_count }} {% if inkwell_count == 1 %}photo{% else %}photos{% endif %}</p>
+</header>
+{{ content }}
+{% include inkwell/album.html album=page.album style=page.style %}
+</article>

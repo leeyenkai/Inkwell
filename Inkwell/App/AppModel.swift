@@ -139,6 +139,13 @@ final class AppModel {
     var pendingGallery: PendingGallery?
     var selectedPhotoID: String?
     var showPhotoSetup = false
+    // MARK: Photo albums (see PhotoActions.swift)
+    /// Which photos the grid shows: all, one album's, or those in no album.
+    var albumFilter: AlbumFilter = .all
+    /// Every chosen photo when several are; `selectedPhotoID` is the one clicked last.
+    var selectedPhotoIDs: Set<String> = []
+    var newAlbumRequest: NewAlbumRequest?
+    // End of photo albums
     var selectedMedia: String?
     var mediaItems: [MediaLibrary.Item] = []
     var mediaRevision = 0

@@ -1,0 +1,43 @@
+{%- comment -%}
+  The photos of one album, in any post or page, with a Liquid include tag:
+    include inkwell/album.html album="japan-2025"
+  Optional: limit=12, style="grid" (the default), "masonry" or "strip", captions=false.
+  A photo opens large when clicked. That works without JavaScript; inkwell-blocks.js adds Escape, the arrow keys and swipes.
+{%- endcomment -%}
+{%- assign inkwell_album = site.data.albums | where: "id", include.album | first -%}
+{%- assign inkwell_listed = site.photos | where: "albums", include.album -%}
+{%- assign inkwell_single = site.photos | where: "album", include.album -%}
+{%- assign inkwell_photos = inkwell_listed | concat: inkwell_single | where_exp: "photo", "photo.hidden != true" | sort: "date" -%}
+{%- unless inkwell_album.order == "oldest" -%}{%- assign inkwell_photos = inkwell_photos | reverse -%}{%- endunless -%}
+{%- assign inkwell_key = "album-" | append: include.album -%}
+<div class="inkwell-album inkwell-album--{{ include.style | default: 'grid' }}">
+<ul class="inkwell-album-photos" role="list">
+{%- for photo in inkwell_photos limit: include.limit %}
+<li class="inkwell-album-item"><figure>
+<a class="inkwell-album-thumb" id="{{ inkwell_key }}-{{ forloop.index }}-thumb" href="#{{ inkwell_key }}-{{ forloop.index }}"><img src="{{ photo.image | relative_url }}" alt="{{ photo.alt | default: photo.caption | escape }}" loading="lazy"></a>
+{%- if photo.caption and include.captions != false %}
+<figcaption>{{ photo.caption | escape }}</figcaption>
+{%- endif %}
+</figure></li>
+{%- endfor %}
+</ul>
+{%- for photo in inkwell_photos limit: include.limit %}
+<div class="inkwell-lightbox" id="{{ inkwell_key }}-{{ forloop.index }}" role="dialog" aria-label="Photo {{ forloop.index }} of {{ forloop.length }}">
+<a class="inkwell-lightbox-backdrop" href="#{{ inkwell_key }}-{{ forloop.index }}-thumb" tabindex="-1" aria-hidden="true"></a>
+<figure class="inkwell-lightbox-figure">
+<img src="{{ photo.image | relative_url }}" alt="{{ photo.alt | default: photo.caption | escape }}" loading="lazy">
+<figcaption>
+{%- if photo.caption %}<span class="inkwell-lightbox-caption">{{ photo.caption | escape }}</span>{% endif -%}
+<span class="inkwell-lightbox-meta">{% if photo.location %}{{ photo.location | escape }} · {% endif %}<time datetime="{{ photo.date | date_to_xmlschema }}">{{ photo.date | date: "%b %-d, %Y" }}</time></span>
+</figcaption>
+</figure>
+<a class="inkwell-lightbox-close" href="#{{ inkwell_key }}-{{ forloop.index }}-thumb" aria-label="Close">&times;</a>
+{%- unless forloop.first %}
+<a class="inkwell-lightbox-prev" href="#{{ inkwell_key }}-{{ forloop.index | minus: 1 }}" aria-label="Previous photo">&lsaquo;</a>
+{%- endunless %}
+{%- unless forloop.last %}
+<a class="inkwell-lightbox-next" href="#{{ inkwell_key }}-{{ forloop.index | plus: 1 }}" aria-label="Next photo">&rsaquo;</a>
+{%- endunless %}
+</div>
+{%- endfor %}
+</div>

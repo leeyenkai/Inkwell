@@ -5,21 +5,33 @@ struct PhotoGrid: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        let photos = model.photos
+        let all = model.photos
+        let photos = model.shownPhotos(all)
+        let albums = model.albums
+        let selection = model.photoSelection
+        let album = model.albumFilter.albumID.flatMap { id in albums.first { $0.id == id } }
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 6)], spacing: 6) {
                 ForEach(photos) { photo in
-                    PhotoTile(model: model, photo: photo, selected: model.selectedPhotoID == photo.id)
-                        .choosable(photo.caption.isEmpty ? String(localized: "Photo") : photo.caption,
-                                   selected: model.selectedPhotoID == photo.id) {
-                            model.selectedPhotoID = photo.id
+                    let chosen = selection.contains(photo.id)
+                    let paths = chosen ? model.selectedPhotoPaths(all) : [photo.doc.relativePath]
+                    PhotoTile(model: model, photo: photo, selected: chosen)
+                        .choosable(photo.caption.isEmpty ? String(localized: "Photo") : photo.caption, selected: chosen) {
+                            model.clickPhoto(photo.id, in: photos)
+                        }
+                        .draggable(paths.joined(separator: "\n")) {
+                            DragPreview(url: model.fileURL(forSitePath: photo.image), count: paths.count)
+                        }
+                        .contextMenu {
+                            PhotoMenu(model: model, photo: photo, paths: paths, albums: albums, album: album)
                         }
                 }
             }
             .padding(10)
         }
+        .onCommand(#selector(NSResponder.selectAll(_:))) { model.selectAllPhotos(photos) }
         .overlay {
-            if photos.isEmpty {
+            if all.isEmpty {
                 ContentUnavailableView {
                     Label("No photos yet", systemImage: "photo.on.rectangle")
                 } description: {
@@ -27,18 +39,48 @@ struct PhotoGrid: View {
                 } actions: {
                     Button("Add Photos…") { choosePhotos() }
                 }
+            } else if photos.isEmpty, let album {
+                ContentUnavailableView {
+                    Label("No photos in “\(album.title)”", systemImage: "rectangle.stack")
+                } description: {
+                    Text("Drag photos onto the album, or choose some in All Photos and use Add to Album. Photos you add now join it.")
+                } actions: {
+                    Button("Add Photos…") { choosePhotos() }
+                }
+            } else if photos.isEmpty {
+                ContentUnavailableView("Every photo is in an album", systemImage: "checkmark.rectangle.stack")
             }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AlbumBar(model: model, albums: albums, photos: all)
         }
         .safeAreaInset(edge: .bottom) {
             HStack {
-                Button("Add Photos…") { choosePhotos() }
+                Button { choosePhotos() } label: {
+                    // With photos chosen the bar is busy, so the button shrinks to its symbol.
+                    Label("Add Photos…", systemImage: "plus").labelStyle(AdaptiveLabelStyle(iconOnly: !selection.isEmpty))
+                }
+                .fixedSize()
+                .help(album.map { String(localized: "New photos join “\($0.title)”") }
+                        ?? String(localized: "Add photos from your Mac"))
+                if !selection.isEmpty {
+                    let paths = model.selectedPhotoPaths(all)
+                    AddToAlbumMenu(model: model, albums: albums, paths: paths)
+                    if let album {
+                        Button("Remove from Album") { model.removePhotos(paths, from: album.id) }
+                            .help(String(localized: "The photos stay in your photo stream"))
+                    }
+                }
                 Spacer()
-                Text("\(photos.count) photos").font(.caption).foregroundStyle(.secondary)
+                Text(selection.count > 1 ? "\(selection.count) of \(photos.count) chosen" : "\(photos.count) photos")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
             .padding(10)
             .background(.bar)
         }
         .navigationTitle("Photos")
+        .navigationSubtitle(album?.title ?? (model.albumFilter == .none ? String(localized: "Not in an Album") : ""))
+        .sheet(item: $model.newAlbumRequest) { request in NewAlbumSheet(model: model, request: request) }
     }
 
     func choosePhotos() {
@@ -47,6 +89,440 @@ struct PhotoGrid: View {
         panel.allowsMultipleSelection = true
         panel.message = String(localized: "Choose photos. They are resized, turned upright and cleaned of location data.")
         if panel.runModal() == .OK { model.importPhotos(panel.urls) }
+    }
+}
+
+/// The title alone, or the symbol alone where room is short (the title stays the accessibility label).
+struct AdaptiveLabelStyle: LabelStyle {
+    var iconOnly: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { configuration.title }
+    }
+}
+
+/// What a photo's context menu offers; with several chosen, it acts on all of them.
+struct PhotoMenu: View {
+    var model: AppModel
+    var photo: PhotoEntry
+    var paths: [String]
+    var albums: [Album]
+    var album: Album?
+
+    var body: some View {
+        AddToAlbumMenu(model: model, albums: albums, paths: paths)
+        if let album {
+            Button("Remove from “\(album.title)”") { model.removePhotos(paths, from: album.id) }
+            if paths.count == 1 {
+                Button("Use as Album Cover") { model.changeAlbums { $0.setCover(album.id, image: photo.image) } }
+                    .disabled(album.cover == photo.image)
+            }
+        }
+        if paths.count == 1 {
+            Divider()
+            Button("Delete Photo…", role: .destructive) { model.deletePhoto(photo) }
+        }
+    }
+}
+
+/// Add to Album: every album, then New Album… which starts one with these photos.
+struct AddToAlbumMenu: View {
+    var model: AppModel
+    var albums: [Album]
+    var paths: [String]
+
+    var body: some View {
+        Menu {
+            ForEach(albums) { album in
+                Button(album.title) { model.addPhotos(paths, to: album.id) }
+            }
+            if !albums.isEmpty { Divider() }
+            Button("New Album…") { model.newAlbumRequest = NewAlbumRequest(photoPaths: paths) }
+        } label: {
+            Label("Add to Album", systemImage: "rectangle.stack.badge.plus")
+        }
+        .fixedSize()
+    }
+}
+
+/// The picture under the pointer while photos are dragged onto an album, with how many there are.
+struct DragPreview: View {
+    var url: URL?
+    var count: Int
+
+    var body: some View {
+        SquareThumbnail(url: url)
+            .frame(width: 72, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .topTrailing) {
+                if count > 1 {
+                    Text("\(count)").font(.caption.bold()).monospacedDigit().foregroundStyle(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.accentColor))
+                        .offset(x: 6, y: -6)
+                }
+            }
+    }
+}
+
+// MARK: Albums
+
+/// All Photos, each album and Not in an Album, above the grid. Photos dropped on an album join it; albums dragged onto
+/// each other change the order the site shows them in.
+struct AlbumBar: View {
+    var model: AppModel
+    var albums: [Album]
+    var photos: [PhotoEntry]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 4) {
+                    AlbumChip(model: model, filter: .all, title: String(localized: "All Photos"), count: photos.count,
+                              symbol: "photo.on.rectangle")
+                    ForEach(albums) { album in
+                        AlbumChip(model: model, filter: .album(album.id), title: album.title,
+                                  count: photos.count { $0.albums.contains(album.id) }, symbol: "rectangle.stack",
+                                  cover: model.coverURL(for: album, photos: photos), album: album, albums: albums)
+                    }
+                    let loose = photos.count { $0.albums.isEmpty }
+                    if !albums.isEmpty, loose > 0 || model.albumFilter == .none {
+                        AlbumChip(model: model, filter: .none, title: String(localized: "Not in an Album"), count: loose,
+                                  symbol: "rectangle.dashed")
+                    }
+                    Button {
+                        model.newAlbumRequest = NewAlbumRequest()
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: "plus").font(.title3)
+                                .frame(width: AlbumChip.side, height: AlbumChip.side)
+                                .background(RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(.tertiary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
+                                .padding(3)
+                            Text("New Album").font(.caption).lineLimit(1)
+                        }
+                        .frame(width: AlbumChip.side + 24)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(String(localized: "New album"))
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+            }
+            Divider()
+        }
+        .background(.bar)
+    }
+}
+
+struct AlbumChip: View {
+    var model: AppModel
+    var filter: AlbumFilter
+    var title: String
+    var count: Int
+    var symbol: String
+    var cover: URL?
+    var album: Album?
+    var albums: [Album] = []
+    @State private var targeted = false
+
+    static let side: CGFloat = 60
+    var selected: Bool { model.albumFilter == filter }
+
+    var body: some View {
+        Button {
+            model.showAlbum(filter)
+        } label: {
+            VStack(spacing: 4) {
+                Group {
+                    if let cover, let image = Thumbnails.shared.image(for: cover, size: 180) {
+                        Image(nsImage: image).resizable().scaledToFill()
+                    } else {
+                        Image(systemName: symbol).font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
+                    }
+                }
+                .frame(width: Self.side, height: Self.side)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator, lineWidth: 0.5))
+                .padding(3)
+                .overlay(RoundedRectangle(cornerRadius: 13)
+                    .strokeBorder(selected || targeted ? Color.accentColor : .clear, lineWidth: targeted ? 3 : 2.5))
+                Text(title)
+                    .font(.caption.weight(selected ? .semibold : .regular))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(selected ? Color.accentColor : .primary)
+                Text("\(count)").font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+            }
+            .frame(width: Self.side + 24)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(album == nil ? String(localized: "\(title), \(count) photos")
+            : String(localized: "Album \(title), \(count) photos"))
+        .accessibilityHint(album == nil ? "" : String(localized: "Shows its photos. Drop photos here to add them."))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .modifier(AlbumDragging(model: model, album: album, albums: albums, targeted: $targeted))
+    }
+}
+
+/// An album takes photos dropped on it and can be dragged before another album; the menu and VoiceOver offer the same moves.
+struct AlbumDragging: ViewModifier {
+    var model: AppModel
+    var album: Album?
+    var albums: [Album]
+    @Binding var targeted: Bool
+
+    func body(content: Content) -> some View {
+        if let album {
+            let index = albums.firstIndex(of: album) ?? 0
+            content
+                .draggable("album:\(album.id)")
+                .dropDestination(for: String.self) { items, _ in
+                    let lines = items.flatMap { $0.split(separator: "\n").map(String.init) }
+                    if let moved = lines.first(where: { $0.hasPrefix("album:") }) {
+                        model.moveAlbum(String(moved.dropFirst(6)), before: album.id)
+                    } else {
+                        let photos = lines.filter { $0.hasPrefix("_\(PhotoStream.collection)/") }
+                        guard !photos.isEmpty else { return false }
+                        model.addPhotos(photos, to: album.id)
+                    }
+                    return true
+                } isTargeted: { targeted = $0 }
+                .contextMenu {
+                    Button("Move Left") { model.moveAlbum(album.id, before: albums[index - 1].id) }.disabled(index == 0)
+                    Button("Move Right") { model.moveAlbum(album.id, before: albums.dropFirst(index + 2).first?.id) }
+                        .disabled(index == albums.count - 1)
+                    Divider()
+                    Button("Delete Album…", role: .destructive) { model.deleteAlbum(album) }
+                }
+                .accessibilityAction(named: "Move Left") {
+                    if index > 0 { model.moveAlbum(album.id, before: albums[index - 1].id) }
+                }
+                .accessibilityAction(named: "Move Right") {
+                    if index < albums.count - 1 { model.moveAlbum(album.id, before: albums.dropFirst(index + 2).first?.id) }
+                }
+        } else {
+            content
+        }
+    }
+}
+
+/// The detail column for Photos: one photo, several chosen photos, or the album shown.
+struct PhotosDetail: View {
+    var model: AppModel
+
+    var body: some View {
+        let selection = model.photoSelection
+        let photos = model.photos
+        if selection.count > 1 {
+            PhotoSelectionDetail(model: model, photos: photos.filter { selection.contains($0.id) })
+        } else if let id = selection.first, let photo = photos.first(where: { $0.id == id }) {
+            PhotoDetail(model: model, photo: photo)
+        } else if let id = model.albumFilter.albumID, let album = model.albums.first(where: { $0.id == id }) {
+            AlbumDetail(model: model, album: album, photos: photos.filter { $0.albums.contains(id) })
+        } else {
+            ContentUnavailableView("Choose a photo", systemImage: "photo", description: Text("Edit its caption, alt text, place and date."))
+        }
+    }
+}
+
+struct PhotoSelectionDetail: View {
+    var model: AppModel
+    var photos: [PhotoEntry]
+
+    var body: some View {
+        let paths = photos.map(\.doc.relativePath)
+        let album = model.albumFilter.albumID.flatMap { id in model.albums.first { $0.id == id } }
+        VStack(spacing: 18) {
+            ZStack {
+                ForEach(Array(photos.prefix(3).enumerated().reversed()), id: \.element.id) { offset, photo in
+                    SquareThumbnail(url: model.fileURL(forSitePath: photo.image))
+                        .frame(width: 150, height: 150)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.8), lineWidth: 2))
+                        .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
+                        .rotationEffect(.degrees(Double(offset) * 5 - 5))
+                        .offset(x: CGFloat(offset) * 14 - 14)
+                }
+            }
+            .frame(height: 190)
+            .accessibilityHidden(true)
+            Text("\(photos.count) photos chosen").font(.title3.weight(.semibold))
+            HStack {
+                AddToAlbumMenu(model: model, albums: model.albums, paths: paths)
+                if let album {
+                    Button("Remove from “\(album.title)”") { model.removePhotos(paths, from: album.id) }
+                }
+            }
+            Text("You can also drag them onto an album above the photos.").font(.callout).foregroundStyle(.secondary)
+        }
+        .padding(30)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .underPageBackgroundColor))
+    }
+}
+
+/// An album's settings under a preview of its page.
+struct AlbumDetail: View {
+    var model: AppModel
+    var album: Album
+    var photos: [PhotoEntry]
+    @State private var choosingCover = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Color(nsColor: .underPageBackgroundColor)
+                if let page = model.albumPreview(album), let site = model.site {
+                    SitePreview(html: page.html, pageURL: site.config.baseurl + album.url, root: site.root, baseurl: site.config.baseurl,
+                                resources: model.siteResources, appearance: model.previewAppearance)
+                }
+            }
+            Form {
+                LabeledContent("Title") {
+                    CommitField(placeholder: String(localized: "Album title"), value: album.title) { title in
+                        model.changeAlbums { $0.rename(album.id, to: title) }
+                    }
+                }
+                LabeledContent("Description") {
+                    CommitField(placeholder: String(localized: "Optional; shown under the title"), value: album.description) { text in
+                        model.changeAlbums { $0.setDescription(album.id, to: text) }
+                    }
+                }
+                LabeledContent("Cover") {
+                    HStack {
+                        SquareThumbnail(url: model.coverURL(for: album, photos: photos))
+                            .frame(width: 28, height: 28).clipShape(RoundedRectangle(cornerRadius: 4))
+                        Text(album.cover.isEmpty ? "Newest photo" : "Chosen photo").foregroundStyle(.secondary)
+                        Button("Choose…") { choosingCover = true }
+                            .disabled(photos.isEmpty)
+                            .popover(isPresented: $choosingCover) { CoverPicker(model: model, album: album, photos: photos) }
+                    }
+                }
+                Picker("Photo order", selection: Binding(get: { album.oldestFirst }, set: { oldest in
+                    model.changeAlbums { $0.setOldestFirst(album.id, oldest) }
+                })) {
+                    Text("Newest first").tag(false)
+                    Text("Oldest first").tag(true)
+                }
+                LabeledContent("Address") {
+                    Text((model.site?.config.baseurl ?? "") + album.url).font(.callout.monospaced()).textSelection(.enabled)
+                }
+                HStack {
+                    Button("Delete Album…", role: .destructive) { model.deleteAlbum(album) }
+                    Spacer()
+                    if model.pendingChanges > 0 {
+                        Button("Publish Changes…") { model.showChanges = true }.buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .frame(height: 330)
+        }
+    }
+}
+
+struct CoverPicker: View {
+    var model: AppModel
+    var album: Album
+    var photos: [PhotoEntry]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Choose a cover").font(.headline)
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 4)], spacing: 4) {
+                    ForEach(photos) { photo in
+                        SquareThumbnail(url: model.fileURL(forSitePath: photo.image))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .overlay(RoundedRectangle(cornerRadius: 4)
+                                .strokeBorder(album.cover == photo.image ? Color.accentColor : .clear, lineWidth: 3))
+                            .choosable(photo.caption.isEmpty ? String(localized: "Photo") : photo.caption,
+                                       selected: album.cover == photo.image) {
+                                model.changeAlbums { $0.setCover(album.id, image: photo.image) }
+                                dismiss()
+                            }
+                    }
+                }
+            }
+            .frame(height: 220)
+            Button("Use the Newest Photo") {
+                model.changeAlbums { $0.setCover(album.id, image: nil) }
+                dismiss()
+            }
+            .disabled(album.cover.isEmpty)
+        }
+        .padding(14)
+        .frame(width: 320)
+    }
+}
+
+struct NewAlbumSheet: View {
+    var model: AppModel
+    var request: NewAlbumRequest
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var description = ""
+    @State private var files: [(edit: ContentEdit, reason: String)] = []
+    @State private var showFiles = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("New Album").font(.title2.weight(.semibold))
+            Text(request.photoPaths.isEmpty
+                ? "An album gets its own page on your site and is listed on the photos page. Nothing goes live until you publish."
+                : "The \(request.photoPaths.count) chosen photos go into it. It gets its own page and is listed on the photos page.")
+                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            TextField("Title", text: $title, prompt: Text("Title, such as Japan 2025"))
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(create)
+            TextField("Description", text: $description, prompt: Text("Description (optional)"), axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(2 ... 4)
+            if !title.trimmingCharacters(in: .whitespaces).isEmpty {
+                let id = Albums.newID(for: title, taken: Set(model.albums.map(\.id)))
+                Text("Its address: \((model.site?.config.baseurl ?? "") + Albums.url(id))").font(.callout).foregroundStyle(.secondary)
+            }
+            if !files.isEmpty {
+                DisclosureGroup(isExpanded: $showFiles) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(files, id: \.edit.path) { step in
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(step.edit.path).font(.caption.monospaced()).frame(width: 190, alignment: .leading)
+                                Text(step.reason).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                } label: {
+                    Text("Also adds \(files.count) site files that show albums").font(.callout)
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Create Album", action: create)
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 500)
+        .onAppear { files = model.albumSiteChanges() }
+    }
+
+    func create() {
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        model.createAlbum(title: title, description: description, adding: request.photoPaths)
+        dismiss()
     }
 }
 
@@ -265,6 +741,16 @@ struct GallerySheet: View {
                 }
                 .frame(maxHeight: 360)
                 HStack {
+                    let albums = model.albums
+                    if !albums.isEmpty {
+                        Menu("Show an Album Instead") {
+                            ForEach(albums) { album in
+                                Button(album.title) { model.insertAlbum(album.id, replacing: gallery) }
+                            }
+                        }
+                        .fixedSize()
+                        .help(String(localized: "Shows one of your photo albums here, and leaves these pictures out"))
+                    }
                     Spacer()
                     Button("Cancel") { model.cancelGallery() }.keyboardShortcut(.cancelAction)
                     Button("Insert Gallery") { if let g = model.pendingGallery { model.insertGallery(g) } }

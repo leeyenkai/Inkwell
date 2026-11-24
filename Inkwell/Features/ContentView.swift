@@ -95,11 +95,7 @@ struct SiteWindow: View {
                                            description: Text("See where it is used, replace it everywhere at once, or delete it."))
                 }
             } else if model.showsPhotoGrid {
-                if let id = model.selectedPhotoID, let photo = model.photos.first(where: { $0.id == id }) {
-                    PhotoDetail(model: model, photo: photo)
-                } else {
-                    ContentUnavailableView("Choose a photo", systemImage: "photo", description: Text("Edit its caption, alt text, place and date."))
-                }
+                PhotosDetail(model: model)
             } else if model.sidebarSelection == .tags {
                 if let tag = model.selectedTag {
                     TagDetail(model: model, tag: tag)

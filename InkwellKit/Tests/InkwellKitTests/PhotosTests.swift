@@ -45,7 +45,8 @@ final class PhotosTests: XCTestCase {
         XCTAssertEqual(config.collections.last?.name, "photos")
         XCTAssertEqual(config.collections.last?.output, false)
         let newPage = try String(contentsOf: temp.appending(path: "photos.md"), encoding: .utf8)
-        let expected = "---\nlayout: default\ntitle: Photos\n---\n\n# Photos\n\nSome I like.\n\n<div class=\"photo-stream\">\n{% assign photos"
+        let expected = "---\nlayout: default\ntitle: Photos\n---\n\n# Photos\n\nSome I like.\n\n{% include inkwell/albums.html %}\n\n"
+            + "<div class=\"photo-stream\">\n{% assign photos"
         XCTAssertTrue(newPage.hasPrefix(expected))
         let photo = FrontMatterDocument(text: try String(contentsOf: temp.appending(path: "_photos/2026-01-14-harbour.md"), encoding: .utf8))
         XCTAssertEqual(photo.value("image"), .string("/assets/images/harbour.jpg"))
