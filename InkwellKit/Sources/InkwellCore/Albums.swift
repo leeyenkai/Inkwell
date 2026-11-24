@@ -77,7 +77,7 @@ public enum Albums {
         return id
     }
 
-    static func pageText(id: String, title: String) -> String {
+    public static func pageText(id: String, title: String) -> String {
         FrontMatterDocument(fields: [("layout", "album"), ("title", YAMLFormat.quoted(title)), ("album", id),
                                      ("permalink", url(id))], body: "").text
     }
