@@ -3,11 +3,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 import WebKit
 
-/// Serves the site's own files (CSS, images, fonts) to the preview, so `/assets/...` resolves as it does on the live site.
+/// Answers the preview's requests the way the built site would (pages, theme files, compiled Sass), so `/assets/...`
+/// and links resolve as on the live site.
 final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
     static let scheme = "inkwell-site"
     var root: URL
     var baseurl = ""
+    var resources: SiteResources?
 
     init(root: URL) {
         self.root = root
@@ -15,41 +17,54 @@ final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
 
     func webView(_: WKWebView, start task: any WKURLSchemeTask) {
         guard let url = task.request.url else { return }
-        var path = url.path.removingPercentEncoding ?? url.path
-        // Project sites live under /<repository>/; files are at the site root here.
+        let path = url.path(percentEncoded: false)
+        let response: SiteResources.Response = if let resources {
+            resources.response(for: path)
+        } else {
+            Self.file(path: path, root: root, baseurl: baseurl)
+        }
+        let headers = ["Content-Type": response.mimeType, "Cache-Control": "no-store"]
+        task.didReceive(HTTPURLResponse(url: url, statusCode: response.status, httpVersion: "HTTP/1.1", headerFields: headers)!)
+        task.didReceive(response.data)
+        task.didFinish()
+    }
+
+    static func file(path requested: String, root: URL, baseurl: String) -> SiteResources.Response {
+        var path = requested
         if !baseurl.isEmpty, path.hasPrefix(baseurl) { path = String(path.dropFirst(baseurl.count)) }
         if path.hasSuffix("/") { path += "index.html" }
         let file = root.appending(path: String(path.drop { $0 == "/" })).standardizedFileURL
         guard file.path.hasPrefix(root.standardizedFileURL.path), let data = try? Data(contentsOf: file) else {
-            task.didReceive(HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: nil)!)
-            task.didReceive(Data())
-            task.didFinish()
-            return
+            return SiteResources.Response(status: 404, data: Data(), mimeType: "text/plain")
         }
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-        let headers = ["Content-Type": mime, "Cache-Control": "no-store"]
-        task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!)
-        task.didReceive(data)
-        task.didFinish()
+        return SiteResources.Response(status: 200, data: data, mimeType: mime)
     }
 
     func webView(_: WKWebView, stop _: any WKURLSchemeTask) {}
 }
 
 struct SitePreview: NSViewRepresentable {
-    var html: String
-    var pageURL: String
+    /// Either a page's HTML (the editor's live preview) or an address to browse (the Design preview).
+    var html: String = ""
+    var address: String?
+    var pageURL: String = "/"
     var root: URL
     var baseurl = ""
+    var resources: SiteResources?
     /// Changing this reloads the whole page, for changes the HTML does not show (stylesheets, images).
     var reloadToken = 0
+    var appearance: AppModel.PreviewAppearance = .system
+    var onNavigate: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
         let handler = SiteSchemeHandler(root: root)
         handler.baseurl = baseurl
+        handler.resources = resources
         config.setURLSchemeHandler(handler, forURLScheme: SiteSchemeHandler.scheme)
         context.coordinator.handler = handler
         let web = WKWebView(frame: .zero, configuration: config)
@@ -63,12 +78,26 @@ struct SitePreview: NSViewRepresentable {
         let c = context.coordinator
         c.handler?.root = root
         c.handler?.baseurl = baseurl
-        if c.reloadToken != reloadToken {
-            c.reloadToken = reloadToken
-            c.html = nil
+        c.handler?.resources = resources
+        c.onNavigate = onNavigate
+        c.browsing = address != nil
+        switch appearance {
+        case .system: web.appearance = nil
+        case .light: web.appearance = NSAppearance(named: .aqua)
+        case .dark: web.appearance = NSAppearance(named: .darkAqua)
         }
+        let reload = c.reloadToken != reloadToken
+        c.reloadToken = reloadToken
+
+        if let address {
+            guard reload || c.loadedURL != address else { return }
+            c.loadedURL = address
+            if let url = Self.url(address) { web.load(URLRequest(url: url)) }
+            return
+        }
+        if reload { c.html = nil }
         guard c.html != html else { return }
-        let base = URL(string: "\(SiteSchemeHandler.scheme)://site\(pageURL.hasPrefix("/") ? pageURL : "/" + pageURL)")
+        let base = Self.url(pageURL)
         // Same page: swap the body in place so the scroll position stays where the writer is reading.
         if c.loadedURL == pageURL, c.isLoaded, let body = Self.body(of: html), let old = c.html.flatMap(Self.head), old == Self.head(html) {
             let json = (try? String(data: JSONEncoder().encode(body), encoding: .utf8)) ?? "\"\""
@@ -79,6 +108,10 @@ struct SitePreview: NSViewRepresentable {
         }
         c.html = html
         c.loadedURL = pageURL
+    }
+
+    static func url(_ path: String) -> URL? {
+        URL(string: "\(SiteSchemeHandler.scheme)://site\(path.hasPrefix("/") ? path : "/" + path)")
     }
 
     static func body(of html: String) -> String? {
@@ -98,15 +131,22 @@ struct SitePreview: NSViewRepresentable {
         var loadedURL: String?
         var isLoaded = false
         var reloadToken = 0
+        var browsing = false
+        var onNavigate: ((String) -> Void)?
 
-        func webView(_: WKWebView, didFinish _: WKNavigation!) {
+        func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             isLoaded = true
+            if browsing, let url = webView.url, url.scheme == SiteSchemeHandler.scheme {
+                let path = url.path(percentEncoded: false)
+                loadedURL = path
+                onNavigate?(path)
+            }
         }
 
         func webView(_: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
             guard action.navigationType == .linkActivated, let url = action.request.url else { return .allow }
-            if url.fragment != nil, url.scheme == SiteSchemeHandler.scheme { return .allow }
-            if url.scheme == "http" || url.scheme == "https" { NSWorkspace.shared.open(url) }
+            if url.scheme == SiteSchemeHandler.scheme { return browsing || url.fragment != nil ? .allow : .cancel }
+            if url.scheme == "http" || url.scheme == "https" || url.scheme == "mailto" { NSWorkspace.shared.open(url) }
             return .cancel
         }
     }
@@ -148,7 +188,8 @@ struct PreviewPane: View {
                 HStack {
                     Spacer(minLength: 0)
                     if let page, let root = model.site?.root {
-                        SitePreview(html: page.html, pageURL: editor.currentURL, root: root, baseurl: model.site?.config.baseurl ?? "")
+                        SitePreview(html: page.html, pageURL: editor.currentURL, root: root, baseurl: model.site?.config.baseurl ?? "",
+                                    resources: model.siteResources, appearance: model.previewAppearance)
                             .frame(width: model.previewWidth == .phone ? min(390, geo.size.width) : geo.size.width)
                             .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .phone ? 18 : 0))
                             .overlay {

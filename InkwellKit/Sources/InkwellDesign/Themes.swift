@@ -196,6 +196,8 @@ public struct DesignTokens: Sendable {
         public var group: String
         public var light: String?
         public var dark: String?
+        /// The value in a `prefers-color-scheme: light` block, for themes whose default is dark.
+        public var lightMode: String?
         public var id: String { name }
     }
 
@@ -204,8 +206,13 @@ public struct DesignTokens: Sendable {
     public var lightFile: String
     public var darkFile: String
     public var theme: ThemeManifest?
+    /// For SCSS themes: the theme's own main stylesheet, copied into the site the first time a variable is changed.
+    public var sassTemplate: URL?
 
-    public static func load(siteRoot: URL) -> DesignTokens? {
+    /// Whether separate light and dark palettes can be kept (not for Sass variables, which have one value each).
+    public var supportsColorSchemes: Bool { sassTemplate == nil }
+
+    public static func load(siteRoot: URL, themeRoot: URL? = nil) -> DesignTokens? {
         let read = { (path: String) in try? String(contentsOf: siteRoot.appending(path: path), encoding: .utf8) }
         if let light = read("assets/css/inkwell.css") {
             let config = ConfigDocument(text: read("_config.yml") ?? "")
@@ -234,32 +241,115 @@ public struct DesignTokens: Sendable {
             let entries = order.map { name in
                 let light = doc.value(name, scheme: .light)
                 let kind = TokenKind.infer(name: name, value: light ?? doc.value(name, scheme: .dark) ?? "")
-                return Entry(name: name, label: label(for: name), kind: kind, group: group(for: kind), light: light, dark: doc.value(name, scheme: .dark))
+                return Entry(name: name, label: label(for: name), kind: kind, group: group(for: kind), light: light, dark: doc.value(name, scheme: .dark),
+                             lightMode: doc.value(name, scheme: .lightMode))
             }
             let path = "assets/css/\(file.lastPathComponent)"
             return DesignTokens(entries: entries, lightFile: path, darkFile: path, theme: nil)
         }
-        return nil
+        return themeRoot.flatMap { sassTokens(siteRoot: siteRoot, themeRoot: $0) }
+    }
+
+    /// A Sass theme's `!default` variables, with the site's overrides from `assets/main.scss`.
+    static func sassTokens(siteRoot: URL, themeRoot: URL) -> DesignTokens? {
+        let fm = FileManager.default
+        let sassFolder = themeRoot.appending(path: "_sass")
+        let files = ((try? fm.contentsOfDirectory(at: sassFolder, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "scss" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+        var defaults: [(String, String)] = []
+        for file in files {
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            for (name, value) in SassVariables.declarations(in: text, defaultsOnly: true) where !defaults.contains(where: { $0.0 == name }) {
+                defaults.append((name, value))
+            }
+        }
+        guard !defaults.isEmpty else { return nil }
+        let path = "assets/main.scss"
+        let overrides = (try? String(contentsOf: siteRoot.appending(path: path), encoding: .utf8))
+            .map { Dictionary(SassVariables.declarations(in: $0, defaultsOnly: false), uniquingKeysWith: { $1 }) } ?? [:]
+        let entries = defaults.map { name, value in
+            let current = overrides[name] ?? value
+            let kind = TokenKind.infer(name: name, value: current)
+            return Entry(name: "$" + name, label: label(for: name), kind: kind, group: group(for: kind), light: current, dark: nil)
+        }
+        return DesignTokens(entries: entries, lightFile: path, darkFile: path, theme: nil,
+                            sassTemplate: themeRoot.appending(path: "assets/main.scss"))
     }
 
     /// Writes one value and returns the change made (nil when nothing changed).
     @discardableResult
     public func set(_ name: String, to value: String, scheme: ColorSchemeKind, siteRoot: URL) throws -> FileChange? {
+        if let template = sassTemplate {
+            let url = siteRoot.appending(path: lightFile)
+            let existing = try? String(contentsOf: url, encoding: .utf8)
+            let base = existing ?? (try? String(contentsOf: template, encoding: .utf8)) ?? "---\n---\n\n"
+            let updated = SassVariables.set(String(name.drop { $0 == "$" }), to: value, in: base)
+            guard updated != existing else { return nil }
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(updated.utf8).write(to: url, options: .atomic)
+            return FileChange(path: lightFile, oldText: existing, newText: updated, reason: "Design change")
+        }
         let path = scheme == .dark ? darkFile : lightFile
         let url = siteRoot.appending(path: path)
         let old = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
         var doc = CSSTokenDocument(text: old)
         // Inkwell themes keep the dark palette in its own file as a plain :root block.
-        let target: ColorSchemeKind = theme != nil || lightFile != darkFile ? .light : scheme
+        let target: ColorSchemeKind = (theme != nil || lightFile != darkFile) && scheme == .dark ? .light : scheme
         doc.set(name, to: value, scheme: target)
         guard doc.text != old else { return nil }
         try Data(doc.text.utf8).write(to: url, options: .atomic)
         return FileChange(path: path, oldText: old, newText: doc.text, reason: "Design change")
     }
 
+    /// A starting point for the other palette: the same hues with lightness turned over (dark grey ↔ light grey).
+    public static func invertedLightness(_ hex: String) -> String? {
+        var digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# "))
+        if digits.count == 3 { digits = String(digits.flatMap { [$0, $0] }) }
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        let r = Double((value >> 16) & 0xFF) / 255, g = Double((value >> 8) & 0xFF) / 255, b = Double(value & 0xFF) / 255
+        let maxC = max(r, g, b), minC = min(r, g, b)
+        let l = (maxC + minC) / 2
+        let d = maxC - minC
+        var h = 0.0, s = 0.0
+        if d > 0 {
+            s = l > 0.5 ? d / (2 - maxC - minC) : d / (maxC + minC)
+            switch maxC {
+            case r: h = (g - b) / d + (g < b ? 6 : 0)
+            case g: h = (b - r) / d + 2
+            default: h = (r - g) / d + 4
+            }
+            h /= 6
+        }
+        let newL = 1 - l
+        func hue(_ p: Double, _ q: Double, _ t0: Double) -> Double {
+            var t = t0
+            if t < 0 { t += 1 }
+            if t > 1 { t -= 1 }
+            if t < 1 / 6 { return p + (q - p) * 6 * t }
+            if t < 1 / 2 { return q }
+            if t < 2 / 3 { return p + (q - p) * (2 / 3 - t) * 6 }
+            return p
+        }
+        let q = newL < 0.5 ? newL * (1 + s) : newL + s - newL * s, p = 2 * newL - q
+        let (nr, ng, nb) = s == 0 ? (newL, newL, newL) : (hue(p, q, h + 1 / 3), hue(p, q, h), hue(p, q, h - 1 / 3))
+        return String(format: "#%02X%02X%02X", Int((nr * 255).rounded()), Int((ng * 255).rounded()), Int((nb * 255).rounded()))
+    }
+
+    /// Relative luminance of a hex colour, 0 (black) to 1 (white).
+    public static func luminance(_ hex: String) -> Double? {
+        var digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# "))
+        if digits.count == 3 { digits = String(digits.flatMap { [$0, $0] }) }
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        func channel(_ c: UInt32) -> Double {
+            let v = Double(c) / 255
+            return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * channel((value >> 16) & 0xFF) + 0.7152 * channel((value >> 8) & 0xFF) + 0.0722 * channel(value & 0xFF)
+    }
+
     static func label(for name: String) -> String {
         let expansions = ["bg": "background", "fg": "foreground", "txt": "text", "col": "colour", "clr": "colour"]
-        let words = name.trimmingCharacters(in: CharacterSet(charactersIn: "-")).split(separator: "-").map { expansions[String($0)] ?? String($0) }
+        let words = name.trimmingCharacters(in: CharacterSet(charactersIn: "-$")).split(separator: "-").map { expansions[String($0)] ?? String($0) }
         let text = words.filter { $0 != "color" }.joined(separator: " ")
         return text.prefix(1).uppercased() + text.dropFirst()
     }

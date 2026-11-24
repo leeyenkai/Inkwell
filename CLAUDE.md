@@ -13,7 +13,9 @@ If a request conflicts with the spec, say so and update the spec before the code
 
 - Swift 6, SwiftUI, AppKit where SwiftUI falls short (the text view). macOS 26 or later, Apple silicon. App target is MainActor by default.
 - `InkwellKit` local package (macOS 26 and iOS 26), imported by the app as one module (`InkwellKit` re-exports the rest).
-- No third-party Swift packages, the same rule as MediaPull. Ask before adding any.
+- No third-party Swift packages, the same rule as MediaPull. Ask before adding any. The one bundled engine is dart-sass
+  (pinned version and SHA-256 in `scripts/fetch-engines.sh`, copied into the app by `scripts/bundle-engines.sh` in a build
+  phase); run `scripts/fetch-engines.sh` once before building.
 - Same formatting as MediaPull: `.swiftformat` and `.swiftlint.yml`, 140-column lines, few comments that explain why.
 
 ## Layout
@@ -23,7 +25,8 @@ Inkwell/                 app target (synchronized folder)
   App/                   InkwellApp (scenes, commands, launch flags, self-test), AppModel, AccountModel, Backends (GitHub / local git),
                          EditorDocument, SiteCreation
   Features/Design/       DesignModel, DesignViews (panel, token rows, theme gallery, preview), SettingsViews (navigation, settings,
-                         custom domain)
+                         custom domain), CodeViews (file list, code editor pane)
+  Platform/CodeTextView  CodeHighlighter and the CodeEditor text view
   Features/              ContentView (window, sidebar, list, detail, site menu), Onboarding (welcome, sign-in, site picker, new site),
                          EditorView (+ Properties), PreviewView, PublishSession (publish/update/delete/unpublish/changes), Sheets
   Platform/              InkwellTextView (NSTextView, MarkdownStyler, MarkdownEditor representable)
@@ -55,7 +58,7 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 - Design self-test: `--site <sample-site> --selftest-design` (applies a theme, edits colours, options and the menu, checks files,
   preview and the change list; refuses GitHub remotes).
 - Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--pane design|navigation|settings`,
-  `--apply-theme <id>`, `--theme-gallery`, `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
+  `--apply-theme <id>`, `--theme-gallery`, `--pane code --code-file <path> [--theme-file]`, `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
 - README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
 ## Rules

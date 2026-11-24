@@ -1,9 +1,11 @@
 import Foundation
 
-/// Which palette a `:root` block belongs to.
+/// Which palette a `:root` block belongs to: the default one (`light`, for historical reasons the name of the plain
+/// `:root` block), or an override for readers in dark mode or light mode.
 public enum ColorSchemeKind: String, Sendable, Codable, Hashable {
     case light
     case dark
+    case lightMode
 }
 
 public enum TokenKind: String, Sendable, Codable, Hashable {
@@ -17,11 +19,12 @@ public enum TokenKind: String, Sendable, Codable, Hashable {
     public static func infer(name: String, value: String) -> TokenKind {
         let v = value.trimmingCharacters(in: .whitespaces).lowercased()
         if v.hasPrefix("#") || v.hasPrefix("rgb") || v.hasPrefix("hsl") || v.hasPrefix("oklch") || v.hasPrefix("color(") { return .color }
-        if name.contains("font") || v.contains(",") && (v.contains("serif") || v.contains("sans") || v.contains("mono") || v.contains("system")) {
-            return .font
-        }
         if v.range(of: #"^-?[\d.]+(px|rem|em|%|ch|vw|vh)$"#, options: .regularExpression) != nil { return .length }
         if Double(v) != nil { return .number }
+        let generic = ["serif", "sans", "mono", "system", "cursive", "rounded"].contains { v.contains($0) }
+        if v.contains(",") && generic || name.contains("font-family") || name.hasSuffix("font") && !v.contains("$") && !v.contains("(") {
+            return .font
+        }
         return .other
     }
 }
@@ -69,6 +72,7 @@ public struct CSSTokenDocument: Sendable, Equatable {
     }
 
     public var hasDarkPalette: Bool { blocks().contains { $0.scheme == .dark } }
+    public var hasLightModePalette: Bool { blocks().contains { $0.scheme == .lightMode } }
 
     /// Sets a property, adding it at the end of the palette's block (and the block itself) when missing.
     public mutating func set(_ name: String, to value: String, scheme: ColorSchemeKind = .light) {
@@ -90,8 +94,9 @@ public struct CSSTokenDocument: Sendable, Equatable {
         switch scheme {
         case .light:
             text += "\(separator)\n:root {\n    \(name): \(value);\n}\n"
-        case .dark:
-            text += "\(separator)\n@media (prefers-color-scheme: dark) {\n    :root {\n        \(name): \(value);\n    }\n}\n"
+        case .dark, .lightMode:
+            let mode = scheme == .dark ? "dark" : "light"
+            text += "\(separator)\n@media (prefers-color-scheme: \(mode)) {\n    :root {\n        \(name): \(value);\n    }\n}\n"
         }
     }
 
@@ -121,8 +126,10 @@ public struct CSSTokenDocument: Sendable, Equatable {
                 if let open = stack.popLast() {
                     let selectors = open.prelude.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                     if selectors.contains(where: { $0 == ":root" || $0 == "html" }) {
-                        let dark = stack.contains { $0.prelude.replacingOccurrences(of: " ", with: "").contains("prefers-color-scheme:dark") }
-                        result.append(Block(scheme: dark ? .dark : .light, contentRange: NSRange(location: open.start, length: i - open.start)))
+                        let preludes = stack.map { $0.prelude.replacingOccurrences(of: " ", with: "") }
+                        let scheme: ColorSchemeKind = preludes.contains { $0.contains("prefers-color-scheme:dark") } ? .dark
+                            : preludes.contains { $0.contains("prefers-color-scheme:light") } ? .lightMode : .light
+                        result.append(Block(scheme: scheme, contentRange: NSRange(location: open.start, length: i - open.start)))
                     }
                 }
                 preludeStart = i + 1

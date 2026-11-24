@@ -47,3 +47,17 @@ It never touches posts or pages. `plan.apply(to:)` writes the files, and plannin
 `set(_:to:scheme:siteRoot:)` writes one value and returns the `FileChange`. For a hand-made theme, setting a dark value adds a `prefers-color-scheme: dark` block to that stylesheet.
 
 Tests: `InkwellKit/Tests/InkwellKitTests/DesignTests.swift`. Each theme is applied to the fixture site and every page is rendered.
+
+## Sass themes and the preview's site server
+
+- `SassVariables` reads a Sass theme's `$name: value !default;` declarations and writes overrides (`$name: value;`) into the site's `assets/main.scss`, just above the import, as minima's documentation describes. `DesignTokens.load(siteRoot:themeRoot:)` falls back to these when the site has no Inkwell theme and no `:root` variables. `supportsColorSchemes` is false for them.
+- `CSSTokenDocument` knows three palettes: the default `:root`, `prefers-color-scheme: dark`, and `prefers-color-scheme: light` (`ColorSchemeKind.lightMode`, for sites that are dark by default). `DesignTokens.invertedLightness` makes the starting point for a new palette.
+- `ThemeReference.of(config)` maps `theme:` (the gem themes GitHub Pages supports, at the versions it uses) and `remote_theme:` to a GitHub repository. `ThemeCache` (InkwellSync) downloads it once into `~/Library/Caches/Inkwell/Themes`.
+- `SiteResources` (InkwellTemplate) answers any path the way the built site would:
+  - pages by URL, through their layouts, with GitHub Pages' default layouts;
+  - static files from the site, then from the theme;
+  - Liquid in front-matter files such as `feed.xml`;
+  - `.css` compiled from `.scss`/`.sass`, with both `_sass` folders on the load path;
+  - otherwise `404.html`.
+
+  The preview's `WKURLSchemeHandler` uses it, so the whole site can be browsed.

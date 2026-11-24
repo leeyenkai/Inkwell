@@ -44,8 +44,9 @@ enum SidebarSelection: Hashable {
     case design
     case navigation
     case settings
+    case code
 
-    var isDesign: Bool { [.design, .navigation, .settings].contains(self) }
+    var isDesign: Bool { [.design, .navigation, .settings, .code].contains(self) }
 }
 
 enum SyncStatus: Equatable {
@@ -100,11 +101,20 @@ final class AppModel {
     var showConflicts = false
     var showSitePicker = false
     var showThemeGallery = false
+    var codeFile: CodeFile?
     var pendingImage: PendingImage?
     var errorMessage: String?
 
     private(set) var previewBuilder: PreviewBuilder?
+    private(set) var siteResources: SiteResources?
     private(set) var design: DesignModel?
+    /// The gem or remote theme's files, once downloaded.
+    private(set) var themeRoot: URL?
+    private(set) var themeStatus: String?
+
+    /// The bundled dart-sass, for themes written in SCSS.
+    static let sass: SassCompiler? = Bundle.main.url(forResource: "dart-sass/sass", withExtension: nil)
+        .flatMap { FileManager.default.isExecutableFile(atPath: $0.path) ? SassCompiler(executable: $0) : nil }
     private var searchIndex: [String: String] = [:]
     weak var textView: InkwellTextView?
     private var draftStore: DraftStore?
@@ -115,6 +125,13 @@ final class AppModel {
         case desktop = "Desktop"
         case phone = "Phone"
     }
+
+    /// Which colour scheme the preview shows, so both palettes can be checked.
+    enum PreviewAppearance: String {
+        case system, light, dark
+    }
+
+    var previewAppearance: PreviewAppearance = .system
 
     // MARK: Opening sites
 
@@ -206,9 +223,11 @@ final class AppModel {
                 let first = site.sections.first { $0.collectionName != nil } ?? site.sections.first
                 sidebarSelection = first.map { .section($0.id) }
             }
+            themeRoot = nil
             rebuildDerived(site)
             refreshChanges()
             startSyncLoop()
+            loadTheme(for: site)
         } catch {
             loadError = error.localizedDescription
         }
@@ -229,15 +248,44 @@ final class AppModel {
 
     /// The preview's site object and the search index, built off the main thread.
     private func rebuildDerived(_ site: Site) {
+        let theme = themeRoot
         Task {
             let docs = site.documents + drafts
             let (builder, index) = await Task.detached {
                 var index: [String: String] = [:]
                 for doc in docs { index[doc.id] = (try? String(contentsOf: doc.fileURL, encoding: .utf8))?.lowercased() }
-                return (PreviewBuilder(site: site), index)
+                return (PreviewBuilder(site: site, timeZone: site.config.timeZone, themeRoot: theme), index)
             }.value
             previewBuilder = builder
+            siteResources = SiteResources(builder: builder, themeRoot: theme, sass: Self.sass)
             searchIndex = index
+        }
+    }
+
+    /// Fetches a gem or remote theme's files (once) so the preview can use its layouts and styles.
+    private func loadTheme(for site: Site) {
+        guard let reference = ThemeReference.of(site.config) else {
+            themeStatus = nil
+            return
+        }
+        let cache = ThemeCache.standard
+        if let cached = cache.cached(owner: reference.owner, repository: reference.repository, ref: reference.ref) {
+            themeRoot = cached
+            rebuildDerived(site)
+            design?.reload()
+            return
+        }
+        themeStatus = "Getting the \(reference.repository) theme for the preview…"
+        let client = account.client ?? GitHubClient(token: "")
+        Task {
+            do {
+                themeRoot = try await cache.ensure(owner: reference.owner, repository: reference.repository, ref: reference.ref, client: client)
+                themeStatus = nil
+                if let site = self.site { rebuildDerived(site) }
+                design?.reload()
+            } catch {
+                themeStatus = "The \(reference.repository) theme could not be downloaded, so the preview is unstyled: \(error.localizedDescription)"
+            }
         }
     }
 
@@ -331,7 +379,7 @@ final class AppModel {
             site.documents(in: id) + drafts.filter { $0.sectionID == id }
         case .drafts?:
             drafts + site.documents.filter { !$0.publishedFlag || changes[$0.relativePath] == .added }
-        case nil, .design?, .navigation?, .settings?:
+        case nil, .design?, .navigation?, .settings?, .code?:
             []
         }
         docs.sort { a, b in

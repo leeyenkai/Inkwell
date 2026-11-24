@@ -10,9 +10,11 @@ struct DesignPanel: View {
             Section {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(design.theme?.name ?? "Your own theme").font(.headline)
+                        Text(design.theme?.name ?? themeName).font(.headline)
                         Text(design.theme?.summary ?? (design.tokens == nil
                                 ? "This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here."
+                                : design.tokens?.sassTemplate != nil
+                                ? "Its Sass settings; your changes go in \(design.tokens?.lightFile ?? "assets/main.scss")."
                                 : "Settings found in \(design.tokens?.lightFile ?? "your stylesheet")."))
                             .font(.caption).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -32,13 +34,15 @@ struct DesignPanel: View {
                 } header: {
                     Text(group)
                 } footer: {
-                    if group == "Colours", !design.hasDarkPalette {
+                    if group == "Colours", design.secondScheme == nil, design.tokens?.supportsColorSchemes == true {
                         HStack {
-                            Text("Readers in dark mode see these colours too.").font(.caption).foregroundStyle(.secondary)
+                            Text(design.defaultIsDark ? "Your site is dark for every reader." : "Readers in dark mode see these colours too.")
+                                .font(.caption).foregroundStyle(.secondary)
                             Spacer()
-                            Button("Add Dark Mode") { design.addDarkPalette() }
+                            Button(design.defaultIsDark ? "Add Light Mode" : "Add Dark Mode") { design.addSecondPalette() }
                                 .controlSize(.small)
-                                .help("Start a second set of colours, used when the reader’s system is in dark mode")
+                                .help(design.defaultIsDark ? "Add colours for readers whose system is in light mode"
+                                    : "Add colours for readers whose system is in dark mode")
                         }
                     }
                 }
@@ -66,6 +70,13 @@ struct DesignPanel: View {
     }
 }
 
+extension DesignPanel {
+    var themeName: String {
+        if let reference = model.site.flatMap({ ThemeReference.of($0.config) }) { return reference.repository.capitalized + " theme" }
+        return "Your own theme"
+    }
+}
+
 struct TokenRow: View {
     var design: DesignModel
     var entry: DesignTokens.Entry
@@ -75,9 +86,15 @@ struct TokenRow: View {
         case .color:
             LabeledContent(entry.label) {
                 HStack(spacing: 14) {
-                    colorWell(entry.light, scheme: .light, help: design.hasDarkPalette ? "Light" : "Colour")
-                    if design.hasDarkPalette {
+                    switch design.secondScheme {
+                    case .dark?:
+                        colorWell(entry.light, scheme: .light, help: "Light")
                         colorWell(entry.dark ?? entry.light, scheme: .dark, help: "Dark")
+                    case .lightMode?:
+                        colorWell(entry.light, scheme: .light, help: "Dark")
+                        colorWell(entry.lightMode ?? entry.light, scheme: .lightMode, help: "Light")
+                    default:
+                        colorWell(entry.light, scheme: .light, help: "Colour")
                     }
                 }
             }
@@ -165,18 +182,17 @@ struct LengthRow: View {
         return (number, String(value[match.upperBound...]))
     }
 
+    /// A range around the current value, so 4px corners and 800px widths both get a useful slider.
     var range: ClosedRange<Double> {
-        guard let (_, unit) = parsed else { return 0 ... 100 }
-        switch (entry.name, unit) {
-        case (_, "rem"), (_, "em"): return 24 ... 80
-        case let (name, "px") where name.contains("radius"): return 0 ... 24
-        case (_, "px"): return 12 ... 26
-        case (_, ""): return 1.1 ... 2.2
-        default: return 0 ... 100
+        guard let (value, unit) = parsed else { return 0 ... 100 }
+        switch unit {
+        case "": return value <= 3 ? 1 ... 2.5 : 0 ... max(value * 2, 10)
+        case "%": return 0 ... 100
+        default: return 0 ... max(value * 2.5, value + 10)
         }
     }
 
-    var step: Double { parsed?.1 == "" ? 0.05 : 1 }
+    var step: Double { parsed.map { $0.1 == "" && $0.0 <= 3 } == true ? 0.05 : 1 }
 
     var body: some View {
         LabeledContent(entry.label) {
@@ -351,15 +367,21 @@ struct ThemeGallery: View {
 struct DesignPreview: View {
     var design: DesignModel
     @Bindable var model: AppModel
-    @State private var html = ""
-    @State private var url = "/"
-    @State private var renderTask: Task<Void, Never>?
+    @State private var resources: SiteResources?
+    @State private var token = 0
+    @State private var rebuildTask: Task<Void, Never>?
+
+    var choices: [(String, String)] {
+        var list = design.previewChoices
+        if !list.contains(where: { $0.1 == design.previewPage }) { list.insert((design.previewPage, design.previewPage), at: 0) }
+        return list
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Picker("Page", selection: Binding(get: { design.previewPage }, set: { design.previewPage = $0 })) {
-                    ForEach(design.previewChoices, id: \.1) { title, url in Text(title).tag(url) }
+                    ForEach(choices, id: \.1) { title, url in Text(title).tag(url) }
                 }
                 .frame(maxWidth: 260)
                 Picker("Width", selection: $model.previewWidth) {
@@ -369,7 +391,18 @@ struct DesignPreview: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
+                Picker("Appearance", selection: $model.previewAppearance) {
+                    Image(systemName: "circle.lefthalf.filled").help("Follow this Mac").tag(AppModel.PreviewAppearance.system)
+                    Image(systemName: "sun.max").help("Light mode").tag(AppModel.PreviewAppearance.light)
+                    Image(systemName: "moon").help("Dark mode").tag(AppModel.PreviewAppearance.dark)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
                 Spacer()
+                if let status = model.themeStatus {
+                    Label(status, systemImage: "arrow.down.circle").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
@@ -377,31 +410,33 @@ struct DesignPreview: View {
             GeometryReader { geo in
                 HStack {
                     Spacer(minLength: 0)
-                    if !html.isEmpty {
-                        SitePreview(html: html, pageURL: url, root: design.root, baseurl: model.site?.config.baseurl ?? "", reloadToken: design.revision)
+                    if let resources {
+                        SitePreview(address: design.previewPage, root: design.root, baseurl: model.site?.config.baseurl ?? "",
+                                    resources: resources, reloadToken: token, appearance: model.previewAppearance,
+                                    onNavigate: { path in if design.previewPage != path { design.previewPage = path } })
                             .frame(width: model.previewWidth == .phone ? min(390, geo.size.width) : geo.size.width)
                             .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .phone ? 18 : 0))
                             .padding(.vertical, model.previewWidth == .phone ? 12 : 0)
                     } else {
-                        ContentUnavailableView("Nothing to preview", systemImage: "eye.slash")
+                        ProgressView()
                     }
                     Spacer(minLength: 0)
                 }
             }
             .background(Color(nsColor: .underPageBackgroundColor))
         }
-        .onAppear(perform: render)
-        .onChange(of: design.revision) { render() }
-        .onChange(of: design.previewPage) { render() }
+        .onAppear(perform: rebuild)
+        .onChange(of: design.revision) { rebuild() }
+        .onChange(of: model.themeRoot) { rebuild() }
     }
 
-    func render() {
-        renderTask?.cancel()
-        renderTask = Task {
+    func rebuild() {
+        rebuildTask?.cancel()
+        rebuildTask = Task {
             try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled, let result = design.previewHTML() else { return }
-            html = result.html
-            url = result.url
+            guard !Task.isCancelled else { return }
+            resources = design.makeResources()
+            token += 1
         }
     }
 }

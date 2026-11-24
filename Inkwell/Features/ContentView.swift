@@ -39,6 +39,7 @@ struct SiteWindow: View {
                     switch model.sidebarSelection {
                     case .navigation?: NavigationEditor(design: design, model: model)
                     case .settings?: SiteSettingsView(design: design, model: model)
+                    case .code?: CodeFileList(design: design, model: model)
                     default: DesignPanel(design: design, model: model)
                     }
                 }
@@ -48,7 +49,14 @@ struct SiteWindow: View {
                     .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
             }
         } detail: {
-            if let design = model.design, model.sidebarSelection?.isDesign == true {
+            if let design = model.design, model.sidebarSelection == .code {
+                if let file = model.codeFile {
+                    CodeEditorPane(design: design, model: model, file: file)
+                } else {
+                    ContentUnavailableView("Choose a file", systemImage: "chevron.left.forwardslash.chevron.right",
+                                           description: Text("Layouts, includes, styles and settings. Changes show in the preview as you type."))
+                }
+            } else if let design = model.design, model.sidebarSelection?.isDesign == true {
                 DesignPreview(design: design, model: model)
             } else {
                 DetailView(model: model)
@@ -133,6 +141,7 @@ struct SidebarView: View {
                 Label("Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
                 Label("Navigation", systemImage: "menubar.rectangle").tag(SidebarSelection.navigation)
                 Label("Settings", systemImage: "gearshape").tag(SidebarSelection.settings)
+                Label("Code", systemImage: "chevron.left.forwardslash.chevron.right").tag(SidebarSelection.code)
             }
         }
         .listStyle(.sidebar)
@@ -240,6 +249,7 @@ struct DocumentListView: View {
         case .design?: "Design"
         case .navigation?: "Navigation"
         case .settings?: "Settings"
+        case .code?: "Code"
         case nil: ""
         }
     }

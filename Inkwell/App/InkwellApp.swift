@@ -88,7 +88,8 @@ struct FormatCommands: Commands {
     }
 }
 
-/// Launch arguments: `--fresh` (do not reopen the last site), `--pane design|navigation|settings`, `--apply-theme <id>`, `--site <folder>`,
+/// Launch arguments: `--fresh` (do not reopen the last site), `--pane design|navigation|settings|code` (`--code-file <path>`,
+/// `--theme-file`), `--apply-theme <id>`, `--site <folder>`,
 /// `--open <path in site>`, `--section <id>`, `--preview`,
 /// `--source`, `--publish-sheet`,
 /// `--new-draft <title>` with optional `--draft-body <file>`, and `--selftest-publish` (needs a site whose remote is not GitHub).
@@ -131,6 +132,9 @@ enum Launch {
         case "design": model.sidebarSelection = .design
         case "navigation": model.sidebarSelection = .navigation
         case "settings": model.sidebarSelection = .settings
+        case "code":
+            model.sidebarSelection = .code
+            if let path = value("--code-file") { model.codeFile = CodeFile(path: path, inTheme: args.contains("--theme-file")) }
         default: break
         }
         if let title = value("--new-draft") {
@@ -180,6 +184,10 @@ enum SelfTest {
         ok = check(config.contains("home_style: \"cards\"") && config.contains("title: \"Design Self-test\""), "settings written") && ok
         design.saveNavigation(design.navigation.entries + [NavigationEntry(title: "Elsewhere", url: "https://example.com")])
         ok = check(design.read("_data/navigation.yml")?.contains("https://example.com") == true, "menu written") && ok
+        let footer = CodeFile(path: "_includes/inkwell-footer.html", inTheme: false)
+        design.saveCode(footer, (design.read(footer.path) ?? "") + "<p class=\"selftest-marker\">Edited in the code editor</p>\n")
+        let browsed = design.makeResources().map { String(decoding: $0.response(for: "/notes").data, as: UTF8.self) } ?? ""
+        ok = check(browsed.contains("selftest-marker") && browsed.contains("post-list"), "code edit shows when browsing to /notes") && ok
         let preview = design.previewHTML()?.html ?? ""
         ok = check(preview.contains("inkwell.css") && preview.contains("Design Self-test") && preview.contains("Elsewhere"), "preview") && ok
         try? await Task.sleep(for: .seconds(2))

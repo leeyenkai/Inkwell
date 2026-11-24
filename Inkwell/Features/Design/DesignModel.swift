@@ -27,7 +27,7 @@ final class DesignModel {
     }
 
     func reload() {
-        tokens = DesignTokens.load(siteRoot: root)
+        tokens = DesignTokens.load(siteRoot: root, themeRoot: model?.themeRoot)
         config = ConfigDocument(text: read("_config.yml") ?? "")
         let navText = read("_data/navigation.yml")
         hasNavigationFile = navText != nil
@@ -48,6 +48,9 @@ final class DesignModel {
             model?.errorMessage = "Could not save \(path): \(error.localizedDescription)"
         }
     }
+
+    /// Something under the design changed on disk (a code edit): refresh the preview and the change list.
+    func bump() { changed(siteStructure: true) }
 
     private func changed(siteStructure: Bool = false) {
         revision += 1
@@ -85,7 +88,7 @@ final class DesignModel {
         } catch {
             model?.errorMessage = error.localizedDescription
         }
-        self.tokens = DesignTokens.load(siteRoot: root)
+        self.tokens = DesignTokens.load(siteRoot: root, themeRoot: model?.themeRoot)
         changed()
     }
 
@@ -108,14 +111,31 @@ final class DesignModel {
     }
 
     var hasDarkPalette: Bool { tokens?.entries.contains { $0.kind == .color && $0.dark != nil } ?? false }
+    var hasLightModePalette: Bool { tokens?.entries.contains { $0.kind == .color && $0.lightMode != nil } ?? false }
 
-    /// Starts a dark palette as a copy of the current colours, to adjust from there.
-    func addDarkPalette() {
+    /// The second palette the site has (or would get): dark mode for light sites, light mode for dark ones.
+    var secondScheme: ColorSchemeKind? {
+        if hasDarkPalette { return .dark }
+        if hasLightModePalette { return .lightMode }
+        return nil
+    }
+
+    /// Whether the default colours are dark, judged by the background.
+    var defaultIsDark: Bool {
+        let colors = tokens?.entries.filter { $0.kind == .color } ?? []
+        let background = colors.first { $0.name.contains("bg") || $0.name.contains("background") } ?? colors.first
+        return background?.light.flatMap(DesignTokens.luminance).map { $0 < 0.35 } ?? false
+    }
+
+    /// Adds the other palette, starting from the current colours with their lightness turned over.
+    func addSecondPalette() {
         guard let tokens else { return }
-        for entry in tokens.entries where entry.kind == .color && entry.dark == nil {
-            _ = try? tokens.set(entry.name, to: entry.light ?? "#000000", scheme: .dark, siteRoot: root)
+        let scheme: ColorSchemeKind = defaultIsDark ? .lightMode : .dark
+        for entry in tokens.entries where entry.kind == .color {
+            guard let value = entry.light else { continue }
+            _ = try? tokens.set(entry.name, to: DesignTokens.invertedLightness(value) ?? value, scheme: scheme, siteRoot: root)
         }
-        self.tokens = DesignTokens.load(siteRoot: root)
+        self.tokens = DesignTokens.load(siteRoot: root, themeRoot: model?.themeRoot)
         changed()
     }
 
@@ -213,10 +233,18 @@ final class DesignModel {
 
     // MARK: Preview
 
+    /// A fresh view of the site's files for the preview to browse.
+    func makeResources() -> SiteResources? {
+        guard let site = try? SiteLoader.load(root) else { return nil }
+        let theme = model?.themeRoot
+        return SiteResources(builder: PreviewBuilder(site: site, timeZone: site.config.timeZone, themeRoot: theme), themeRoot: theme,
+                             sass: AppModel.sass)
+    }
+
     /// The page to preview, rendered with the current files.
     func previewHTML() -> (html: String, url: String)? {
         guard let site = try? SiteLoader.load(root) else { return nil }
-        let builder = PreviewBuilder(site: site, timeZone: site.config.timeZone)
+        let builder = PreviewBuilder(site: site, timeZone: site.config.timeZone, themeRoot: model?.themeRoot)
         let doc = site.documents.first { $0.url == previewPage || $0.url == previewPage + "/" }
             ?? site.documents.first { $0.url == "/" + site.config.baseurl.trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
             ?? site.documents.first { $0.relativePath == "index.md" || $0.relativePath == "index.html" }

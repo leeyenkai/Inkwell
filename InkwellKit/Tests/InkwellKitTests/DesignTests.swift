@@ -177,3 +177,50 @@ final class ThemeTests: XCTestCase {
         XCTAssertTrue(css.contains("--bg-color: #1a1a1a;"))
     }
 }
+
+final class PaletteTests: XCTestCase {
+    func testLightModeBlocksAndInversion() {
+        var doc = CSSTokenDocument(text: ":root {\n    --bg: #1a1a1a;\n}\n")
+        doc.set("--bg", to: "#f5f5f5", scheme: .lightMode)
+        XCTAssertTrue(doc.hasLightModePalette)
+        XCTAssertFalse(doc.hasDarkPalette)
+        XCTAssertEqual(doc.value("--bg", scheme: .lightMode), "#f5f5f5")
+        XCTAssertEqual(doc.value("--bg", scheme: .light), "#1a1a1a")
+        XCTAssertTrue(doc.text.contains("@media (prefers-color-scheme: light)"))
+        XCTAssertEqual(DesignTokens.invertedLightness("#1a1a1a"), "#E5E5E5")
+        XCTAssertEqual(DesignTokens.invertedLightness("#fff"), "#000000")
+        let blue = DesignTokens.invertedLightness("#64b5f6")!
+        XCTAssertLessThan(DesignTokens.luminance(blue)!, DesignTokens.luminance("#64b5f6")!)
+        XCTAssertLessThan(DesignTokens.luminance("#1a1a1a")!, 0.05)
+    }
+}
+
+final class SassVariableTests: XCTestCase {
+    func testDefaultsAndOverrides() throws {
+        let theme = FileManager.default.temporaryDirectory.appending(path: "inkwell-sass-theme-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let site = theme.appending(path: "site", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: theme) }
+        try FileManager.default.createDirectory(at: theme.appending(path: "_sass"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: theme.appending(path: "assets"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: site, withIntermediateDirectories: true)
+        try "$base-font-size:   16px !default;\n$brand-color:      #2a7ae2 !default;\n$grey-light: lighten($grey, 40%) !default;\n$local: 1px;\n"
+            .write(to: theme.appending(path: "_sass/minima.scss"), atomically: true, encoding: .utf8)
+        try "---\n# front matter\n---\n\n@import \"minima\";\n".write(to: theme.appending(path: "assets/main.scss"), atomically: true, encoding: .utf8)
+
+        let tokens = try XCTUnwrap(DesignTokens.load(siteRoot: site, themeRoot: theme))
+        XCTAssertFalse(tokens.supportsColorSchemes)
+        XCTAssertEqual(tokens.entries.map(\.name), ["$base-font-size", "$brand-color", "$grey-light"])
+        XCTAssertEqual(tokens.entries.first { $0.name == "$brand-color" }?.kind, .color)
+        XCTAssertEqual(tokens.entries.first { $0.name == "$brand-color" }?.label, "Brand")
+        XCTAssertEqual(tokens.entries.first { $0.name == "$grey-light" }?.kind, .other)
+
+        try tokens.set("$brand-color", to: "#c0392b", scheme: .light, siteRoot: site)
+        try tokens.set("$base-font-size", to: "18px", scheme: .light, siteRoot: site)
+        try tokens.set("$brand-color", to: "#8e44ad", scheme: .light, siteRoot: site)
+        let main = try String(contentsOf: site.appending(path: "assets/main.scss"), encoding: .utf8)
+        XCTAssertEqual(main, "---\n# front matter\n---\n\n$brand-color: #8e44ad;\n$base-font-size: 18px;\n@import \"minima\";\n")
+        let reloaded = try XCTUnwrap(DesignTokens.load(siteRoot: site, themeRoot: theme))
+        XCTAssertEqual(reloaded.entries.first { $0.name == "$brand-color" }?.light, "#8e44ad")
+        XCTAssertEqual(reloaded.entries.first { $0.name == "$base-font-size" }?.light, "18px")
+    }
+}
