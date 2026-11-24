@@ -25,6 +25,12 @@ struct ContentView: View {
                 openWindow(id: "help")
             }
         }
+        .onChange(of: model.updates.windowRequested) {
+            if model.updates.windowRequested {
+                model.updates.windowRequested = false
+                openWindow(id: "update")
+            }
+        }
         .onChange(of: model.settingsRequested) {
             if model.settingsRequested {
                 model.settingsRequested = false

@@ -59,6 +59,9 @@ struct InkwellApp: App {
                     .keyboardShortcut("i", modifiers: [.command, .option])
                 Divider()
             }
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesItem(updates: model.updates)
+            }
             FormatCommands(model: model)
             CommandGroup(replacing: .help) {
                 HelpMenuItems(model: model)
@@ -71,6 +74,11 @@ struct InkwellApp: App {
             HelpWindow(topic: $model.helpTopic)
         }
         .defaultSize(width: 860, height: 600)
+        Window("Software Update", id: "update") {
+            UpdateView(updates: model.updates)
+        }
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
     }
 }
 
@@ -228,6 +236,16 @@ enum Launch {
             model.beginPublish()
         }
         if args.contains("--settings") { model.settingsRequested = true }
+        if let feed = value("--update-feed") { model.updates.feedOverride = URL(string: feed) }
+        if args.contains("--check-updates") {
+            model.updates.windowRequested = true
+            await model.updates.check(userInitiated: true)
+        } else if !args.contains(where: { $0.hasPrefix("--selftest") || $0 == "--measure-typing" }) {
+            Task {
+                try? await Task.sleep(for: .seconds(5))
+                await model.updates.checkAutomatically()
+            }
+        }
         if let topic = value("--help").flatMap(HelpTopic.init(rawValue:)) {
             model.helpTopic = topic
             model.helpRequested = true

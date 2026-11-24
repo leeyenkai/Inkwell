@@ -32,7 +32,7 @@ struct HelpWindow: View {
 }
 
 enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
-    case start, writing, images, publishing, design, health, shortcuts
+    case start, writing, images, publishing, design, health, privacy, shortcuts
     var id: String { rawValue }
 
     var title: String {
@@ -43,6 +43,7 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
         case .publishing: String(localized: "Publishing")
         case .design: String(localized: "Design")
         case .health: String(localized: "Site health")
+        case .privacy: String(localized: "Privacy")
         case .shortcuts: String(localized: "Keyboard shortcuts")
         }
     }
@@ -55,6 +56,7 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
         case .publishing: "paperplane"
         case .design: "paintpalette"
         case .health: "stethoscope"
+        case .privacy: "hand.raised"
         case .shortcuts: "keyboard"
         }
     }
@@ -132,6 +134,24 @@ enum HelpTopic: String, CaseIterable, Identifiable, Hashable {
                 a feed, sitemap or tag the site already has.
                 """),
             String(localized: "**Check Links** asks each site your posts link to whether the page is still there."),
+        ]
+        case .privacy: [
+            String(localized: """
+                Inkwell has no server and no account of its own. It sends nothing to its developer: no analytics, no crash reports.
+                """),
+            String(localized: """
+                It talks to **GitHub** with your sign-in, to download your site and publish what you choose to publish. The sign-in is \
+                kept in your keychain. Drafts stay on this Mac until you publish them.
+                """),
+            String(localized: """
+                Once a day it asks GitHub whether a newer Inkwell is out; turn that off in **Settings › General**. **Check Links** \
+                contacts the sites your posts link to, only when you click it. The preview loads whatever your layouts load, \
+                such as web fonts and embedded videos.
+                """),
+            String(localized: """
+                Pictures lose their location and camera details before they are saved. The error log in ~/Library/Logs/Inkwell \
+                holds error messages only, and Copy Diagnostics only puts a summary on your clipboard.
+                """),
         ]
         case .shortcuts: []
         }

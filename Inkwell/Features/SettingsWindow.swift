@@ -11,7 +11,7 @@ struct SettingsWindow: View {
             Tab("Images", systemImage: "photo") { ImageSettings() }
             Tab("Account", systemImage: "person.crop.circle") { AccountSettings(model: model) }
         }
-        .frame(width: 500, height: 340)
+        .frame(width: 500, height: 400)
     }
 }
 
@@ -19,6 +19,7 @@ struct GeneralSettings: View {
     var model: AppModel
     @AppStorage(Prefs.reopenLastSite) private var reopen = true
     @AppStorage(Prefs.syncMinutes) private var minutes = 5
+    @AppStorage(Prefs.checkForUpdates) private var updates = true
 
     var body: some View {
         Form {
@@ -32,6 +33,11 @@ struct GeneralSettings: View {
             .onChange(of: minutes) { model.restartSyncLoop() }
             Text("Inkwell also checks when you come back to it, and before every publish.")
                 .font(.caption).foregroundStyle(.secondary)
+            Section {
+                Toggle("Check for new versions of Inkwell", isOn: $updates)
+                Text("Once a day, Inkwell asks GitHub for its latest release. Nothing about you or your sites is sent.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

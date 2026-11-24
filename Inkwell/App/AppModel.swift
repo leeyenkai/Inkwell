@@ -82,6 +82,7 @@ enum RecentSite {
 @Observable
 final class AppModel {
     let account = AccountModel()
+    let updates = Updates()
     var site: Site?
     private(set) var backend: (any SiteBackend)?
     var loadError: String?

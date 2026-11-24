@@ -12,10 +12,13 @@ nonisolated enum Prefs {
     static let syncMinutes = "SyncMinutes"
     static let reopenLastSite = "ReopenLastSite"
     static let seenSites = "SeenSites"
+    static let checkForUpdates = "CheckForUpdates"
+    static let lastUpdateCheck = "LastUpdateCheck"
+    static let skippedVersion = "SkippedVersion"
 
     static var defaults: [String: Any] { [
         editorFontSize: 15.0, inlineImages: true, spellCheck: true, smartQuotes: false,
-        imageMaxSize: 2400, jpegQuality: 0.82, syncMinutes: 5, reopenLastSite: true,
+        imageMaxSize: 2400, jpegQuality: 0.82, syncMinutes: 5, reopenLastSite: true, checkForUpdates: true,
     ] }
 
     static func register() { UserDefaults.standard.register(defaults: defaults) }
