@@ -150,6 +150,9 @@ enum Launch {
         case "design": model.sidebarSelection = .design
         case "navigation": model.sidebarSelection = .navigation
         case "settings": model.sidebarSelection = .settings
+        case "health":
+            model.sidebarSelection = .health
+            model.selectedIssueID = value("--issue")
         case "media":
             model.sidebarSelection = .media
             model.selectedMedia = value("--media-file")
@@ -344,6 +347,23 @@ enum SelfTest {
             }
         } else {
             ok = check(false, "table draft in the editor") && ok
+        }
+
+        // Health: a missing 404 page is found, and its fix adds the page as an unpublished change.
+        try? FileManager.default.removeItem(at: root.appending(path: "404.html"))
+        model.reloadSite()
+        await settle()
+        if let site = model.site {
+            let report = SiteHealth.check(site)
+            if let issue = report.issues.first(where: { $0.id == "404" }) {
+                model.applyFix(issue)
+                await settle()
+                ok = check(FileManager.default.fileExists(atPath: root.appending(path: "404.md").path) && model.changes["404.md"] == .added,
+                           "health fix adds 404.md as a change") && ok
+            } else {
+                ok = check(false, "health finds the missing 404 page") && ok
+            }
+            ok = check(!report.issues.contains { $0.id.hasPrefix("images:") }, "commented-out examples are not reported") && ok
         }
         return ok
     }

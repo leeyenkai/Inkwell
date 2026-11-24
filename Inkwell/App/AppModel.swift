@@ -50,6 +50,7 @@ enum SidebarSelection: Hashable {
     case code
     case tags
     case media
+    case health
 
     var isDesign: Bool { [.design, .navigation, .settings, .code].contains(self) }
 }
@@ -125,6 +126,10 @@ final class AppModel {
     var pendingImage: PendingImage?
     var pendingPhotos: [PendingPhoto]?
     var tableEdit: TableEdit?
+    var health: SiteHealth.Report?
+    var externalLinkIssues: [SiteHealth.Issue] = []
+    var externalCheck: ExternalCheck = .never
+    var selectedIssueID: String?
     var pendingGallery: PendingGallery?
     var selectedPhotoID: String?
     var showPhotoSetup = false
@@ -294,6 +299,7 @@ final class AppModel {
             searchIndex = index
             tagIndex = tags
         }
+        refreshHealth()
     }
 
     /// Fetches a gem or remote theme's files (once) so the preview can use its layouts and styles.
@@ -413,7 +419,7 @@ final class AppModel {
             site.documents(in: id) + drafts.filter { $0.sectionID == id }
         case .drafts?:
             drafts + site.documents.filter { !$0.publishedFlag || changes[$0.relativePath] == .added }
-        case nil, .design?, .navigation?, .settings?, .code?, .tags?, .media?:
+        case nil, .design?, .navigation?, .settings?, .code?, .tags?, .media?, .health?:
             []
         }
         docs.sort { a, b in

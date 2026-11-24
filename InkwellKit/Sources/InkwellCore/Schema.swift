@@ -142,18 +142,34 @@ public struct ImageReference: Sendable, Hashable {
 
 public enum ContentChecks {
     /// Images in Markdown and HTML, with Liquid `relative_url` wrappers reduced to the plain path.
-    public static func images(in body: String) -> [ImageReference] {
+    /// The text with HTML comments and fenced code blanked out (same length, so ranges still line up),
+    /// because examples there are not real links or images.
+    public static func masked(_ text: String) -> String {
+        let ns = NSMutableString(string: text)
+        for pattern in [#"(?s)<!--.*?-->"#, #"(?ms)^[ \t]*(```|~~~).*?^[ \t]*\1[ \t]*$"#] {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            for m in regex.matches(in: ns as String, range: NSRange(location: 0, length: ns.length)) {
+                // One space per UTF-16 unit, so offsets in the original still apply.
+                let units = Array(ns.substring(with: m.range).utf16).map { $0 == 10 ? UInt16(10) : UInt16(32) }
+                ns.replaceCharacters(in: m.range, with: String(utf16CodeUnits: units, count: units.count))
+            }
+        }
+        return ns as String
+    }
+
+    public static func images(in original: String) -> [ImageReference] {
+        let body = masked(original)
         var refs: [ImageReference] = []
         let markdown = try? NSRegularExpression(pattern: #"!\[([^\]]*)\]\(\s*(\{\{.*?\}\}|[^)\s]+)(?:\s+"[^"]*")?\s*\)"#)
-        let ns = body as NSString
+        let ns = original as NSString
         for match in markdown?.matches(in: body, range: NSRange(location: 0, length: ns.length)) ?? [] {
-            guard let range = Range(match.range, in: body) else { continue }
+            guard let range = Range(match.range, in: original) else { continue }
             refs.append(ImageReference(alt: ns.substring(with: match.range(at: 1)), path: plainPath(ns.substring(with: match.range(at: 2))),
                                        range: range))
         }
         let html = try? NSRegularExpression(pattern: #"<img\b[^>]*>"#, options: [.caseInsensitive])
         for match in html?.matches(in: body, range: NSRange(location: 0, length: ns.length)) ?? [] {
-            guard let range = Range(match.range, in: body) else { continue }
+            guard let range = Range(match.range, in: original) else { continue }
             let tag = ns.substring(with: match.range)
             let src = attribute("src", in: tag) ?? ""
             refs.append(ImageReference(alt: attribute("alt", in: tag) ?? "", path: plainPath(src), range: range))

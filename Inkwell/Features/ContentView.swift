@@ -37,6 +37,9 @@ struct SiteWindow: View {
             if model.sidebarSelection == .tags {
                 TagsList(model: model)
                     .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
+            } else if model.sidebarSelection == .health {
+                HealthList(model: model)
+                    .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 480)
             } else if model.sidebarSelection == .media {
                 MediaGrid(model: model)
                     .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
@@ -58,7 +61,13 @@ struct SiteWindow: View {
                     .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
             }
         } detail: {
-            if model.sidebarSelection == .media {
+            if model.sidebarSelection == .health {
+                if let id = model.selectedIssueID, let issue = model.healthIssues.first(where: { $0.id == id }) {
+                    HealthDetail(model: model, issue: issue)
+                } else {
+                    ContentUnavailableView("Choose an issue", systemImage: "stethoscope", description: Text("See what is wrong and fix it."))
+                }
+            } else if model.sidebarSelection == .media {
                 if let path = model.selectedMedia, let item = model.mediaItems.first(where: { $0.path == path }) {
                     MediaDetail(model: model, item: item)
                 } else {
@@ -176,6 +185,19 @@ struct SidebarView: View {
                 .tag(SidebarSelection.drafts)
                 Label("Tags", systemImage: "tag").tag(SidebarSelection.tags)
                 Label("Media", systemImage: "photo.stack").tag(SidebarSelection.media)
+                Label {
+                    HStack {
+                        Text("Health")
+                        Spacer()
+                        if model.healthProblems > 0 {
+                            Text("\(model.healthProblems)").foregroundStyle(.secondary).monospacedDigit()
+                                .accessibilityLabel("\(model.healthProblems) problems")
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "stethoscope")
+                }
+                .tag(SidebarSelection.health)
             }
             Section("Design") {
                 Label("Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
@@ -293,6 +315,7 @@ struct DocumentListView: View {
         case .code?: "Code"
         case .tags?: "Tags"
         case .media?: "Media"
+        case .health?: "Health"
         case nil: ""
         }
     }
