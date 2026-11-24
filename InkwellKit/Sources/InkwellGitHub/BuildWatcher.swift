@@ -42,6 +42,7 @@ public struct BuildWatcher: Sendable {
                       onChange: @Sendable (PagesBuildState) async -> Void) async -> PagesBuildState {
         let clock = ContinuousClock()
         let deadline = clock.now + timeout
+        let noBuildDeadline = clock.now + min(timeout, .seconds(240))
         var last: PagesBuildState?
         var failures = 0
         while clock.now < deadline, !Task.isCancelled {
@@ -53,6 +54,12 @@ public struct BuildWatcher: Sendable {
                     last = state
                 }
                 if state.isFinished { return state }
+                if state == .waiting, clock.now > noBuildDeadline {
+                    let none = PagesBuildState.unknown(
+                        localized("GitHub did not start a Pages build. Check that Pages is on in the repository’s settings."))
+                    await onChange(none)
+                    return none
+                }
             } catch {
                 failures += 1
                 if failures >= 5 {
@@ -63,6 +70,6 @@ public struct BuildWatcher: Sendable {
             }
             try? await Task.sleep(for: interval)
         }
-        return last ?? .unknown(localized("The build did not report back in time."))
+        return .unknown(localized("The build did not report back in time."))
     }
 }

@@ -140,7 +140,7 @@ public enum SiteError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .notASite(url): localized("\(url.lastPathComponent) does not look like a Jekyll site. It has no _config.yml.")
+        case let .notASite(url): localized("\(url.lastPathComponent) does not look like a GitHub Pages site. It has no _config.yml or home page.")
         }
     }
 }
@@ -149,7 +149,10 @@ public enum SiteLoader {
     public static func load(_ root: URL) throws -> Site {
         let fm = FileManager.default
         let configURL = root.appending(path: "_config.yml")
-        guard let configText = try? String(contentsOf: configURL, encoding: .utf8) else { throw SiteError.notASite(root) }
+        // GitHub Pages builds a site without _config.yml, from its Markdown and a home page.
+        guard let configText = (try? String(contentsOf: configURL, encoding: .utf8)) ?? (looksLikeSite(root) ? "" : nil) else {
+            throw SiteError.notASite(root)
+        }
         let config = SiteConfig(yaml: YAML.parse(configText))
         var navigation: [NavItem] = []
         if let text = try? String(contentsOf: root.appending(path: "_data/navigation.yml"), encoding: .utf8) {
@@ -189,10 +192,14 @@ public enum SiteLoader {
             }
         }
         if fm.fileExists(atPath: root.appending(path: "_posts").path) {
-            addCollection("posts", label: "Posts")
+            addCollection("posts", label: localized("Posts"))
         }
         for collection in config.collections {
             addCollection(collection.name, label: collection.name.capitalized)
+        }
+        // Every Jekyll site has posts; without a folder or another collection, offer a Posts section to start one.
+        if !sections.contains(where: { $0.collectionName != nil }) {
+            addCollection("posts", label: localized("Posts"))
         }
         let claimed = Set(documents.map(\.relativePath))
         let excluded = Set(config.exclude)
@@ -206,10 +213,17 @@ public enum SiteLoader {
             pages.append(doc)
         }
         if !pages.isEmpty {
-            sections.append(SiteSection(id: "pages", label: "Pages", kind: .pages, symbol: "doc.richtext"))
+            sections.append(SiteSection(id: "pages", label: localized("Pages"), kind: .pages, symbol: "doc.richtext"))
             documents += pages
         }
         return Site(root: root, config: config, navigation: navigation, sections: sections, documents: documents, generator: "Jekyll")
+    }
+
+    /// A `_config.yml`, or a home page GitHub Pages can build on its own.
+    public static func looksLikeSite(_ root: URL) -> Bool {
+        ["_config.yml", "index.md", "index.markdown", "index.html", "README.md"].contains {
+            FileManager.default.fileExists(atPath: root.appending(path: $0).path)
+        }
     }
 
     static func pagePath(for url: String, root: URL) -> String? {
@@ -298,8 +312,9 @@ public enum Filename {
         return Parts(date: nil, dateText: nil, slug: base, ext: ext, isZeroPadded: true)
     }
 
-    public static func make(date: Date, slug: String, ext: String = "md") -> String {
-        "\(YAMLFormat.date(date))-\(slug).\(ext)"
+    /// The date is the site's calendar day (its `timezone:`), so it matches the `date:` written in the front matter.
+    public static func make(date: Date, slug: String, ext: String = "md", timeZone: TimeZone = .current) -> String {
+        "\(YAMLFormat.date(date, timeZone: timeZone))-\(slug).\(ext)"
     }
 }
 

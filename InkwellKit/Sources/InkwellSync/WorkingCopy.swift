@@ -17,6 +17,14 @@ public struct SiteRef: Codable, Hashable, Sendable {
         self.sitePath = sitePath
     }
 
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        owner = try c.decode(String.self, forKey: .owner)
+        name = try c.decode(String.self, forKey: .name)
+        branch = try c.decode(String.self, forKey: .branch)
+        sitePath = try c.decodeIfPresent(String.self, forKey: .sitePath) ?? ""
+    }
+
     public var fullName: String { "\(owner)/\(name)" }
     /// Stable key for things kept per site, such as drafts.
     public var key: String { "\(owner)-\(name)".lowercased() }
@@ -35,6 +43,31 @@ public struct SyncState: Codable, Sendable {
     /// Commits this copy has already moved past. GitHub can briefly report an older branch head after a push;
     /// a head in this list is stale, not a change.
     public var passed: [String]?
+
+    public init(ref: SiteRef, baseCommit: String, baseTree: String, files: [String: String], modes: [String: String],
+                conflicts: [String: String?], updated: Date, passed: [String]? = nil) {
+        self.ref = ref
+        self.baseCommit = baseCommit
+        self.baseTree = baseTree
+        self.files = files
+        self.modes = modes
+        self.conflicts = conflicts
+        self.updated = updated
+        self.passed = passed
+    }
+
+    /// Fields added after the first release are optional here, so a newer build still reads an older copy's state.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        ref = try c.decode(SiteRef.self, forKey: .ref)
+        baseCommit = try c.decode(String.self, forKey: .baseCommit)
+        baseTree = try c.decode(String.self, forKey: .baseTree)
+        files = try c.decode([String: String].self, forKey: .files)
+        modes = try c.decodeIfPresent([String: String].self, forKey: .modes) ?? [:]
+        conflicts = try c.decodeIfPresent([String: String?].self, forKey: .conflicts) ?? [:]
+        updated = try c.decodeIfPresent(Date.self, forKey: .updated) ?? .distantPast
+        passed = try c.decodeIfPresent([String].self, forKey: .passed)
+    }
 
     mutating func pass(_ commit: String) {
         var list = passed ?? []
@@ -55,6 +88,7 @@ public enum SyncError: Error, LocalizedError, Sendable, Equatable {
     case conflict([String])
     case nothingToPublish
     case extractFailed(String)
+    case tooLarge
 
     public var errorDescription: String? {
         switch self {
@@ -62,6 +96,7 @@ public enum SyncError: Error, LocalizedError, Sendable, Equatable {
         case let .conflict(paths): localized("Changed here and on GitHub: \(paths.joined(separator: ", ")). Choose which version to keep first.")
         case .nothingToPublish: localized("There is nothing new to publish.")
         case let .extractFailed(message): localized("The site could not be unpacked: \(message)")
+        case .tooLarge: localized("The repository has more files than GitHub lists in one answer, so Inkwell cannot keep it in step.")
         }
     }
 }
@@ -121,6 +156,7 @@ public actor WorkingCopy {
         let head = try await client.branchHead(ref.owner, ref.name, branch: ref.branch)
         let commit = try await client.commit(ref.owner, ref.name, sha: head)
         let tree = try await client.tree(ref.owner, ref.name, sha: commit.tree.sha)
+        guard !tree.truncated else { throw SyncError.tooLarge }
         await progress(localized("Downloading the site…"))
         let archive = try await client.tarball(ref.owner, ref.name, ref: head)
         await progress(localized("Unpacking…"))
@@ -135,7 +171,11 @@ public actor WorkingCopy {
         try Self.untar(tarFile, into: unpacked)
         let top = try fm.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: nil).filter { !$0.lastPathComponent.hasPrefix(".") }
         let content = top.count == 1 ? top[0] : unpacked
-        if fm.fileExists(atPath: root.path) { try fm.removeItem(at: root) }
+        if fm.fileExists(atPath: root.path) {
+            // A copy without readable state may still hold unpublished edits: keep it beside the new one, never delete it.
+            let stamp = Date().formatted(.iso8601).replacingOccurrences(of: ":", with: "-")
+            try fm.moveItem(at: root, to: root.deletingLastPathComponent().appending(path: "files-before-\(stamp)", directoryHint: .isDirectory))
+        }
         try fm.createDirectory(at: root.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fm.moveItem(at: content, to: root)
 
@@ -148,6 +188,20 @@ public actor WorkingCopy {
         state = SyncState(ref: ref, baseCommit: head, baseTree: commit.tree.sha, files: files, modes: modes, conflicts: [:], updated: Date())
         hashCache = [:]
         try saveState()
+
+        // The archive can differ from the tree (export-ignore, export-subst): fetch those files one by one, so a fresh
+        // copy never shows changes that publishing would then send.
+        for (path, kind) in try changes().sorted(by: { $0.key < $1.key }).prefix(500) {
+            let url = root.appending(path: path)
+            if kind == .added {
+                try? fm.removeItem(at: url)
+            } else if let sha = files[path], modes[path] != "120000" {
+                let data = try await client.blob(ref.owner, ref.name, sha: sha)
+                try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: url)
+            }
+        }
+        hashCache = [:]
     }
 
     static func untar(_ archive: URL, into folder: URL) throws {

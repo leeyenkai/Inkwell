@@ -223,7 +223,7 @@ final class EditorDocument {
         else { return }
         let date = date("date") ?? Date()
         let slug = Slug.make(title)
-        let wanted = Filename.make(date: date, slug: slug)
+        let wanted = Filename.make(date: date, slug: slug, timeZone: timeZone)
         guard wanted != document.filename,
               let free = model.freeDraftFilename(collection: collection, date: date, slug: slug, current: document.fileURL),
               free != document.filename,

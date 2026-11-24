@@ -47,7 +47,7 @@ InkwellKit/Sources/
   InkwellMedia           ImageImport
   InkwellPublish         Git, PagesStatus
 InkwellKit/Tests         XCTest, with a synthetic fixture site in Fixtures/site
-scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, readme/screenshots.sh
+scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dmg.sh, readme/screenshots.sh
 ```
 
 ## Build and test
@@ -68,6 +68,8 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, readme/
 - Content self-test: `--site <sample-site> --selftest-content` (move with redirect and publish, history, duplicate, new page, tags,
   Photos setup and import, the media library, a scheduled post published with its workflow, an inline image, and a table edit
   undone in one step, quick restyle matching a full one, a health fix; refuses GitHub remotes).
+- Release: `scripts/make-dmg.sh` (steps in docs/RELEASING.md). Update check: `--update-feed <url or file URL>` with
+  `--check-updates` shows the Software Update window against a test release JSON.
 - Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--pane design|navigation|settings|media|health` (`--issue <id>`)
   (`--media-file <path in site>`), `--photo <_photos/file>`,
   `--apply-theme <id>`, `--theme-gallery`, `--pane code --code-file <path> [--theme-file]`, `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`, `--table-cursor` (cursor in the first table),

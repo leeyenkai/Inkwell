@@ -48,6 +48,6 @@ Inkwell checks once a day for a newer version (you can turn this off in Settings
 ./scripts/build.sh
 ```
 
-Run `./scripts/fetch-engines.sh` once first (it fetches the pinned dart-sass the preview uses for Sass themes). Needs macOS 26 or later on Apple silicon and Xcode 27. To sign in, create a GitHub token with the `public_repo` and `workflow` scopes (the app links to the page). Tests: `cd InkwellKit && swift test`. Try it on a throwaway copy of a site with `./scripts/make-sample-site.sh <site folder>`.
+Run `./scripts/fetch-engines.sh` once first (it fetches the pinned dart-sass the preview uses for Sass themes). Needs macOS 26 or later on Apple silicon and Xcode 27. To sign in, create a GitHub token with the `repo` and `workflow` scopes (GitHub needs `repo` to read and change Pages settings) (the app links to the page). Tests: `cd InkwellKit && swift test`. Try it on a throwaway copy of a site with `./scripts/make-sample-site.sh <site folder>`.
 
 Status: beta. Release disk images come from `./scripts/make-dmg.sh`. The plan and what is built are in [docs/SPEC.md](docs/SPEC.md), and the review behind them is in [docs/REVIEW.md](docs/REVIEW.md).

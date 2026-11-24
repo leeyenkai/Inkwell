@@ -86,7 +86,8 @@ extension AppModel {
             let today = Date()
             if front.value("date") != nil { front.set("date", raw: YAMLFormat.date(today, timeZone: site.config.timeZone)) }
             do {
-                let url = try draftStore.create(collection: collection, title: title, date: today, text: front.text, siteRoot: site.root)
+                let url = try draftStore.create(collection: collection, title: title, date: today, text: front.text, siteRoot: site.root,
+                                                   timeZone: site.config.timeZone)
                 reloadDrafts()
                 if let copy = drafts.first(where: { $0.fileURL.standardizedFileURL == url.standardizedFileURL }) { select(copy.id) }
             } catch {

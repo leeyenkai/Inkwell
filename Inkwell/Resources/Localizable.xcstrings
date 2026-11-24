@@ -1117,7 +1117,7 @@
     "Create a token on GitHub" : {
 
     },
-    "Create a token on GitHub with the **public_repo** and **workflow** scopes, then paste it here. It is kept in your keychain." : {
+    "Create a token on GitHub with the **repo** and **workflow** scopes, then paste it here. It is kept in your keychain." : {
 
     },
     "Creates a public repository, turns on GitHub Pages and publishes a first post you can edit." : {
@@ -1387,6 +1387,9 @@
 
     },
     "GitHub Pages is building the site…" : {
+
+    },
+    "GitHub Pages is not turned on for %@. You can write and publish here, but nothing appears on the web until Pages is on in the repository’s settings on GitHub." : {
 
     },
     "GitHub Pages only rebuilds when something changes. This adds a small hourly workflow to the site that rebuilds it when a scheduled post comes due. Without it, the post appears the next time you publish anything." : {
@@ -2518,6 +2521,9 @@
     "The site could not be created: %@" : {
 
     },
+    "The site was created, but GitHub Pages could not be turned on. Turn it on in the repository’s settings on GitHub (Pages, deploy from the %@ branch)." : {
+
+    },
     "The table changed while you were editing it, so your changes were not applied." : {
 
     },
@@ -2552,6 +2558,9 @@
 
     },
     "This post changed outside Inkwell while you were editing it." : {
+
+    },
+    "This sign-in cannot read the repository’s GitHub Pages settings. Sign out, then sign in with a token that has the repo and workflow scopes." : {
 
     },
     "This site has no menu file yet. Saving here creates _data/navigation.yml; your theme’s layout has to read it (Inkwell’s themes do)." : {

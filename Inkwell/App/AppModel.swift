@@ -188,6 +188,7 @@ final class AppModel {
             let copy = WorkingCopy(ref: ref, container: GitHubBackend.container)
             if await copy.isDownloaded, let client = account.client {
                 await attach(GitHubBackend(copy: copy, client: client))
+                if let html = try? await client.pages(owner, name)?.html_url { pagesURL = URL(string: html) }
             }
         } else if saved["kind"] == "folder", let path = saved["path"], FileManager.default.fileExists(atPath: path) {
             await openFolder(URL(fileURLWithPath: path))
@@ -200,7 +201,15 @@ final class AppModel {
         opening = String(localized: "Looking at \(repo.full_name)…")
         loadError = nil
         do {
-            let pages = try? await client.pages(repo.owner.login, repo.name)
+            let pages: GitHubPages?
+            do {
+                pages = try await client.pages(repo.owner.login, repo.name)
+            } catch GitHubError.http(status: 403, _) {
+                throw GitHubError.http(status: 403, message: String(localized: """
+                    This sign-in cannot read the repository’s GitHub Pages settings. Sign out, then sign in with a token that has \
+                    the repo and workflow scopes.
+                    """))
+            }
             let branch = pages?.source?.branch ?? repo.default_branch ?? "main"
             let ref = SiteRef(owner: repo.owner.login, name: repo.name, branch: branch, sitePath: pages?.sitePath ?? "")
             let copy = WorkingCopy(ref: ref, container: GitHubBackend.container)
@@ -209,12 +218,18 @@ final class AppModel {
                     await MainActor.run { self?.opening = message }
                 }
             }
-            guard FileManager.default.fileExists(atPath: copy.siteRoot.appending(path: "_config.yml").path) else {
-                throw SiteError.notASite(copy.siteRoot)
+            guard SiteLoader.looksLikeSite(copy.siteRoot) else {
+                throw SiteError.notASite(URL(filePath: repo.full_name))
             }
             if let html = pages?.html_url { pagesURL = URL(string: html) }
             await attach(GitHubBackend(copy: copy, client: client))
             showSitePicker = false
+            if pages == nil {
+                errorMessage = String(localized: """
+                    GitHub Pages is not turned on for \(repo.full_name). You can write and publish here, but nothing appears on the web \
+                    until Pages is on in the repository’s settings on GitHub.
+                    """)
+            }
         } catch {
             loadError = error.localizedDescription
         }
@@ -489,6 +504,9 @@ final class AppModel {
 
     var pendingChanges: Int { changes.count }
 
+    /// False for sites GitHub Pages builds from a folder such as /docs; workflows only run from the repository root.
+    var siteIsAtRepositoryRoot: Bool { (backend as? GitHubBackend)?.copy.ref.sitePath.isEmpty ?? true }
+
     func select(_ id: String?) {
         guard id != selectedDocumentID || editor == nil else { return }
         editor?.saveNow()
@@ -526,7 +544,8 @@ final class AppModel {
         if !lines.contains(where: { $0.0 == "date" }) { lines.insert(("date", YAMLFormat.date(today, timeZone: site.config.timeZone)), at: 1) }
         let text = FrontMatterDocument(fields: lines, body: "\n").text
         do {
-            let url = try draftStore.create(collection: collection, title: "", date: today, text: text, siteRoot: site.root)
+            let url = try draftStore.create(collection: collection, title: "", date: today, text: text, siteRoot: site.root,
+                                               timeZone: site.config.timeZone)
             reloadDrafts()
             sidebarSelection = .section(section.id)
             if let doc = drafts.first(where: { $0.fileURL.standardizedFileURL == url.standardizedFileURL }) {
@@ -560,7 +579,8 @@ final class AppModel {
 
     func freeDraftFilename(collection: String, date: Date, slug: String, current: URL) -> String? {
         guard let site else { return nil }
-        return draftStore?.freeFilename(collection: collection, date: date, slug: slug, siteRoot: site.root, current: current)
+        return draftStore?.freeFilename(collection: collection, date: date, slug: slug, siteRoot: site.root, current: current,
+                                        timeZone: site.config.timeZone)
     }
 
     func draftURL(collection: String, filename: String) -> URL? {

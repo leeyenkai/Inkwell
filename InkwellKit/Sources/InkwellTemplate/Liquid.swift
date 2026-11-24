@@ -54,7 +54,7 @@ public final class LiquidTemplate: @unchecked Sendable {
                 let trimLeft = inner.hasPrefix("-")
                 let trimRight = inner.hasSuffix("-")
                 if trimLeft { inner.removeFirst() }
-                if trimRight { inner.removeLast() }
+                if trimRight, !inner.isEmpty { inner.removeLast() }
                 appendText(String(rest[..<openRange.lowerBound]), trimLeading: trimNextLeading, trimTrailing: trimLeft, to: &tokens)
                 trimNextLeading = trimRight
                 inner = inner.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -29,20 +29,27 @@ extension AppModel {
             let paths = try await copy.changes().keys.sorted()
             _ = try await copy.publish(paths: paths, message: "Create site with Inkwell", client: client)
             opening = String(localized: "Turning on GitHub Pages…")
-            for attempt in 0 ..< 3 {
+            var pagesOn = false
+            for attempt in 0 ..< 3 where !pagesOn {
                 do {
                     _ = try await client.enablePages(login, name, branch: branch)
-                    break
+                    pagesOn = true
                 } catch GitHubError.http(status: 409, _) {
-                    break
-                } catch where attempt < 2 {
-                    try await Task.sleep(for: .seconds(2))
+                    pagesOn = true
+                } catch {
+                    if attempt < 2 { try? await Task.sleep(for: .seconds(2)) }
                 }
             }
             pagesURL = URL(string: isUserSite ? "https://\(login).github.io/" : "https://\(login).github.io/\(name)/")
             await attach(GitHubBackend(copy: copy, client: client))
             showSitePicker = false
             await account.loadRepositories()
+            if !pagesOn {
+                errorMessage = String(localized: """
+                    The site was created, but GitHub Pages could not be turned on. Turn it on in the repository’s settings on GitHub \
+                    (Pages, deploy from the \(branch) branch).
+                    """)
+            }
         } catch {
             loadError = String(localized: "The site could not be created: \(error.localizedDescription)")
         }

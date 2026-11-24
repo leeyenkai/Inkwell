@@ -96,7 +96,7 @@ extension AppModel {
                 urls.compactMap { url in
                     let date = ImageImport.dateTaken(url) ?? (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
                     var importer = ImageImport.app
-                    importer.folder = "assets/photos/\(Calendar.current.component(.year, from: date))"
+                    importer.folder = "assets/photos/\(String(Calendar(identifier: .gregorian).component(.year, from: date)))"
                     let base = Slug.make(url.deletingPathExtension().lastPathComponent, maxWords: 5)
                     guard let image = try? importer.importImage(at: url, siteRoot: root, slug: base == "untitled" ? "photo" : base) else { return nil }
                     return PendingPhoto(image: image, date: date)

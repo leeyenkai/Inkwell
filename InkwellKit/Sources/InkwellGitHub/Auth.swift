@@ -9,7 +9,7 @@ public struct DeviceFlow: Sendable {
     var loginURL: URL
     var session: URLSession
 
-    public init(clientID: String, scopes: [String] = ["public_repo", "workflow"], loginURL: URL = URL(string: "https://github.com/login")!,
+    public init(clientID: String, scopes: [String] = ["repo", "workflow"], loginURL: URL = URL(string: "https://github.com/login")!,
                 session: URLSession = .shared) {
         self.clientID = clientID
         self.scopes = scopes

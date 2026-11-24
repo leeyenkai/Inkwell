@@ -1,5 +1,8 @@
 import Foundation
+@testable import InkwellCore
 @testable import InkwellGitHub
+@testable import InkwellSync
+@testable import InkwellTemplate
 import XCTest
 
 final class UpdateTests: XCTestCase {
@@ -27,5 +30,37 @@ final class UpdateTests: XCTestCase {
         XCTAssertEqual(release.notes, "Fixes.")
         XCTAssertEqual(release.download.absoluteString, "https://example.com/Inkwell-0.9.1.dmg")
         XCTAssertEqual(UpdateCheck.feed(repository: "o/r")?.absoluteString, "https://api.github.com/repos/o/r/releases/latest")
+    }
+}
+
+final class RobustnessTests: XCTestCase {
+    func testOddContentDoesNotCrash() {
+        XCTAssertNil(ThemeReference.of(SiteConfig(yaml: YAML.parse("remote_theme: \"\"\n"))))
+        _ = LiquidTemplate("a {{-}} b {%-%} c {{ - }}")
+    }
+
+    func testASiteWithoutConfigOrPostsCanStart() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "bare-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        XCTAssertThrowsError(try SiteLoader.load(root))
+        try Data("# Hello\n".utf8).write(to: root.appending(path: "index.md"))
+        let site = try SiteLoader.load(root)
+        XCTAssertEqual(site.sections.first?.collectionName, "posts")
+    }
+
+    func testFilenameUsesTheSiteCalendarDay() throws {
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-11-25T03:00:00Z"))
+        XCTAssertEqual(Filename.make(date: instant, slug: "a", timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Taipei"))), "2026-11-25-a.md")
+        XCTAssertEqual(Filename.make(date: instant, slug: "a", timeZone: try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))),
+                       "2026-11-24-a.md")
+    }
+
+    func testOlderStateStillReads() throws {
+        let json = #"{"ref":{"owner":"o","name":"r","branch":"main"},"baseCommit":"c","baseTree":"t","files":{"a.md":"x"}}"#
+        let state = try JSONDecoder().decode(SyncState.self, from: Data(json.utf8))
+        XCTAssertEqual(state.ref.sitePath, "")
+        XCTAssertEqual(state.files["a.md"], "x")
+        XCTAssertTrue(state.conflicts.isEmpty)
     }
 }

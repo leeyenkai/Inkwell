@@ -64,7 +64,7 @@ struct WelcomeView: View {
 
     var tokenForm: some View {
         VStack(spacing: 10) {
-            Text("Create a token on GitHub with the **public_repo** and **workflow** scopes, then paste it here. It is kept in your keychain.")
+            Text("Create a token on GitHub with the **repo** and **workflow** scopes, then paste it here. It is kept in your keychain.")
                 .font(.callout)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)

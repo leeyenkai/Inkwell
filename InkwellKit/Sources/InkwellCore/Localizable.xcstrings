@@ -1,22 +1,24 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "%@ does not look like a Jekyll site. It has no _config.yml.": {},
-    "%lld files share the address %@": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld file shares the address %@"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ does not look like a GitHub Pages site. It has no _config.yml or home page." : {
+
+    },
+    "%lld files share the address %@" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file shares the address %@"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld files share the address %@"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files share the address %@"
                 }
               }
             }
@@ -24,21 +26,21 @@
         }
       }
     },
-    "%lld images are over 1 MB": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld image is over 1 MB"
+    "%lld images are over 1 MB" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld image is over 1 MB"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld images are over 1 MB"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld images are over 1 MB"
                 }
               }
             }
@@ -46,21 +48,21 @@
         }
       }
     },
-    "%lld images in “%@” are missing": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld image in “%@” is missing"
+    "%lld images in “%@” are missing" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld image in “%@” is missing"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld images in “%@” are missing"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld images in “%@” are missing"
                 }
               }
             }
@@ -68,21 +70,21 @@
         }
       }
     },
-    "%lld images in “%@” have no alt text": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld image in “%@” has no alt text"
+    "%lld images in “%@” have no alt text" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld image in “%@” has no alt text"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld images in “%@” have no alt text"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld images in “%@” have no alt text"
                 }
               }
             }
@@ -90,21 +92,21 @@
         }
       }
     },
-    "%lld links in “%@” go nowhere": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld link in “%@” goes nowhere"
+    "%lld links in “%@” go nowhere" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld link in “%@” goes nowhere"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld links in “%@” go nowhere"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld links in “%@” go nowhere"
                 }
               }
             }
@@ -112,60 +114,144 @@
         }
       }
     },
-    "A photos page that shows the newest photos first.": {},
-    "A sitemap helps search engines find every page.": {},
-    "Adds 404.md": {},
-    "Adds Photos to the menu.": {},
-    "Adds a .gitignore for Jekyll sites": {},
-    "Adds a “photos” collection: one small file per photo in _photos/.": {},
-    "Adds jekyll-feed to _config.yml": {},
-    "Adds jekyll-feed to _config.yml and a feed link to the page head": {},
-    "Adds jekyll-seo-tag to _config.yml": {},
-    "Adds jekyll-seo-tag to _config.yml and {% seo %} to the page head": {},
-    "Adds jekyll-sitemap to _config.yml": {},
-    "Browsers show a blank icon in tabs and bookmarks.": {},
-    "Built pages are in the repository": {},
-    "Files too large for GitHub": {},
-    "Finder files are in the repository": {},
-    "GitHub Pages sites should stay under 1 GB. Delete unused images from Media.": {},
-    "GitHub warns above 50 MB and refuses files over 100 MB.": {},
-    "Images and size": {},
-    "It is live and contains “%@”.": {},
-    "It is live on the site with no text.": {},
-    "It is shown in search results and when the home page is shared.": {},
-    "Large pictures load slowly on phones. Replace them from Media; Inkwell resizes new ones.": {},
-    "Links": {},
-    "Links to your site show this picture when no post has its own.": {},
-    "Mistyped links show GitHub’s plain 404 page instead of one in your site’s style.": {},
-    "Moves a photo that was written by hand in the old page.": {},
-    "No .gitignore": {},
-    "No RSS feed": {},
-    "No favicon": {},
-    "No page for missing addresses": {},
-    "No share image": {},
-    "No sitemap": {},
-    "Only one of them appears on the site. Rename or move the others.": {},
-    "Pages have no description or share preview tags": {},
-    "People using screen readers hear nothing for it.": {},
-    "People using screen readers hear nothing for them.": {},
-    "Posts and pages": {},
-    "Properties need attention in “%@”": {},
-    "Readers who follow sites in a feed reader cannot subscribe.": {},
-    "Removes %lld .DS_Store files and ignores them": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Removes %lld .DS_Store file and ignores it"
+    "A photos page that shows the newest photos first." : {
+
+    },
+    "A sitemap helps search engines find every page." : {
+
+    },
+    "Adds 404.md" : {
+
+    },
+    "Adds Photos to the menu." : {
+
+    },
+    "Adds a .gitignore for Jekyll sites" : {
+
+    },
+    "Adds a “photos” collection: one small file per photo in _photos/." : {
+
+    },
+    "Adds jekyll-feed to _config.yml" : {
+
+    },
+    "Adds jekyll-feed to _config.yml and a feed link to the page head" : {
+
+    },
+    "Adds jekyll-seo-tag to _config.yml" : {
+
+    },
+    "Adds jekyll-seo-tag to _config.yml and {% seo %} to the page head" : {
+
+    },
+    "Adds jekyll-sitemap to _config.yml" : {
+
+    },
+    "Browsers show a blank icon in tabs and bookmarks." : {
+
+    },
+    "Built pages are in the repository" : {
+
+    },
+    "Files too large for GitHub" : {
+
+    },
+    "Finder files are in the repository" : {
+
+    },
+    "GitHub Pages sites should stay under 1 GB. Delete unused images from Media." : {
+
+    },
+    "GitHub warns above 50 MB and refuses files over 100 MB." : {
+
+    },
+    "Images and size" : {
+
+    },
+    "It is live and contains “%@”." : {
+
+    },
+    "It is live on the site with no text." : {
+
+    },
+    "It is shown in search results and when the home page is shared." : {
+
+    },
+    "Large pictures load slowly on phones. Replace them from Media; Inkwell resizes new ones." : {
+
+    },
+    "Links" : {
+
+    },
+    "Links to your site show this picture when no post has its own." : {
+
+    },
+    "Mistyped links show GitHub’s plain 404 page instead of one in your site’s style." : {
+
+    },
+    "Moves a photo that was written by hand in the old page." : {
+
+    },
+    "No .gitignore" : {
+
+    },
+    "No RSS feed" : {
+
+    },
+    "No favicon" : {
+
+    },
+    "No page for missing addresses" : {
+
+    },
+    "No share image" : {
+
+    },
+    "No sitemap" : {
+
+    },
+    "Only one of them appears on the site. Rename or move the others." : {
+
+    },
+    "Pages" : {
+
+    },
+    "Pages have no description or share preview tags" : {
+
+    },
+    "People using screen readers hear nothing for it." : {
+
+    },
+    "People using screen readers hear nothing for them." : {
+
+    },
+    "Posts" : {
+
+    },
+    "Posts and pages" : {
+
+    },
+    "Properties need attention in “%@”" : {
+
+    },
+    "Readers who follow sites in a feed reader cannot subscribe." : {
+
+    },
+    "Removes %lld .DS_Store files and ignores them" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Removes %lld .DS_Store file and ignores it"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Removes %lld .DS_Store files and ignores them"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Removes %lld .DS_Store files and ignores them"
                 }
               }
             }
@@ -173,21 +259,21 @@
         }
       }
     },
-    "Removes _site (%lld files) and ignores it from now on": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Removes _site (%lld file) and ignores it from now on"
+    "Removes _site (%lld files) and ignores it from now on" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Removes _site (%lld file) and ignores it from now on"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Removes _site (%lld files) and ignores it from now on"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Removes _site (%lld files) and ignores it from now on"
                 }
               }
             }
@@ -195,35 +281,43 @@
         }
       }
     },
-    "Repository": {},
-    "Search and sharing": {},
-    "Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s title, description and image.": {},
-    "Shows the photos from _photos/ instead of hand-written HTML.": {},
-    "The %@ has an opening %@ but no closing one.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "The %1$@ has an opening %2$@ but no closing one."
+    "Repository" : {
+
+    },
+    "Search and sharing" : {
+
+    },
+    "Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s title, description and image." : {
+
+    },
+    "Shows the photos from _photos/ instead of hand-written HTML." : {
+
+    },
+    "The %@ has an opening %@ but no closing one." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The %1$@ has an opening %2$@ but no closing one."
           }
         }
       }
     },
-    "The _site folder (%lld files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size.": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "The _site folder (%lld file) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size."
+    "The _site folder (%lld files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The _site folder (%lld file) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size."
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "The _site folder (%lld files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size."
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The _site folder (%lld files) is Jekyll’s output. GitHub Pages builds its own, so this copy only adds size."
                 }
               }
             }
@@ -231,24 +325,40 @@
         }
       }
     },
-    "The date %@ does not match the filename’s %@.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "The date %1$@ does not match the filename’s %2$@."
+    "The date %@ does not match the filename’s %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The date %1$@ does not match the filename’s %2$@."
           }
         }
       }
     },
-    "The filename date is not zero-padded (%@).": {},
-    "The post has no title.": {},
-    "The site has no description": {},
-    "The site is %@": {},
-    "Without one, build output and system files can end up in the repository.": {},
-    "“%@” has placeholder text": {},
-    "“%@” is empty": {},
-    "“%@” is not a date. Use YYYY-MM-DD.": {}
+    "The filename date is not zero-padded (%@)." : {
+
+    },
+    "The post has no title." : {
+
+    },
+    "The site has no description" : {
+
+    },
+    "The site is %@" : {
+
+    },
+    "Without one, build output and system files can end up in the repository." : {
+
+    },
+    "“%@” has placeholder text" : {
+
+    },
+    "“%@” is empty" : {
+
+    },
+    "“%@” is not a date. Use YYYY-MM-DD." : {
+
+    }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

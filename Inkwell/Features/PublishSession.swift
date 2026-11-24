@@ -245,7 +245,7 @@ final class PublishSession: Identifiable {
                 scheduledFor = date
                 let when = date.formatted(Date.FormatStyle(date: .long, time: .shortened, timeZone: site.config.timeZone))
                 items.append(CheckItem(level: .info, text: String(localized: "Scheduled: the post stays off the site until \(when).")))
-                if !Schedule.hasWorkflow(siteRoot: site.root) { addScheduleWorkflow = true }
+                if !Schedule.hasWorkflow(siteRoot: site.root), model?.siteIsAtRepositoryRoot ?? true { addScheduleWorkflow = true }
             }
         }
         if let repo = backend.repository {

@@ -29,7 +29,8 @@ public struct ThemeReference: Sendable, Hashable {
     public static func of(_ config: SiteConfig) -> ThemeReference? {
         if let remote = config.raw["remote_theme"]?.string {
             let parts = remote.split(separator: "@", maxSplits: 1).map(String.init)
-            let path = parts[0].split(separator: "/").map(String.init)
+            guard let name = parts.first else { return nil }
+            let path = name.split(separator: "/").map(String.init)
             guard path.count == 2 else { return nil }
             return ThemeReference(owner: path[0], repository: path[1], ref: parts.count > 1 ? parts[1] : nil)
         }

@@ -111,7 +111,7 @@ public struct GitHubClient: Sendable {
         var all: [GitHubRepo] = []
         for page in 1 ... 10 {
             let batch = try await json([GitHubRepo].self, "GET", "user/repos", query: [
-                "per_page": "100", "page": "\(page)", "sort": "pushed", "affiliation": "owner,collaborator",
+                "per_page": "100", "page": "\(page)", "sort": "pushed", "affiliation": "owner,collaborator,organization_member",
             ])
             all += batch
             if batch.count < 100 { break }

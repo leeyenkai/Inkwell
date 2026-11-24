@@ -40,25 +40,26 @@ public struct DraftStore: Sendable {
     }
 
     /// Writes a new draft, choosing a filename that is free both here and in the site.
-    public func create(collection: String, title: String, date: Date, text: String, siteRoot: URL) throws -> URL {
+    public func create(collection: String, title: String, date: Date, text: String, siteRoot: URL, timeZone: TimeZone = .current) throws -> URL {
         let folder = root.appending(path: collection, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let filename = freeFilename(collection: collection, date: date, slug: Slug.make(title), siteRoot: siteRoot)
+        let filename = freeFilename(collection: collection, date: date, slug: Slug.make(title), siteRoot: siteRoot, timeZone: timeZone)
         let url = folder.appending(path: filename)
         try Data(text.utf8).write(to: url, options: .atomic)
         return url
     }
 
-    public func freeFilename(collection: String, date: Date, slug: String, siteRoot: URL, current: URL? = nil) -> String {
+    public func freeFilename(collection: String, date: Date, slug: String, siteRoot: URL, current: URL? = nil,
+                             timeZone: TimeZone = .current) -> String {
         let fm = FileManager.default
-        var candidate = Filename.make(date: date, slug: slug)
+        var candidate = Filename.make(date: date, slug: slug, timeZone: timeZone)
         var n = 2
         while true {
             let draft = url(collection: collection, filename: candidate)
             let published = siteRoot.appending(path: "_\(collection)").appending(path: candidate)
             let takenHere = fm.fileExists(atPath: draft.path) && draft.standardizedFileURL != current?.standardizedFileURL
             if !takenHere, !fm.fileExists(atPath: published.path) { return candidate }
-            candidate = Filename.make(date: date, slug: "\(slug)-\(n)")
+            candidate = Filename.make(date: date, slug: "\(slug)-\(n)", timeZone: timeZone)
             n += 1
         }
     }

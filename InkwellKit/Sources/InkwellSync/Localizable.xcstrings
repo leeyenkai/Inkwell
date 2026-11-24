@@ -10,6 +10,9 @@
     "Finding the latest version…" : {
 
     },
+    "The repository has more files than GitHub lists in one answer, so Inkwell cannot keep it in step." : {
+
+    },
     "The site could not be unpacked: %@" : {
 
     },

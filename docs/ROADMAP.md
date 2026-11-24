@@ -36,6 +36,22 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
   - Media: several pictures dropped into a post become a gallery after alt text for each. The Media library shows every image, where it is used and its size, filters unused ones, replaces a picture in place (every link keeps working) and deletes.
   - Scheduled posts: a future date shows as Scheduled and the publish button reads Schedule. The date can carry a time of day. An optional hourly workflow (`.github/workflows/inkwell-scheduled.yml`, added in the same commit) asks GitHub Pages to rebuild when a post comes due; `future: true` is respected. The due-check was tested locally with a date shim; the workflow itself has not yet run on GitHub, and sites built by their own Actions workflow need that workflow to run on a schedule instead.
   - Checked by `--selftest-content` (move and publish, history, duplicate, page, tags, photo setup and import, the rendered photos page, the media library, a scheduled post with its workflow in one commit, an inline image, and a table edit undone in one step). The self-test also found and fixed a race in local-folder mode: a background `git status` could hold the index lock during a publish.
+- **M5 Release: built, waiting on a public release location and testers.**
+  - Version 0.9.0. `scripts/make-dmg.sh` builds the Release app (ad-hoc signed, hardened runtime), checks the signature and the bundled dart-sass (which is Developer ID signed and notarized by its makers), and packs a disk image with an Applications link and first-launch notes, plus its SHA-256. Steps: [RELEASING.md](RELEASING.md).
+  - Update check: Inkwell › Check for Updates… and a daily check (Settings › General) read the latest release of `InkwellReleasesRepository` (Info.plist, now `leeyenkai/Inkwell`) and offer the disk image. A private repository answers 404, shown as "no updates", so releases need a public repository.
+  - Privacy: [PRIVACY.md](PRIVACY.md) and a Privacy topic in Help. README: download and the Open Anyway step.
+  - Bug bash on first-use paths, all fixed:
+    - Two crashes: `remote_theme: ""`, and `{{-}}` in a post.
+    - A copy whose `state.json` could not be read was deleted on the next open; it is now kept beside the new download, and state from older builds still reads.
+    - Tokens now ask for `repo` (GitHub needs it to read Pages settings). A failed Pages lookup is an error instead of a silent guess of the branch and folder; opening a repository without Pages says so; the live address survives a relaunch.
+    - "New Site" no longer fails after the repository exists when Pages cannot be turned on; it says to turn Pages on.
+    - The publish sheet no longer spins when no Pages build starts.
+    - A fresh download is checked against GitHub's file list and any differing file is fetched on its own; repositories too large for one tree answer are refused.
+    - Sites without `_config.yml` (GitHub Pages builds them) open; a site with no collections gets a Posts section for its first post.
+    - Draft filenames use the site's time zone, so they match the `date:`; photo folders use the Gregorian year.
+    - The scheduled-post workflow is offered only for sites at the repository root (workflows do not run from `/docs`).
+    - Organisation repositories appear in the site picker.
+  - Left: the OAuth App client ID (device-flow sign-in), a public release location, notarization (later), and a beta with a few people.
 - **M4 Health & polish: done.**
   - Site health: a Health item with a problem count. It checks properties, duplicate addresses, empty or placeholder posts, internal links and images, alt text, large images and files, the Pages size budget, SEO tags, description, share image, feed, sitemap, favicon, 404 page, committed `_site` and `.DS_Store`, and `.gitignore`. Safe fixes are one click and become unpublished changes; hand-written feeds, sitemaps and head tags count, so nothing is added twice. "Check Links" asks linked sites whether pages are still there (only 404, 410 or a vanished domain counts). Comments and code blocks are skipped.
   - Per post: description, share image and a link-preview card under Properties; the publish checklist adds same-address files, images over 1 MB and long titles.

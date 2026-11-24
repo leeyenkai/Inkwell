@@ -28,7 +28,7 @@ final class AccountModel {
         return id?.isEmpty == false ? id : nil
     }
 
-    static let tokenURL = URL(string: "https://github.com/settings/tokens/new?scopes=public_repo,workflow&description=Inkwell")!
+    static let tokenURL = URL(string: "https://github.com/settings/tokens/new?scopes=repo,workflow&description=Inkwell")!
 
     var isSignedIn: Bool { user != nil }
 
