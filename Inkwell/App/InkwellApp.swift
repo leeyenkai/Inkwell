@@ -180,7 +180,13 @@ enum Launch {
             exit(ok ? 0 : 1)
         }
         if let section = value("--section") { model.sidebarSelection = .section(section) }
-        if let photo = value("--photo") { model.selectedPhotoID = model.photos.first { $0.doc.relativePath == photo }?.id }
+        if let photo = value("--photo") {
+            // Several photos, comma-separated, are chosen together.
+            let paths = photo.split(separator: ",").map(String.init)
+            let ids = model.photos.filter { paths.contains($0.doc.relativePath) }.map(\.id)
+            model.selectedPhotoIDs = Set(ids)
+            model.selectedPhotoID = ids.first
+        }
         if let album = value("--album") { model.albumFilter = album == "none" ? .none : .album(album) }
         if let id = value("--apply-theme"), let theme = ThemeManifest.named(id), let design = model.design {
             design.apply(design.plan(for: theme))

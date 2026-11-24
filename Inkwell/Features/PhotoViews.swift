@@ -56,8 +56,12 @@ struct PhotoGrid: View {
         }
         .safeAreaInset(edge: .bottom) {
             HStack {
-                Button("Add Photos…") { choosePhotos() }
-                    .help(album.map { String(localized: "New photos join “\($0.title)”") }
+                Button { choosePhotos() } label: {
+                    // With photos chosen the bar is busy, so the button shrinks to its symbol.
+                    Label("Add Photos…", systemImage: "plus").labelStyle(AdaptiveLabelStyle(iconOnly: !selection.isEmpty))
+                }
+                .fixedSize()
+                .help(album.map { String(localized: "New photos join “\($0.title)”") }
                         ?? String(localized: "Add photos from your Mac"))
                 if !selection.isEmpty {
                     let paths = model.selectedPhotoPaths(all)
@@ -85,6 +89,15 @@ struct PhotoGrid: View {
         panel.allowsMultipleSelection = true
         panel.message = String(localized: "Choose photos. They are resized, turned upright and cleaned of location data.")
         if panel.runModal() == .OK { model.importPhotos(panel.urls) }
+    }
+}
+
+/// The title alone, or the symbol alone where room is short (the title stays the accessibility label).
+struct AdaptiveLabelStyle: LabelStyle {
+    var iconOnly: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { configuration.title }
     }
 }
 
