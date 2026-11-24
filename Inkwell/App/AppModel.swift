@@ -46,6 +46,7 @@ enum SidebarSelection: Hashable {
     case settings
     case code
     case tags
+    case media
 
     var isDesign: Bool { [.design, .navigation, .settings, .code].contains(self) }
 }
@@ -119,6 +120,13 @@ final class AppModel {
     /// Tag → ids of the documents using it.
     private(set) var tagIndex: [String: [String]] = [:]
     var pendingImage: PendingImage?
+    var pendingPhotos: [PendingPhoto]?
+    var pendingGallery: PendingGallery?
+    var selectedPhotoID: String?
+    var showPhotoSetup = false
+    var selectedMedia: String?
+    var mediaItems: [MediaLibrary.Item] = []
+    var mediaRevision = 0
     var errorMessage: String?
 
     private(set) var previewBuilder: PreviewBuilder?
@@ -401,7 +409,7 @@ final class AppModel {
             site.documents(in: id) + drafts.filter { $0.sectionID == id }
         case .drafts?:
             drafts + site.documents.filter { !$0.publishedFlag || changes[$0.relativePath] == .added }
-        case nil, .design?, .navigation?, .settings?, .code?, .tags?:
+        case nil, .design?, .navigation?, .settings?, .code?, .tags?, .media?:
             []
         }
         docs.sort { a, b in
@@ -661,6 +669,7 @@ final class AppModel {
 
     func importImages(_ urls: [URL], at location: Int) {
         guard let site, let editor, let url = urls.first else { return }
+        if urls.count > 1 { return importGallery(urls, at: location) }
         let slug = Filename.parse(editor.document.filename).slug
         let root = site.root
         Task {
@@ -673,7 +682,6 @@ final class AppModel {
                 errorMessage = error.localizedDescription
             }
         }
-        if urls.count > 1 { errorMessage = "Add images one at a time for now, so each gets its own alt text." }
     }
 
     func insertPendingImage() {

@@ -99,7 +99,7 @@ public enum MovePlanner {
 
 /// `_config.yml` list editing that keeps the file's own style (block lists stay block lists).
 public struct ConfigEditing {
-    public private(set) var lines: [String]
+    public internal(set) var lines: [String]
     let trailingNewline: Bool
 
     public init(text: String) {

@@ -55,6 +55,31 @@ final class ImageImportTests: XCTestCase {
         let again = try ImageImport().importImage(at: photo, siteRoot: site, slug: "morality")
         XCTAssertEqual(again.sitePath, "/assets/images/morality-2.jpg")
     }
+
+    func testReplaceKeepsPathAndStripsLocation() throws {
+        let site = temp.appending(path: "site", directoryHint: .isDirectory)
+        let first = try ImageImport().importImage(at: makePhoto(named: "a.jpg", width: 400, height: 300), siteRoot: site, slug: "post")
+        let replaced = try ImageImport().replace(first.fileURL, with: makePhoto(named: "b.jpg", width: 900, height: 600))
+        XCTAssertEqual(replaced.fileURL, first.fileURL)
+        XCTAssertEqual(max(replaced.pixelWidth, replaced.pixelHeight), 900)
+        XCTAssertFalse(ImageImport.hasLocation(first.fileURL))
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: first.fileURL.deletingLastPathComponent().path)
+        XCTAssertEqual(leftovers, [first.fileURL.lastPathComponent])
+    }
+
+    func testDateTakenReadsCameraDate() throws {
+        let url = temp.appending(path: "dated.jpg")
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        let context = try XCTUnwrap(CGContext(data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                                              bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, UTType.jpeg.identifier as CFString, 1, nil))
+        let exif: [CFString: Any] = [kCGImagePropertyExifDateTimeOriginal: "2025:12:01 14:30:00"]
+        CGImageDestinationAddImage(destination, try XCTUnwrap(context.makeImage()), [kCGImagePropertyExifDictionary: exif] as CFDictionary)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        let date = try XCTUnwrap(ImageImport.dateTaken(url))
+        XCTAssertEqual(Calendar.current.dateComponents([.year, .month, .day, .hour], from: date),
+                       DateComponents(year: 2025, month: 12, day: 1, hour: 14))
+    }
 }
 
 final class GitTests: XCTestCase {

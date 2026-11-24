@@ -90,6 +90,42 @@ public struct ImageImport: Sendable {
                              finalBytes: finalBytes, pixelWidth: cgImage.width, pixelHeight: cgImage.height, removedLocation: hadGPS)
     }
 
+    /// Writes a new picture over an existing image file, keeping its path and format so every link to it still works.
+    public func replace(_ existing: URL, with source: URL) throws -> ImportedImage {
+        let name = source.lastPathComponent
+        let originalBytes = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard let image = CGImageSourceCreateWithURL(source as CFURL, nil) else { throw ImageImportError.unreadable(name) }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(image, 0, options as CFDictionary) else { throw ImageImportError.unreadable(name) }
+        let type = UTType(filenameExtension: existing.pathExtension) ?? .jpeg
+        let staging = existing.deletingLastPathComponent().appending(path: ".inkwell-replace-\(UUID().uuidString).\(existing.pathExtension)")
+        guard let destination = CGImageDestinationCreateWithURL(staging as CFURL, type.identifier as CFString, 1, nil) else {
+            throw ImageImportError.writeFailed(existing.lastPathComponent)
+        }
+        CGImageDestinationAddImage(destination, cgImage, [kCGImageDestinationLossyCompressionQuality: jpegQuality,
+                                                          kCGImagePropertyOrientation: 1] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { throw ImageImportError.writeFailed(existing.lastPathComponent) }
+        _ = try FileManager.default.replaceItemAt(existing, withItemAt: staging)
+        let finalBytes = (try? existing.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        return ImportedImage(sitePath: "", fileURL: existing, originalBytes: originalBytes, finalBytes: finalBytes,
+                             pixelWidth: cgImage.width, pixelHeight: cgImage.height, removedLocation: false)
+    }
+
+    /// When a photo was taken, from its camera data.
+    public static func dateTaken(_ url: URL) -> Date? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any],
+              let text = exif[kCGImagePropertyExifDateTimeOriginal] as? String else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        return formatter.date(from: text)
+    }
+
     func sitePath(_ url: URL, siteRoot: URL) -> String {
         let root = siteRoot.standardizedFileURL.path
         let path = url.standardizedFileURL.path

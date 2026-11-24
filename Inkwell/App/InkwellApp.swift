@@ -129,6 +129,7 @@ enum Launch {
             exit(ok ? 0 : 1)
         }
         if let section = value("--section") { model.sidebarSelection = .section(section) }
+        if let photo = value("--photo") { model.selectedPhotoID = model.photos.first { $0.doc.relativePath == photo }?.id }
         if let id = value("--apply-theme"), let theme = ThemeManifest.named(id), let design = model.design {
             design.apply(design.plan(for: theme))
         }
@@ -147,6 +148,9 @@ enum Launch {
         case "design": model.sidebarSelection = .design
         case "navigation": model.sidebarSelection = .navigation
         case "settings": model.sidebarSelection = .settings
+        case "media":
+            model.sidebarSelection = .media
+            model.selectedMedia = value("--media-file")
         case "code":
             model.sidebarSelection = .code
             if let path = value("--code-file") { model.codeFile = CodeFile(path: path, inTheme: args.contains("--theme-file")) }
@@ -243,6 +247,32 @@ enum SelfTest {
         await settle()
         let renamed = (try? String(contentsOf: root.appending(path: "_notes/2025-12-01-estonia.md"), encoding: .utf8)) ?? ""
         ok = check(renamed.contains("tags: [morality, europe]") && model.documents(tagged: "morality").count == 2, "tag renamed everywhere") && ok
+
+        // Photos: set up the stream, add a photo with a caption, and see it on the photos page and in the media library.
+        let plan = model.setUpPhotos()
+        model.applyPhotoSetup(plan)
+        await settle()
+        ok = check(model.photosSetUp && model.sidebarSelection == .section("photos"), "photos set up (\(plan.count) changes)") && ok
+        let source = FileManager.default.temporaryDirectory.appending(path: "inkwell-selftest-photo.jpg")
+        try? FileManager.default.removeItem(at: source)
+        try? FileManager.default.copyItem(at: root.appending(path: "assets/images/estonia.jpg"), to: source)
+        model.importPhotos([source])
+        for _ in 0..<20 where model.pendingPhotos == nil { try? await Task.sleep(for: .milliseconds(250)) }
+        if var pending = model.pendingPhotos, !pending.isEmpty {
+            pending[0].caption = "Self-test snow"
+            pending[0].alt = "A snowy street"
+            model.savePendingPhotos(pending)
+            await settle()
+            let photo = model.photos.first { $0.caption == "Self-test snow" }
+            ok = check(photo != nil && photo?.image.hasPrefix("/assets/photos/") == true, "photo file written") && ok
+            let page = model.previewBuilder?.page(at: "/photos/")?.html ?? ""
+            ok = check(page.contains("Self-test snow") && page.contains("photo-item"), "photos page lists it") && ok
+            let media = MediaLibrary.scan(siteRoot: root)
+            let used = media.first { "/" + $0.path == photo?.image }?.usedBy ?? []
+            ok = check(used.contains { $0.hasPrefix("_photos/") }, "media library sees where it is used") && ok
+        } else {
+            ok = check(false, "photo imported") && ok
+        }
         return ok
     }
 

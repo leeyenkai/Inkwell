@@ -84,6 +84,10 @@ figcaption { color: var(--muted); font-size: 0.9em; text-align: center; margin-t
 .photo-item { margin: 0; }
 .photo-item img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
 .photo-caption { margin: 0.4em 0 0; color: var(--muted); font-size: 0.9em; }
+.photo-location { margin: 0.1em 0 0; color: var(--muted); font-size: 0.8em; }
+.photo-item time { color: var(--muted); font-size: 0.8em; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.6rem; margin: 1.4em 0; }
+.gallery img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
 
 .empty { color: var(--muted); }
 

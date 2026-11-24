@@ -37,6 +37,12 @@ struct SiteWindow: View {
             if model.sidebarSelection == .tags {
                 TagsList(model: model)
                     .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
+            } else if model.sidebarSelection == .media {
+                MediaGrid(model: model)
+                    .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
+            } else if model.showsPhotoGrid {
+                PhotoGrid(model: model)
+                    .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
             } else if let design = model.design, model.sidebarSelection?.isDesign == true {
                 Group {
                     switch model.sidebarSelection {
@@ -52,7 +58,20 @@ struct SiteWindow: View {
                     .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
             }
         } detail: {
-            if model.sidebarSelection == .tags {
+            if model.sidebarSelection == .media {
+                if let path = model.selectedMedia, let item = model.mediaItems.first(where: { $0.path == path }) {
+                    MediaDetail(model: model, item: item)
+                } else {
+                    ContentUnavailableView("Choose an image", systemImage: "photo.stack",
+                                           description: Text("See where it is used, replace it everywhere at once, or delete it."))
+                }
+            } else if model.showsPhotoGrid {
+                if let id = model.selectedPhotoID, let photo = model.photos.first(where: { $0.id == id }) {
+                    PhotoDetail(model: model, photo: photo)
+                } else {
+                    ContentUnavailableView("Choose a photo", systemImage: "photo", description: Text("Edit its caption, alt text, place and date."))
+                }
+            } else if model.sidebarSelection == .tags {
                 if let tag = model.selectedTag {
                     TagDetail(model: model, tag: tag)
                 } else {
@@ -112,6 +131,11 @@ struct SiteWindow: View {
         .sheet(isPresented: $model.showNewPage) { NewPageSheet(model: model) }
         .sheet(item: $model.linkPick) { pick in LinkPickerSheet(model: model, location: pick.location) }
         .sheet(isPresented: $model.showConflicts) { ConflictSheet(model: model) }
+        .sheet(isPresented: Binding(get: { model.pendingPhotos != nil }, set: { if !$0, model.pendingPhotos != nil { model.cancelPendingPhotos() } })) {
+            CaptionSheet(model: model)
+        }
+        .sheet(item: $model.pendingGallery) { _ in GallerySheet(model: model) }
+        .sheet(isPresented: $model.showPhotoSetup) { PhotoSetupSheet(model: model) }
     }
 }
 
@@ -150,6 +174,7 @@ struct SidebarView: View {
                 }
                 .tag(SidebarSelection.drafts)
                 Label("Tags", systemImage: "tag").tag(SidebarSelection.tags)
+                Label("Media", systemImage: "photo.stack").tag(SidebarSelection.media)
             }
             Section("Design") {
                 Label("Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
@@ -233,6 +258,7 @@ struct SiteMenu: View {
             Button("Check GitHub for Changes") { Task { await model.sync() } }
             Button("Review Unpublished Changes…") { model.showChanges = true }
             Divider()
+            if !model.photosSetUp { Button("Set Up Photos…") { model.showPhotoSetup = true } }
             if let url = model.pagesURL { Button("Open Live Site") { NSWorkspace.shared.open(url) } }
             if let repo = model.backend?.repository, let url = URL(string: "https://github.com/\(repo.owner)/\(repo.name)") {
                 Button("Open Repository on GitHub") { NSWorkspace.shared.open(url) }
@@ -265,8 +291,15 @@ struct DocumentListView: View {
         case .settings?: "Settings"
         case .code?: "Code"
         case .tags?: "Tags"
+        case .media?: "Media"
         case nil: ""
         }
+    }
+
+    /// The old hand-written photos page, before the photo stream is set up.
+    var offersPhotoSetup: Bool {
+        guard case let .section(id)? = model.sidebarSelection, case let .page(path)? = model.site?.section(id)?.kind else { return false }
+        return path.hasPrefix("photos") && !model.photosSetUp
     }
 
     var body: some View {
@@ -279,6 +312,20 @@ struct DocumentListView: View {
             }
         }
         .listStyle(.inset)
+        .safeAreaInset(edge: .top) {
+            if offersPhotoSetup {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Keep photos as a stream").font(.headline)
+                    Text("Add photos with captions and let the page list them, instead of editing HTML.")
+                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Button("Set Up Photos…") { model.showPhotoSetup = true }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                .padding(10)
+            }
+        }
         .overlay {
             if docs.isEmpty {
                 ContentUnavailableView {
