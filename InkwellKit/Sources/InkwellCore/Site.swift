@@ -204,9 +204,24 @@ public enum SiteLoader {
         let claimed = Set(documents.map(\.relativePath))
         let excluded = Set(config.exclude)
         var pages: [SiteDocument] = []
-        let rootFiles = (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
-        for file in rootFiles where ["md", "markdown", "html"].contains(file.pathExtension.lowercased()) {
-            let name = file.lastPathComponent
+        // Pages at the root and in ordinary folders (such as albums/), not in _folders, assets or tooling.
+        var pageFiles: [(URL, String)] = []
+        let skipFolders: Set = ["assets", "node_modules", "vendor", "images", "img", "css", "js", "fonts"]
+        func scan(_ folder: URL, prefix: String, depth: Int) {
+            for item in (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isDirectoryKey])) ?? [] {
+                let name = item.lastPathComponent
+                if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                    guard depth < 3, !name.hasPrefix("_"), !name.hasPrefix("."), !skipFolders.contains(name.lowercased()),
+                          !excluded.contains(name), !excluded.contains(name + "/") else { continue }
+                    scan(item, prefix: prefix + name + "/", depth: depth + 1)
+                } else {
+                    pageFiles.append((item, prefix + name))
+                }
+            }
+        }
+        scan(root, prefix: "", depth: 0)
+        for (file, relativePath) in pageFiles.sorted(by: { $0.1 < $1.1 }) where ["md", "markdown", "html"].contains(file.pathExtension.lowercased()) {
+            let name = relativePath
             guard !claimed.contains(name), !excluded.contains(name), !name.hasPrefix("_"), !name.hasPrefix("."),
                   let text = try? String(contentsOf: file, encoding: .utf8), FrontMatterDocument(text: text).hasFrontMatter,
                   let doc = document(at: file, relativePath: name, sectionID: "pages", config: config) else { continue }

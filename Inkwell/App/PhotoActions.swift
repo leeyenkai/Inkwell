@@ -360,13 +360,13 @@ extension AppModel {
     }
 
     func insertGallery(_ gallery: PendingGallery) {
-        var html = "<div class=\"gallery\">\n"
-        for (image, alt) in zip(gallery.images, gallery.alts) {
-            let escaped = alt.replacingOccurrences(of: "\"", with: "&quot;")
-            html += "  <img src=\"{{ '\(image.sitePath)' | relative_url }}\" alt=\"\(escaped)\" loading=\"lazy\">\n"
-        }
-        html += "</div>"
-        textView?.insertBlock(html, at: gallery.insertAt)
+        // A gallery element: the pictures stay Markdown images, and Edit Element changes columns and order later.
+        ensureElementKit()
+        let pictures = zip(gallery.images, gallery.alts).map { PageElements.Picture(path: $0.sitePath, alt: $1) }
+        let columns = pictures.count == 2 || pictures.count == 4 ? 2 : 3
+        let markdown = "<div class=\"ik-gallery\" data-columns=\"\(columns)\" markdown=\"1\">\n"
+            + PageElements.picturesMarkdown(pictures) + "\n</div>"
+        textView?.insertBlock(markdown, at: gallery.insertAt)
         pendingGallery = nil
         refreshChanges()
     }

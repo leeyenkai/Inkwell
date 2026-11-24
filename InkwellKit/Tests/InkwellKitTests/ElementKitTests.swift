@@ -33,6 +33,20 @@ final class ElementKitTests: XCTestCase {
         XCTAssertFalse(html.contains("relative_url"))
     }
 
+    func testPagesInFoldersLoad() throws {
+        let temp = FileManager.default.temporaryDirectory.appending(path: "sub-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.copyItem(at: fixtureSite(), to: temp)
+        defer { try? FileManager.default.removeItem(at: temp) }
+        try FileManager.default.createDirectory(at: temp.appending(path: "albums"), withIntermediateDirectories: true)
+        try Data("---\ntitle: Trip\npermalink: /albums/trip/\n---\n\nPhotos.\n".utf8).write(to: temp.appending(path: "albums/trip.md"))
+        try FileManager.default.createDirectory(at: temp.appending(path: "assets/x"), withIntermediateDirectories: true)
+        try Data("---\ntitle: No\n---\n".utf8).write(to: temp.appending(path: "assets/x/no.md"))
+        let site = try SiteLoader.load(temp)
+        XCTAssertNotNil(site.documents.first { $0.relativePath == "albums/trip.md" })
+        XCTAssertNil(site.documents.first { $0.relativePath.hasPrefix("assets/") })
+        XCTAssertNotNil(PreviewBuilder(site: site).page(at: "/albums/trip/"))
+    }
+
     func testPageTemplatesRender() throws {
         let temp = FileManager.default.temporaryDirectory.appending(path: "tpl-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.copyItem(at: fixtureSite(), to: temp)
