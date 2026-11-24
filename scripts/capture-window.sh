@@ -5,8 +5,15 @@
 set -uo pipefail
 out=$1; title=$2; shift 2
 APP=${APP:-$HOME/Library/Caches/InkwellBuild/DerivedData/Build/Products/Debug/Inkwell.app}
-"$APP/Contents/MacOS/Inkwell" "$@" >/dev/null 2>&1 &
-pid=$!
+# Through Launch Services: started directly, the app can come up without its main window.
+before=$(pgrep -f "$APP/Contents/MacOS/Inkwell" | sort)
+open -n "$APP" --args "$@"
+pid=""
+for _ in $(seq 1 50); do
+  pid=$(comm -13 <(echo "$before") <(pgrep -f "$APP/Contents/MacOS/Inkwell" | sort) | head -1)
+  [ -n "$pid" ] && break
+  sleep 0.1
+done
 sleep "${WAIT:-8}"
 id=$(PID=$pid TITLE="$title" swift -e 'import CoreGraphics; import Foundation
 let env = ProcessInfo.processInfo.environment

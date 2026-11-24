@@ -153,6 +153,9 @@ extension AppModel {
     }
 
     func slashAction(_ action: String, at location: Int) {
+        if action.hasPrefix("element:"), let kind = PageElement(rawValue: String(action.dropFirst(8))) {
+            return insertElement(kind)
+        }
         switch action {
         case "image":
             let panel = NSOpenPanel()

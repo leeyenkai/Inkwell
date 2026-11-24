@@ -19,6 +19,19 @@ final class InkwellTextView: NSTextView {
     /// Called with the cursor location by the Insert button and menu item, to insert a page element there.
     /// Without it, the insert menu of blocks shows at the cursor.
     var onInsertElement: ((Int) -> Void)?
+    /// Opens the settings of the page element at a location.
+    var onEditElement: ((Int) -> Void)?
+    /// Page elements in the text, refreshed with each restyle.
+    var elementSpans: [ElementSpan] = []
+    lazy var elementButton: NSButton = {
+        let button = NSButton(title: "", target: self, action: #selector(editElementFromButton))
+        button.bezelStyle = .push
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        button.isHidden = true
+        addSubview(button)
+        return button
+    }()
     /// Opens a link that leads outside this post: a post of the site in the editor, anything else in the browser.
     var onOpenLink: ((String) -> Void)?
     /// The site's posts and pages, for the link popover.
@@ -70,8 +83,10 @@ final class InkwellTextView: NSTextView {
         liquidRanges = MarkdownStyler.apply(to: storage, source: sourceMode, activeRange: hidesSyntax && !sourceMode ? active : nil)
         typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
         styleTables(in: storage)
+        styleElements(in: storage)
         styleImages(in: storage)
         updateTableButton()
+        updateElementButton()
         scheduleFormatUpdate()
     }
 
@@ -223,6 +238,7 @@ final class InkwellTextView: NSTextView {
         // During an edit, textChanged restyles once the text is in.
         guard pendingEdit == nil else { return }
         updateTableButton()
+        updateElementButton()
         let previous = styledParagraph ?? NSRange(location: NSNotFound, length: 0)
         let active = activeParagraph
         guard hidesSyntax, !sourceMode, !hasMarkedText(), !NSEqualRanges(active, previous) else { return }
@@ -296,7 +312,9 @@ final class InkwellTextView: NSTextView {
         liquidRanges.sort { $0.location < $1.location }
         typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
         positionImages()
+        styleElements(in: storage)
         updateTableButton()
+        updateElementButton()
         scheduleFormatUpdate()
     }
 
@@ -368,6 +386,18 @@ final class InkwellTextView: NSTextView {
         for (title, key) in actions {
             let item = NSMenuItem(title: title, action: #selector(slashAction(_:)), keyEquivalent: "")
             item.representedObject = InsertChoice(key: key, location: location, typedSlash: typedSlash)
+            item.target = self
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let heading = NSMenuItem(title: String(localized: "Page Elements"), action: nil, keyEquivalent: "")
+        heading.isEnabled = false
+        menu.addItem(heading)
+        for element in PageElement.allCases {
+            let item = NSMenuItem(title: element.title, action: #selector(slashAction(_:)), keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: element.symbol, accessibilityDescription: nil)
+            item.toolTip = element.summary
+            item.representedObject = InsertChoice(key: "element:" + element.rawValue, location: location, typedSlash: typedSlash)
             item.target = self
             menu.addItem(item)
         }
@@ -777,6 +807,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.onSlashAction = { [weak model] action, location in model?.slashAction(action, at: location) }
         textView.hidesSyntax = model.hideSyntax
         textView.onEditTable = { [weak model] range, table, location in model?.tableEdit = AppModel.TableEdit(range: range, table: table, location: location) }
+        textView.onEditElement = { [weak model] location in model?.editElement(at: location) }
         textView.imageResolver = { [weak model] target in model?.fileURL(forSitePath: target) }
         textView.onOpenLink = { [weak model] url in model?.openLink(url) }
         textView.linkEntries = { [weak model] in model?.linkEntries ?? [] }
