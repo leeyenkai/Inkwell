@@ -21,6 +21,9 @@ struct InkwellApp: App {
                 Button("New Post") { model.newPost() }
                     .keyboardShortcut("n")
                     .disabled(model.site == nil)
+                Button("New Page…") { model.showNewPage = true }
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
+                    .disabled(model.site == nil)
                 Button("Switch Site…") { model.closeSite() }
                     .keyboardShortcut("o")
                     .disabled(model.site == nil)
@@ -35,6 +38,11 @@ struct InkwellApp: App {
                 Button("Check GitHub for Changes") { Task { await model.sync() } }
                     .keyboardShortcut("r")
                     .disabled(model.site == nil)
+                Divider()
+                Button("Rename or Move…") { model.moveRequest = model.editor?.document }
+                    .disabled(model.editor == nil)
+                Button("Version History…") { model.historyRequest = model.editor?.document }
+                    .disabled(model.editor?.document.origin != .repository)
             }
             CommandGroup(after: .toolbar) {
                 Toggle("Preview", isOn: $model.showPreview)
@@ -122,6 +130,11 @@ enum Launch {
         if let id = value("--apply-theme"), let theme = ThemeManifest.named(id), let design = model.design {
             design.apply(design.plan(for: theme))
         }
+        if args.contains("--selftest-content") {
+            let ok = await SelfTest.content(model)
+            print(ok ? "SELFTEST PASS" : "SELFTEST FAIL")
+            exit(ok ? 0 : 1)
+        }
         if args.contains("--selftest-design") {
             let ok = await SelfTest.design(model)
             print(ok ? "SELFTEST PASS" : "SELFTEST FAIL")
@@ -162,6 +175,75 @@ enum Launch {
 }
 
 enum SelfTest {
+    /// Rename with a redirect and publish, history, duplicate, new page, tag rename. Refuses GitHub remotes.
+    static func content(_ model: AppModel) async -> Bool {
+        guard let site = model.site, let git = Git(root: site.root), let backend = model.backend else { return false }
+        if let remote = await git.remoteURL(), remote.contains("github.com") { return false }
+        func check(_ ok: Bool, _ what: String) -> Bool {
+            print("content selftest: \(ok ? "ok" : "FAILED") \(what)")
+            return ok
+        }
+        func settle() async {
+            try? await Task.sleep(for: .seconds(1.5))
+        }
+        var ok = true
+        let root = site.root
+
+        // Rename and move with a redirect, then publish it.
+        guard let post = site.documents.first(where: { $0.relativePath == "_notes/2026-06-20-morality.md" }) else { return false }
+        model.applyMove(post, title: post.title, slug: "politics-of-morality", sectionID: post.sectionID, keepOldAddress: true)
+        let moved = "_notes/2026-06-20-politics-of-morality.md"
+        let movedText = (try? String(contentsOf: root.appending(path: moved), encoding: .utf8)) ?? ""
+        ok = check(!FileManager.default.fileExists(atPath: post.fileURL.path) && movedText.contains("redirect_from: [/notes/morality/]"),
+                   "file moved with redirect_from") && ok
+        let config = (try? String(contentsOf: root.appending(path: "_config.yml"), encoding: .utf8)) ?? ""
+        ok = check(config.contains("- jekyll-redirect-from"), "redirect plugin listed") && ok
+        if let session = model.publishSheet {
+            await session.run()
+            let files = Set((try? await git.run(["show", "--name-only", "--no-renames", "--format=", "HEAD"]))?.split(separator: "\n").map(String.init) ?? [])
+            ok = check(session.phase == .pushed && files.isSuperset(of: [moved, "_notes/2026-06-20-morality.md", "_config.yml"]),
+                       "move published as one commit (\(files.count) files)") && ok
+            model.publishSheet = nil
+        } else {
+            ok = check(false, "move offered a publish") && ok
+        }
+        await settle()
+
+        // History of the moved post.
+        let history = (try? await backend.history(of: moved)) ?? []
+        let first = history.first.map(\.id) ?? ""
+        let then = (try? await backend.contents(of: moved, at: first)) ?? nil
+        ok = check(!history.isEmpty && then?.contains("redirect_from") == true, "history has the published version (\(history.count))") && ok
+
+        // Duplicate a sidenote into a draft.
+        if let note = model.site?.documents.first(where: { $0.relativePath.hasPrefix("_sidenotes/") }) {
+            model.duplicate(note)
+            ok = check(model.drafts.contains { $0.title.hasPrefix("Copy of") }, "duplicate became a draft") && ok
+        }
+
+        // A new page, added to the menu.
+        model.createPage(title: "Now", addToMenu: true)
+        await settle()
+        let nav = (try? String(contentsOf: root.appending(path: "_data/navigation.yml"), encoding: .utf8)) ?? ""
+        ok = check(FileManager.default.fileExists(atPath: root.appending(path: "now.md").path) && nav.contains("/now"), "page created and in menu") && ok
+
+        // Tags: tag two posts, then rename the tag everywhere.
+        for path in [moved, "_notes/2025-12-01-estonia.md"] {
+            let url = root.appending(path: path)
+            guard var doc = (try? String(contentsOf: url, encoding: .utf8)).map(FrontMatterDocument.init) else { continue }
+            doc.set("tags", raw: YAMLFormat.list(["ethics", "europe"]))
+            try? Data(doc.text.utf8).write(to: url)
+        }
+        model.reloadSite()
+        await settle()
+        ok = check(model.documents(tagged: "ethics").count == 2, "tag index sees both posts") && ok
+        model.renameTag("ethics", to: "morality")
+        await settle()
+        let renamed = (try? String(contentsOf: root.appending(path: "_notes/2025-12-01-estonia.md"), encoding: .utf8)) ?? ""
+        ok = check(renamed.contains("tags: [morality, europe]") && model.documents(tagged: "morality").count == 2, "tag renamed everywhere") && ok
+        return ok
+    }
+
     /// Applies a theme, changes a colour, an option and the menu, and checks the files, the preview and the change list.
     /// Refuses a site whose remote is GitHub, like the publish self-test.
     static func design(_ model: AppModel) async -> Bool {

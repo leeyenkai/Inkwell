@@ -177,6 +177,23 @@ public struct GitHubClient: Sendable {
 
     struct WorkflowRuns: Decodable { var workflow_runs: [GitHubWorkflowRun] }
 
+    // MARK: History
+
+    /// Commits that touched `path`, newest first.
+    public func commits(_ owner: String, _ name: String, path: String, branch: String, limit: Int = 50) async throws -> [GitHubCommitSummary] {
+        try await json([GitHubCommitSummary].self, "GET", "repos/\(owner)/\(name)/commits",
+                       query: ["path": path, "sha": branch, "per_page": "\(min(limit, 100))"])
+    }
+
+    /// A file's contents at a commit, or nil when it did not exist there.
+    public func fileContents(_ owner: String, _ name: String, path: String, ref: String) async throws -> Data? {
+        do {
+            return try await data("GET", "repos/\(owner)/\(name)/contents/\(path)", query: ["ref": ref], accept: "application/vnd.github.raw+json").0
+        } catch GitHubError.notFound {
+            return nil
+        }
+    }
+
     // MARK: Git data
 
     public func branchHead(_ owner: String, _ name: String, branch: String) async throws -> String {
@@ -282,6 +299,24 @@ public struct GitHubPages: Decodable, Sendable, Equatable {
         let path = source?.path ?? "/"
         return path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
+}
+
+public struct GitHubCommitSummary: Decodable, Sendable, Equatable, Identifiable {
+    public struct Detail: Decodable, Sendable, Equatable {
+        public struct Person: Decodable, Sendable, Equatable {
+            public var name: String?
+            public var date: String?
+        }
+
+        public var message: String
+        public var author: Person?
+    }
+
+    public var sha: String
+    public var commit: Detail
+    public var id: String { sha }
+    public var date: Date? { commit.author?.date.flatMap { ISO8601DateFormatter().date(from: $0) } }
+    public var title: String { commit.message.components(separatedBy: "\n").first ?? "" }
 }
 
 public struct GitHubWorkflowRun: Decodable, Sendable, Equatable {

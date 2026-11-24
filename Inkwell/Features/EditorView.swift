@@ -157,8 +157,22 @@ struct PropertiesView: View {
                     .toggleStyle(.switch)
                     .controlSize(.mini)
             case .tags:
-                TextField("comma, separated", text: Binding(get: { editor.tags(field.key).joined(separator: ", ") }, set: { editor.setTags(field.key, $0) }))
-                    .textFieldStyle(.roundedBorder)
+                VStack(alignment: .leading, spacing: 4) {
+                    let tagText = Binding(get: { editor.tags(field.key).joined(separator: ", ") }, set: { editor.setTags(field.key, $0) })
+                    TextField("comma, separated", text: tagText)
+                        .textFieldStyle(.roundedBorder)
+                    let current = Set(editor.tags(field.key))
+                    let suggestions = model.allTags.map(\.name).filter { !current.contains($0) }.prefix(8)
+                    if !suggestions.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(Array(suggestions), id: \.self) { tag in
+                                Button(tag) { editor.setTags(field.key, (editor.tags(field.key) + [tag]).joined(separator: ", ")) }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.mini)
+                            }
+                        }
+                    }
+                }
             case .text:
                 TextField(field.isUniversal ? "" : "Optional", text: Binding(get: { editor.string(field.key) }, set: { editor.setString(field.key, $0) }))
                     .textFieldStyle(.roundedBorder)

@@ -45,6 +45,7 @@ enum SidebarSelection: Hashable {
     case navigation
     case settings
     case code
+    case tags
 
     var isDesign: Bool { [.design, .navigation, .settings, .code].contains(self) }
 }
@@ -102,6 +103,12 @@ final class AppModel {
     var showSitePicker = false
     var showThemeGallery = false
     var codeFile: CodeFile?
+    var moveRequest: SiteDocument?
+    var historyRequest: SiteDocument?
+    var selectedTag: String?
+    var showNewPage = false
+    /// Tag → ids of the documents using it.
+    private(set) var tagIndex: [String: [String]] = [:]
     var pendingImage: PendingImage?
     var errorMessage: String?
 
@@ -117,7 +124,7 @@ final class AppModel {
         .flatMap { FileManager.default.isExecutableFile(atPath: $0.path) ? SassCompiler(executable: $0) : nil }
     private var searchIndex: [String: String] = [:]
     weak var textView: InkwellTextView?
-    private var draftStore: DraftStore?
+    private(set) var draftStore: DraftStore?
     private var changesTask: Task<Void, Never>?
     private var syncLoop: Task<Void, Never>?
 
@@ -251,14 +258,20 @@ final class AppModel {
         let theme = themeRoot
         Task {
             let docs = site.documents + drafts
-            let (builder, index) = await Task.detached {
+            let (builder, index, tags) = await Task.detached {
                 var index: [String: String] = [:]
-                for doc in docs { index[doc.id] = (try? String(contentsOf: doc.fileURL, encoding: .utf8))?.lowercased() }
-                return (PreviewBuilder(site: site, timeZone: site.config.timeZone, themeRoot: theme), index)
+                var tags: [String: [String]] = [:]
+                for doc in docs {
+                    guard let text = try? String(contentsOf: doc.fileURL, encoding: .utf8) else { continue }
+                    index[doc.id] = text.lowercased()
+                    for tag in TagIndex.tags(in: text) { tags[tag, default: []].append(doc.id) }
+                }
+                return (PreviewBuilder(site: site, timeZone: site.config.timeZone, themeRoot: theme), index, tags)
             }.value
             previewBuilder = builder
             siteResources = SiteResources(builder: builder, themeRoot: theme, sass: Self.sass)
             searchIndex = index
+            tagIndex = tags
         }
     }
 
@@ -379,7 +392,7 @@ final class AppModel {
             site.documents(in: id) + drafts.filter { $0.sectionID == id }
         case .drafts?:
             drafts + site.documents.filter { !$0.publishedFlag || changes[$0.relativePath] == .added }
-        case nil, .design?, .navigation?, .settings?, .code?:
+        case nil, .design?, .navigation?, .settings?, .code?, .tags?:
             []
         }
         docs.sort { a, b in

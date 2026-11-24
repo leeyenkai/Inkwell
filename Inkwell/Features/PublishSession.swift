@@ -129,9 +129,11 @@ final class PublishSession: Identifiable {
         return session
     }
 
-    static func changes(paths: [String], message: String, backend: any SiteBackend, model: AppModel) -> PublishSession {
-        let session = PublishSession(kind: .changes, heading: "Publish changes", message: message, paths: paths, displayURL: nil,
+    static func changes(paths: [String], message: String, backend: any SiteBackend, model: AppModel, heading: String = "Publish changes",
+                        selecting: String? = nil) -> PublishSession {
+        let session = PublishSession(kind: .changes, heading: heading, message: message, paths: paths, displayURL: nil,
                                      backend: backend, model: model)
+        session.selectAfter = selecting
         session.checks = [CheckItem(level: .info, text: "\(paths.count) file\(paths.count == 1 ? "" : "s") go to your site in one change.")]
         return session
     }

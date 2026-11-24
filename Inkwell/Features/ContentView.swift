@@ -34,7 +34,10 @@ struct SiteWindow: View {
             SidebarView(model: model)
                 .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 280)
         } content: {
-            if let design = model.design, model.sidebarSelection?.isDesign == true {
+            if model.sidebarSelection == .tags {
+                TagsList(model: model)
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
+            } else if let design = model.design, model.sidebarSelection?.isDesign == true {
                 Group {
                     switch model.sidebarSelection {
                     case .navigation?: NavigationEditor(design: design, model: model)
@@ -49,7 +52,13 @@ struct SiteWindow: View {
                     .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
             }
         } detail: {
-            if let design = model.design, model.sidebarSelection == .code {
+            if model.sidebarSelection == .tags {
+                if let tag = model.selectedTag {
+                    TagDetail(model: model, tag: tag)
+                } else {
+                    ContentUnavailableView("Choose a tag", systemImage: "tag", description: Text("Rename, merge or remove a tag across every post."))
+                }
+            } else if let design = model.design, model.sidebarSelection == .code {
                 if let file = model.codeFile {
                     CodeEditorPane(design: design, model: model, file: file)
                 } else {
@@ -98,6 +107,9 @@ struct SiteWindow: View {
             ImageSheet(model: model)
         }
         .sheet(isPresented: $model.showChanges) { ChangesSheet(model: model) }
+        .sheet(item: $model.moveRequest) { doc in MoveSheet(model: model, doc: doc) }
+        .sheet(item: $model.historyRequest) { doc in HistorySheet(model: model, doc: doc) }
+        .sheet(isPresented: $model.showNewPage) { NewPageSheet(model: model) }
         .sheet(isPresented: $model.showConflicts) { ConflictSheet(model: model) }
     }
 }
@@ -136,6 +148,7 @@ struct SidebarView: View {
                     Image(systemName: "circle.lefthalf.filled")
                 }
                 .tag(SidebarSelection.drafts)
+                Label("Tags", systemImage: "tag").tag(SidebarSelection.tags)
             }
             Section("Design") {
                 Label("Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
@@ -250,6 +263,7 @@ struct DocumentListView: View {
         case .navigation?: "Navigation"
         case .settings?: "Settings"
         case .code?: "Code"
+        case .tags?: "Tags"
         case nil: ""
         }
     }
@@ -283,6 +297,12 @@ struct DocumentMenu: View {
     var doc: SiteDocument
 
     var body: some View {
+        Button("Rename or Move…") { model.moveRequest = doc }
+        Button("Duplicate") { model.duplicate(doc) }
+        if doc.origin == .repository, model.status(of: doc) != .notPublished {
+            Button("Version History…") { model.historyRequest = doc }
+        }
+        Divider()
         if doc.origin == .localDraft {
             Button("Delete Draft…", role: .destructive) { model.deleteDraft(doc) }
         } else {

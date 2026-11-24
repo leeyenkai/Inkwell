@@ -12,6 +12,14 @@ struct SyncOutcome {
     var conflicts: [String] = []
 }
 
+/// One saved version of a file on GitHub (or in the folder's git history).
+struct Revision: Identifiable, Hashable {
+    var id: String
+    var title: String
+    var author: String
+    var date: Date?
+}
+
 /// Where a site's files live and how they reach GitHub. Paths are relative to the site folder.
 @MainActor
 protocol SiteBackend: AnyObject {
@@ -31,6 +39,10 @@ protocol SiteBackend: AnyObject {
     /// Commits made here that are not on GitHub yet (local folders only).
     func unpushed() async -> Int
     func pushAgain() async throws
+    /// Published versions of a file, newest first.
+    func history(of path: String) async throws -> [Revision]
+    /// A file's text in a given version, or nil when it did not exist then.
+    func contents(of path: String, at revision: String) async throws -> String?
 }
 
 /// A site Inkwell downloaded from GitHub and keeps in Application Support. Publishing goes through the GitHub API.
@@ -101,6 +113,20 @@ final class GitHubBackend: SiteBackend {
 
     func unpushed() async -> Int { 0 }
     func pushAgain() async throws {}
+
+    func history(of path: String) async throws -> [Revision] {
+        guard let client else { throw GitHubError.unauthorized }
+        let ref = copy.ref
+        return try await client.commits(ref.owner, ref.name, path: toRepo(path), branch: ref.branch).map {
+            Revision(id: $0.sha, title: $0.title, author: $0.commit.author?.name ?? "", date: $0.date)
+        }
+    }
+
+    func contents(of path: String, at revision: String) async throws -> String? {
+        guard let client else { throw GitHubError.unauthorized }
+        return try await client.fileContents(copy.ref.owner, copy.ref.name, path: toRepo(path), ref: revision)
+            .map { String(decoding: $0, as: UTF8.self) }
+    }
 }
 
 /// Advanced: a clone the person keeps themselves, published with their own git.
@@ -173,4 +199,18 @@ final class LocalGitBackend: SiteBackend {
     func remoteVersion(of _: String) async throws -> String? { nil }
     func unpushed() async -> Int { remote == nil ? 0 : await git.unpushedCount() }
     func pushAgain() async throws { try await git.push() }
+
+    func history(of path: String) async throws -> [Revision] {
+        let out = try await git.run(["log", "--format=%H%x1f%an%x1f%aI%x1f%s", "-n", "50", "--", path])
+        let iso = ISO8601DateFormatter()
+        return out.split(separator: "\n").compactMap { line in
+            let parts = line.split(separator: "\u{1f}", omittingEmptySubsequences: false).map(String.init)
+            guard parts.count >= 4 else { return nil }
+            return Revision(id: parts[0], title: parts[3], author: parts[1], date: iso.date(from: parts[2]))
+        }
+    }
+
+    func contents(of path: String, at revision: String) async throws -> String? {
+        try? await git.run(["show", "\(revision):\(repoPrefix)\(path)"])
+    }
 }
