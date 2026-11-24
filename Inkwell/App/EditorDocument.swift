@@ -115,8 +115,18 @@ final class EditorDocument {
         frontMatter.value(key)?.string.flatMap { SiteDate.parse($0, timeZone: site.config.timeZone) }
     }
 
-    func setDate(_ key: String, _ date: Date?) {
-        frontMatter.set(key, raw: date.map { YAMLFormat.date($0, timeZone: site.config.timeZone) }, order: fieldOrder)
+    var timeZone: TimeZone { site.config.timeZone }
+    var publishesFutureNow: Bool { Schedule.publishesFutureNow(site.config) }
+
+    /// Whether the value carries a time of day, which is kept when the date changes.
+    func hasTime(_ key: String) -> Bool {
+        frontMatter.value(key)?.string?.contains(":") ?? false
+    }
+
+    func setDate(_ key: String, _ date: Date?, withTime: Bool? = nil) {
+        let zone = site.config.timeZone
+        let timed = withTime ?? hasTime(key)
+        frontMatter.set(key, raw: date.map { timed ? YAMLFormat.dateTime($0, timeZone: zone) : YAMLFormat.date($0, timeZone: zone) }, order: fieldOrder)
         changed()
     }
 

@@ -31,6 +31,15 @@ struct PublishSheet: View {
                     }
                 }
             }
+            if session.addScheduleWorkflow != nil {
+                VStack(alignment: .leading, spacing: 3) {
+                    Toggle("Publish it on time", isOn: Binding(get: { session.addScheduleWorkflow == true },
+                                                               set: { session.addScheduleWorkflow = $0 }))
+                    Text("GitHub Pages only rebuilds when something changes. This adds a small hourly workflow to the site that "
+                        + "rebuilds it when a scheduled post comes due. Without it, the post appears the next time you publish anything.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Divider()
             if let url = session.displayURL {
                 LabeledContent("Address") {

@@ -9,6 +9,7 @@ enum DocumentStatus: Equatable {
     case edited
     case notPublished
     case hidden
+    case scheduled
 
     var symbol: String {
         switch self {
@@ -16,6 +17,7 @@ enum DocumentStatus: Equatable {
         case .draft, .notPublished: "circle.lefthalf.filled"
         case .edited: "pencil.circle.fill"
         case .hidden: "eye.slash.circle"
+        case .scheduled: "clock"
         }
     }
 
@@ -26,6 +28,7 @@ enum DocumentStatus: Equatable {
         case .edited: "Edited"
         case .notPublished: "Not published"
         case .hidden: "Hidden"
+        case .scheduled: "Scheduled"
         }
     }
 
@@ -33,7 +36,7 @@ enum DocumentStatus: Equatable {
         switch self {
         case .published, .hidden: .secondary
         case .draft, .notPublished: .orange
-        case .edited: .accentColor
+        case .edited, .scheduled: .accentColor
         }
     }
 }
@@ -430,7 +433,9 @@ final class AppModel {
         switch changes[doc.relativePath] {
         case .added?: return .notPublished
         case .modified?: return .edited
-        default: return doc.publishedFlag ? .published : .hidden
+        default:
+            guard doc.publishedFlag else { return .hidden }
+            return Schedule.isScheduled(doc.date) && !(site.map { Schedule.publishesFutureNow($0.config) } ?? false) ? .scheduled : .published
         }
     }
 

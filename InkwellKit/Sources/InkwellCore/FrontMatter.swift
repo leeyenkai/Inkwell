@@ -166,6 +166,16 @@ public enum YAMLFormat {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
+    /// `2026-12-01 09:00:00 +0200`, the form Jekyll reads for a post with a time.
+    public static func dateTime(_ date: Date, timeZone: TimeZone = .current) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let c = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        let offset = timeZone.secondsFromGMT(for: date) / 60
+        let zone = String(format: "%@%02d%02d", offset < 0 ? "-" : "+", abs(offset) / 60, abs(offset) % 60)
+        return String(format: "%04d-%02d-%02d %02d:%02d:%02d ", c.year ?? 0, c.month ?? 0, c.day ?? 0, c.hour ?? 0, c.minute ?? 0, c.second ?? 0) + zone
+    }
+
     public static func bool(_ value: Bool) -> String { value ? "true" : "false" }
 
     public static func list(_ items: [String]) -> String {

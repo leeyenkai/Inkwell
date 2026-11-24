@@ -142,10 +142,23 @@ struct PropertiesView: View {
             switch field.kind {
             case .date:
                 if let date = editor.date(field.key) {
-                    DatePicker("", selection: Binding(get: { date }, set: { editor.setDate(field.key, $0) }), displayedComponents: .date)
+                    let timed = editor.hasTime(field.key)
+                    DatePicker("", selection: Binding(get: { date }, set: { editor.setDate(field.key, $0) }),
+                               displayedComponents: timed ? [.date, .hourAndMinute] : .date)
                         .labelsHidden()
                         .datePickerStyle(.field)
+                        .environment(\.timeZone, editor.timeZone)
                         .fixedSize()
+                    Button {
+                        editor.setDate(field.key, date, withTime: !timed)
+                    } label: {
+                        Image(systemName: timed ? "clock.badge.xmark" : "clock")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(timed ? "Remove the time of day" : "Add a time of day, for a post scheduled to go live at a set hour")
+                    if date > Date(), !editor.publishesFutureNow {
+                        Text("Scheduled").font(.caption).foregroundStyle(Color.accentColor)
+                    }
                 } else {
                     TextField("YYYY-MM-DD", text: Binding(get: { editor.string(field.key) }, set: { editor.frontMatterSetRaw(field.key, $0) }))
                         .textFieldStyle(.roundedBorder)

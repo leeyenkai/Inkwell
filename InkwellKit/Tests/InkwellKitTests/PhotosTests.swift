@@ -76,3 +76,23 @@ final class PhotosTests: XCTestCase {
         XCTAssertEqual(items.first { $0.path == "assets/images/orphan.jpg" }?.usedBy, [])
     }
 }
+
+final class ScheduleTests: XCTestCase {
+    func testDateTimeRoundTripsAndScheduling() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/Tallinn"))
+        let date = try XCTUnwrap(SiteDate.parse("2026-12-01 09:30:00 +0200", timeZone: zone))
+        XCTAssertEqual(YAMLFormat.dateTime(date, timeZone: zone), "2026-12-01 09:30:00 +0200")
+        XCTAssertEqual(YAMLFormat.dateTime(date, timeZone: try XCTUnwrap(TimeZone(identifier: "America/New_York"))), "2026-12-01 02:30:00 -0500")
+        XCTAssertTrue(Schedule.isScheduled(date, now: date.addingTimeInterval(-60)))
+        XCTAssertFalse(Schedule.isScheduled(date, now: date))
+        XCTAssertFalse(Schedule.isScheduled(nil))
+    }
+
+    func testFutureSettingAndWorkflow() {
+        XCTAssertTrue(Schedule.publishesFutureNow(SiteConfig(yaml: YAML.parse("future: true"))))
+        XCTAssertFalse(Schedule.publishesFutureNow(SiteConfig(yaml: YAML.parse("title: x"))))
+        XCTAssertTrue(Schedule.workflow.contains("pages: write"))
+        XCTAssertTrue(Schedule.workflow.contains("repos/${GITHUB_REPOSITORY}/pages/builds"))
+        XCTAssertTrue(Schedule.workflow.hasPrefix("# Added by Inkwell."))
+    }
+}

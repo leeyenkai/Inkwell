@@ -208,7 +208,7 @@ enum SelfTest {
             await session.run()
             let files = Set((try? await git.run(["show", "--name-only", "--no-renames", "--format=", "HEAD"]))?.split(separator: "\n").map(String.init) ?? [])
             ok = check(session.phase == .pushed && files.isSuperset(of: [moved, "_notes/2026-06-20-morality.md", "_config.yml"]),
-                       "move published as one commit (\(files.count) files)") && ok
+                       "move published as one commit (\(files.count) files, \(session.phase))") && ok
             model.publishSheet = nil
         } else {
             ok = check(false, "move offered a publish") && ok
@@ -272,6 +272,32 @@ enum SelfTest {
             ok = check(used.contains { $0.hasPrefix("_photos/") }, "media library sees where it is used") && ok
         } else {
             ok = check(false, "photo imported") && ok
+        }
+
+        // Scheduling: a post dated tomorrow publishes as "Schedule", with the hourly workflow in the same commit.
+        model.sidebarSelection = .section("notes")
+        model.newPost()
+        if let editor = model.editor {
+            editor.title = "Self-test scheduled post"
+            editor.body = "\nGoes live tomorrow.\n"
+            editor.setDate("date", Date().addingTimeInterval(86400), withTime: true)
+            editor.saveNow()
+            await settle()
+            model.refreshChanges()
+            await settle()
+            model.beginPublish()
+            if let session = model.publishSheet {
+                ok = check(session.actionTitle == "Schedule" && session.addScheduleWorkflow == true, "publish offers to schedule") && ok
+                await session.run()
+                let files = (try? await git.run(["show", "--name-only", "--format=", "HEAD"]))?.split(separator: "\n").map(String.init) ?? []
+                ok = check(files.contains(Schedule.workflowPath) && files.count == 2, "post and workflow in one commit (\(files))") && ok
+                model.publishSheet = nil
+                await settle()
+                let post = model.site?.documents.first { $0.title == "Self-test scheduled post" }
+                ok = check(post.map { model.status(of: $0) } == .scheduled, "post shows as scheduled") && ok
+            } else {
+                ok = check(false, "scheduled post offered a publish") && ok
+            }
         }
         return ok
     }

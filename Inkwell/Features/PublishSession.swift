@@ -36,6 +36,9 @@ final class PublishSession: Identifiable {
     private(set) var paths: [String]
     private(set) var phase: Phase = .ready
     private(set) var liveURL: URL?
+    /// Offered when a post is dated in the future and the site has no schedule workflow yet.
+    var addScheduleWorkflow: Bool?
+    private(set) var scheduledFor: Date?
     let displayURL: String?
 
     private let backend: any SiteBackend
@@ -59,7 +62,7 @@ final class PublishSession: Identifiable {
     var hasErrors: Bool { checks.contains { $0.level == .error } }
     var actionTitle: String {
         switch kind {
-        case .publish: "Publish"
+        case .publish: scheduledFor == nil ? "Publish" : "Schedule"
         case .update: "Update"
         case .delete: "Delete from Site"
         case .unpublish: "Unpublish"
@@ -198,6 +201,17 @@ final class PublishSession: Identifiable {
         } else {
             for link in broken { items.append(CheckItem(level: .warning, text: "Link goes nowhere on the site: \(link)")) }
         }
+        if let date = doc.value("date")?.string.flatMap({ SiteDate.parse($0, timeZone: site.config.timeZone) }) ?? document.date,
+           Schedule.isScheduled(date) {
+            if Schedule.publishesFutureNow(site.config) {
+                items.append(CheckItem(level: .warning, text: "The date is in the future, but future: true in _config.yml shows it right away."))
+            } else {
+                scheduledFor = date
+                let when = date.formatted(Date.FormatStyle(date: .long, time: .shortened, timeZone: site.config.timeZone))
+                items.append(CheckItem(level: .info, text: "Scheduled: the post stays off the site until \(when)."))
+                if !Schedule.hasWorkflow(siteRoot: site.root) { addScheduleWorkflow = true }
+            }
+        }
         if let repo = backend.repository {
             items.append(CheckItem(level: .info, text: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site."))
         }
@@ -227,6 +241,17 @@ final class PublishSession: Identifiable {
         editor?.saveNow()
         do {
             try prepare()
+            if addScheduleWorkflow == true, let root = model?.site?.root {
+                let file = root.appending(path: Schedule.workflowPath)
+                try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try Data(Schedule.workflow.utf8).write(to: file, options: .withoutOverwriting)
+                paths.append(Schedule.workflowPath)
+                let earlier = rollback
+                rollback = {
+                    earlier()
+                    try? FileManager.default.removeItem(at: file)
+                }
+            }
         } catch {
             phase = .failed(error.localizedDescription)
             return

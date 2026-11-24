@@ -49,6 +49,8 @@ public struct Git: Sendable {
         environment["GIT_TERMINAL_PROMPT"] = "0"
         environment["GIT_ASKPASS"] = ""
         environment["LC_ALL"] = "C"
+        // Background status checks must not take the index lock while a publish is committing.
+        environment["GIT_OPTIONAL_LOCKS"] = "0"
         process.environment = environment
         let pipe = Pipe()
         process.standardOutput = pipe
