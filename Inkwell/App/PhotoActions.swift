@@ -5,21 +5,23 @@ import InkwellKit
 /// Small images for grids, made with ImageIO and kept in memory.
 final class Thumbnails {
     static let shared = Thumbnails()
-    private let cache = NSCache<NSURL, NSImage>()
+    private let cache = NSCache<NSString, NSImage>()
 
     func image(for url: URL, size: CGFloat = 360) -> NSImage? {
-        if let cached = cache.object(forKey: url as NSURL) { return cached }
+        let key = "\(Int(size)) \(url.path)" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                   kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
                   kCGImageSourceThumbnailMaxPixelSize: size,
               ] as CFDictionary) else { return NSImage(contentsOf: url) }
         let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
-        cache.setObject(image, forKey: url as NSURL)
+        cache.setObject(image, forKey: key)
         return image
     }
 
-    func forget(_ url: URL) { cache.removeObject(forKey: url as NSURL) }
+    /// Replacing a picture is rare, so every size of every picture is dropped.
+    func forget(_: URL) { cache.removeAllObjects() }
 }
 
 struct PhotoEntry: Identifiable, Hashable {

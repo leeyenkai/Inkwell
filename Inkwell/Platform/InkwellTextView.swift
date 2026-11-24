@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import InkwellKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -11,6 +12,23 @@ final class InkwellTextView: NSTextView {
     var onLinkPicker: ((Int) -> Void)?
     /// Called for slash-menu items the view cannot do alone (image, embed).
     var onSlashAction: ((String, Int) -> Void)?
+    /// Called to edit the table around the cursor in a grid; the range is nil for a new table at the location.
+    var onEditTable: ((NSRange?, MarkdownTable, Int) -> Void)?
+    /// The picture file for an image target as written in the post, to show it under its line.
+    var imageResolver: ((String) -> URL?)?
+    private var imageViews: [InlineImageView] = []
+    private var placedImages: [(range: NSRange, size: NSSize, url: URL, alt: String)] = []
+    private var imageWidth: CGFloat = 0
+    private lazy var tableButton: NSButton = {
+        let button = NSButton(title: "Edit Table…", target: self, action: #selector(editTableFromButton))
+        button.bezelStyle = .push
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        button.isHidden = true
+        button.setAccessibilityHelp("Edit this table in a grid")
+        addSubview(button)
+        return button
+    }()
     var sourceMode = false
     /// Hide Markdown markers on every line except the one being edited.
     var hidesSyntax = true
@@ -22,6 +40,12 @@ final class InkwellTextView: NSTextView {
         super.setFrameSize(newSize)
         let side = max(28, (newSize.width - Self.columnWidth) / 2)
         if abs(textContainerInset.width - side) > 0.5 { textContainerInset = NSSize(width: side, height: 8) }
+        if !placedImages.isEmpty, abs(contentWidth - imageWidth) > 1 { restyle() }
+    }
+
+    var contentWidth: CGFloat {
+        guard let container = textContainer else { return Self.columnWidth }
+        return max(100, container.size.width - 2 * container.lineFragmentPadding)
     }
 
     func restyle() {
@@ -30,6 +54,135 @@ final class InkwellTextView: NSTextView {
         styledParagraph = active
         liquidRanges = MarkdownStyler.apply(to: storage, source: sourceMode, activeRange: hidesSyntax && !sourceMode ? active : nil)
         typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
+        styleTables(in: storage)
+        styleImages(in: storage)
+        updateTableButton()
+    }
+
+    /// Tables in a monospaced face, so the columns the grid editor lines up stay lined up here.
+    private func styleTables(in storage: NSTextStorage) {
+        guard !sourceMode else { return }
+        let font = NSFont.monospacedSystemFont(ofSize: MarkdownStyler.bodySize - 2, weight: .regular)
+        storage.beginEditing()
+        for range in MarkdownTable.ranges(in: storage.string) where NSMaxRange(range) <= storage.length {
+            storage.enumerateAttribute(.font, in: range) { value, sub, _ in
+                let bold = (value as? NSFont)?.fontDescriptor.symbolicTraits.contains(.bold) == true
+                storage.addAttribute(.font, value: bold ? NSFont.monospacedSystemFont(ofSize: font.pointSize, weight: .semibold) : font, range: sub)
+            }
+        }
+        storage.endEditing()
+    }
+
+    // MARK: Inline images
+
+    /// Pictures on lines of their own show under the line. The space is paragraph spacing, so the text is unchanged.
+    private func styleImages(in storage: NSTextStorage) {
+        placedImages = []
+        imageWidth = contentWidth
+        if !sourceMode, let resolve = imageResolver {
+            let ns = storage.string as NSString
+            storage.beginEditing()
+            for line in ImageLines.find(in: storage.string) {
+                guard let url = resolve(line.target), let pixels = ImageSizes.shared.size(of: url), pixels.width > 0, pixels.height > 0 else { continue }
+                let scale = min(1, imageWidth / pixels.width, Self.imageMaxHeight / pixels.height)
+                let size = NSSize(width: (pixels.width * scale).rounded(), height: (pixels.height * scale).rounded())
+                let paragraph = ns.paragraphRange(for: line.range)
+                let style = (storage.attribute(.paragraphStyle, at: line.range.location, effectiveRange: nil) as? NSParagraphStyle)?
+                    .mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+                style.paragraphSpacing = size.height + 14
+                storage.addAttribute(.paragraphStyle, value: style, range: paragraph)
+                placedImages.append((line.range, size, url, line.alt))
+            }
+            storage.endEditing()
+        }
+        positionImages()
+    }
+
+    static let imageMaxHeight: CGFloat = 320
+    var inlineImageCount: Int { placedImages.count }
+
+    private func positionImages() {
+        while imageViews.count < placedImages.count {
+            let view = InlineImageView()
+            view.imageScaling = .scaleProportionallyUpOrDown
+            view.wantsLayer = true
+            view.layer?.cornerRadius = 6
+            view.layer?.masksToBounds = true
+            addSubview(view)
+            imageViews.append(view)
+        }
+        for (i, view) in imageViews.enumerated() {
+            guard i < placedImages.count, let layout = layoutManager else {
+                view.isHidden = true
+                continue
+            }
+            let placed = placedImages[i]
+            let glyphs = layout.glyphRange(forCharacterRange: placed.range, actualCharacterRange: nil)
+            guard glyphs.length > 0 else {
+                view.isHidden = true
+                continue
+            }
+            let line = layout.lineFragmentUsedRect(forGlyphAt: NSMaxRange(glyphs) - 1, effectiveRange: nil)
+            view.frame = NSRect(x: textContainerOrigin.x + (textContainer?.lineFragmentPadding ?? 0), y: textContainerOrigin.y + line.maxY + 6,
+                                width: placed.size.width, height: placed.size.height)
+            if view.url != placed.url {
+                view.url = placed.url
+                view.image = Thumbnails.shared.image(for: placed.url, size: 1400)
+            }
+            view.setAccessibilityLabel(placed.alt.isEmpty ? "Image" : placed.alt)
+            view.isHidden = false
+        }
+    }
+
+    // MARK: Tables
+
+    @objc func editTableFromButton() { editTable() }
+
+    func editTable() {
+        let location = selectedRange().location
+        if let found = MarkdownTable.find(in: string, at: location) {
+            onEditTable?(found.range, found.table, location)
+        } else {
+            onEditTable?(nil, .blank(), location)
+        }
+    }
+
+    /// Writes an edited table back in one undo step, or inserts a new one as its own block.
+    func replaceTable(_ range: NSRange?, with markdown: String, at location: Int) {
+        guard let range else { return insertBlock(markdown, at: location) }
+        apply(FormattingResult(edits: [TextEdit(range, markdown)], selection: NSRange(location: range.location + (markdown as NSString).length, length: 0)))
+    }
+
+    /// A small button beside the table the cursor is in.
+    func updateTableButton() {
+        guard !sourceMode, let layout = layoutManager, let found = MarkdownTable.find(in: string, at: selectedRange().location) else {
+            tableButton.isHidden = true
+            return
+        }
+        let glyph = layout.glyphIndexForCharacter(at: found.range.location)
+        let line = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        tableButton.sizeToFit()
+        let x = textContainerOrigin.x + (textContainer?.size.width ?? contentWidth) - tableButton.frame.width
+        tableButton.setFrameOrigin(NSPoint(x: x, y: textContainerOrigin.y + line.minY - tableButton.frame.height - 2))
+        tableButton.isHidden = false
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = super.menu(for: event) ?? NSMenu()
+        let index = characterIndexForInsertion(at: convert(event.locationInWindow, from: nil))
+        if !sourceMode, MarkdownTable.find(in: string, at: index) != nil {
+            let item = NSMenuItem(title: "Edit Table…", action: #selector(editTableFromMenu(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = index
+            menu.insertItem(item, at: 0)
+            menu.insertItem(.separator(), at: 1)
+        }
+        return menu
+    }
+
+    @objc func editTableFromMenu(_ sender: NSMenuItem) {
+        if let index = sender.representedObject as? Int { setSelectedRange(NSRange(location: index, length: 0)) }
+        editTable()
     }
 
     var activeParagraph: NSRange {
@@ -42,6 +195,7 @@ final class InkwellTextView: NSTextView {
 
     /// Markers show again on the line the cursor moves to, and hide on the line it left.
     func selectionMoved() {
+        updateTableButton()
         let previous = styledParagraph ?? NSRange(location: NSNotFound, length: 0)
         guard hidesSyntax, !sourceMode, !hasMarkedText(), !NSEqualRanges(activeParagraph, previous) else { return }
         restyle()
@@ -116,6 +270,11 @@ final class InkwellTextView: NSTextView {
     @objc func slashBlock(_ sender: NSMenuItem) {
         guard let info = sender.representedObject as? [Any], let raw = info.first as? String, let block = SmartTyping.Block(rawValue: raw),
               let location = info.last as? Int, location < (string as NSString).length else { return }
+        if block == .table {
+            apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: 1), "")], selection: NSRange(location: location, length: 0)))
+            onEditTable?(nil, .blank(), location)
+            return
+        }
         apply(SmartTyping.insert(block, in: string, slashAt: location))
     }
 
@@ -205,7 +364,9 @@ final class InkwellTextView: NSTextView {
         let ns = string as NSString
         let at = min(location, ns.length)
         let lineStart = at == 0 || ns.character(at: at - 1) == 10
-        let insert = (lineStart ? "" : "\n\n") + markdown + "\n"
+        // A blank line after the block unless one follows already, so the next text stays its own paragraph.
+        let followedByText = at < ns.length && ns.character(at: at) != 10
+        let insert = (lineStart ? "" : "\n\n") + markdown + (followedByText ? "\n\n" : "\n")
         apply(FormattingResult(edits: [TextEdit(NSRange(location: at, length: 0), insert)],
                                selection: NSRange(location: at + (insert as NSString).length, length: 0)))
     }
@@ -262,6 +423,30 @@ final class InkwellTextView: NSTextView {
             }
         }
         return nil
+    }
+}
+
+/// Shown under an image line; clicks go through to the text.
+final class InlineImageView: NSImageView {
+    var url: URL?
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// Pixel sizes of pictures, read from their headers and kept until the file changes.
+final class ImageSizes {
+    static let shared = ImageSizes()
+    private var cache: [URL: (modified: Date, size: NSSize)] = [:]
+
+    func size(of url: URL) -> NSSize? {
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        if let hit = cache[url], hit.modified == modified { return hit.size }
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              var w = props[kCGImagePropertyPixelWidth] as? CGFloat, var h = props[kCGImagePropertyPixelHeight] as? CGFloat else { return nil }
+        if let orientation = props[kCGImagePropertyOrientation] as? Int, orientation >= 5 { swap(&w, &h) }
+        let size = NSSize(width: w, height: h)
+        cache[url] = (modified, size)
+        return size
     }
 }
 
@@ -423,6 +608,9 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.onLinkPicker = { [weak model] location in model?.linkPick = AppModel.LinkPick(location: location) }
         textView.onSlashAction = { [weak model] action, location in model?.slashAction(action, at: location) }
         textView.hidesSyntax = model.hideSyntax
+        textView.onEditTable = { [weak model] range, table, location in model?.tableEdit = AppModel.TableEdit(range: range, table: table, location: location) }
+        textView.imageResolver = { [weak model] target in model?.fileURL(forSitePath: target) }
+        textView.restyle()
 
         let scroll = NSScrollView()
         scroll.documentView = textView

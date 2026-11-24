@@ -125,6 +125,31 @@ extension AppModel {
 
     // MARK: Editor actions
 
+    // MARK: Tables
+
+    struct TableEdit: Identifiable {
+        let id = UUID()
+        /// The table's range in the text, or nil for a new table inserted at `location`.
+        var range: NSRange?
+        var table: MarkdownTable
+        var location: Int
+    }
+
+    func finishTableEdit(_ table: MarkdownTable) {
+        guard let edit = tableEdit, let textView else { return }
+        tableEdit = nil
+        if let range = edit.range {
+            // The text could have been reloaded while the grid was open; only replace the same table.
+            guard NSMaxRange(range) <= (textView.string as NSString).length,
+                  MarkdownTable.find(in: textView.string, at: range.location)?.range == range else {
+                errorMessage = "The table changed while you were editing it, so your changes were not applied."
+                return
+            }
+        }
+        textView.replaceTable(edit.range, with: table.markdown, at: edit.location)
+        refreshChanges()
+    }
+
     func slashAction(_ action: String, at location: Int) {
         switch action {
         case "image":

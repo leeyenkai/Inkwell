@@ -86,6 +86,8 @@ struct FormatCommands: Commands {
             Button("Section Break") { model.textView?.divider() }.keyboardShortcut(.return, modifiers: [.command, .shift])
             Divider()
             Button("Add Image…") { addImage() }.keyboardShortcut("i", modifiers: [.command, .shift])
+            Button("Table…") { model.textView?.editTable() }.keyboardShortcut("t", modifiers: [.command, .shift])
+                .help("Edit the table the cursor is in as a grid, or insert a new one")
         }
     }
 
@@ -101,7 +103,7 @@ struct FormatCommands: Commands {
 /// Launch arguments: `--fresh` (do not reopen the last site), `--pane design|navigation|settings|code` (`--code-file <path>`,
 /// `--theme-file`), `--apply-theme <id>`, `--site <folder>`,
 /// `--open <path in site>`, `--section <id>`, `--preview`,
-/// `--source`, `--publish-sheet`,
+/// `--source`, `--publish-sheet`, `--table-cursor` (cursor in the first table), `--edit-table` (and open the grid),
 /// `--new-draft <title>` with optional `--draft-body <file>`, and `--selftest-publish` (needs a site whose remote is not GitHub).
 enum Launch {
     static var started = false
@@ -176,6 +178,23 @@ enum Launch {
             model.refreshChanges()
             try? await Task.sleep(for: .milliseconds(600))
             model.beginPublish()
+        }
+        if args.contains("--edit-table") || args.contains("--table-cursor") {
+            try? await Task.sleep(for: .milliseconds(800))
+            if let textView = model.textView {
+                let at = (textView.string as NSString).range(of: "\n|").location
+                if at != NSNotFound { textView.setSelectedRange(NSRange(location: at + 2, length: 0)) }
+                if args.contains("--edit-table") {
+                    // In a window of its own rather than a sheet, so a window capture can see it.
+                    textView.editTable()
+                    if let edit = model.tableEdit {
+                        model.tableEdit = nil
+                        let window = NSWindow(contentViewController: NSHostingController(rootView: TableEditorSheet(model: model, edit: edit)))
+                        window.title = "Table"
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                }
+            }
         }
     }
 }
@@ -298,6 +317,33 @@ enum SelfTest {
             } else {
                 ok = check(false, "scheduled post offered a publish") && ok
             }
+        }
+
+        // Editor: a picture on its own line shows inline, and a table edited as a grid goes back in one undo step.
+        model.newPost()
+        if let editor = model.editor {
+            editor.title = "Self-test table"
+            editor.body = "\n![Snow](/assets/images/estonia.jpg)\n\n| a | b |\n|---|:-:|\n| 1 | 2 |\n\nAfter.\n"
+            editor.reloadFromView()
+            await settle()
+        }
+        if let textView = model.textView, textView.string.contains("| 1 | 2 |") {
+            ok = check(textView.inlineImageCount == 1, "image shown inline") && ok
+            let before = textView.string
+            textView.setSelectedRange(NSRange(location: (before as NSString).range(of: "| 1").location + 2, length: 0))
+            textView.editTable()
+            if var table = model.tableEdit?.table {
+                table.rows.append(["3", "Tallinn"])
+                model.finishTableEdit(table)
+                let expected = "| a   |    b    |\n| --- | :-----: |\n| 1   |    2    |\n| 3   | Tallinn |\n\nAfter."
+                ok = check(textView.string.contains(expected), "table written back aligned") && ok
+                textView.undoManager?.undo()
+                ok = check(textView.string == before, "one undo restores the table") && ok
+            } else {
+                ok = check(false, "table found under the cursor") && ok
+            }
+        } else {
+            ok = check(false, "table draft in the editor") && ok
         }
         return ok
     }

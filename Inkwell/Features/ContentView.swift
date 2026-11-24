@@ -135,6 +135,7 @@ struct SiteWindow: View {
             CaptionSheet(model: model)
         }
         .sheet(item: $model.pendingGallery) { _ in GallerySheet(model: model) }
+        .sheet(item: $model.tableEdit) { edit in TableEditorSheet(model: model, edit: edit) }
         .sheet(isPresented: $model.showPhotoSetup) { PhotoSetupSheet(model: model) }
     }
 }

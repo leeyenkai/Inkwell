@@ -124,6 +124,7 @@ final class AppModel {
     private(set) var tagIndex: [String: [String]] = [:]
     var pendingImage: PendingImage?
     var pendingPhotos: [PendingPhoto]?
+    var tableEdit: TableEdit?
     var pendingGallery: PendingGallery?
     var selectedPhotoID: String?
     var showPhotoSetup = false
