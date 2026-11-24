@@ -8,6 +8,24 @@ struct EditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let error = editor.loadError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(.orange.opacity(0.1))
+            }
+            if editor.diskConflict != nil {
+                HStack {
+                    Label("This post changed outside Inkwell while you were editing it.", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Spacer()
+                    Button("Use the Other Version") { editor.resolveDiskConflict(keepMine: false) }
+                    Button("Keep Mine") { editor.resolveDiskConflict(keepMine: true) }
+                }
+                .padding(10)
+                .background(.orange.opacity(0.1))
+            }
             if !model.showSource {
                 header
             }
@@ -19,7 +37,8 @@ struct EditorView: View {
                 sourceMode: model.showSource,
                 model: model
             )
-            .id(editor.document.id + (model.showSource ? "-source" : ""))
+            .id("\(ObjectIdentifier(editor).hashValue)" + (model.showSource ? "-source" : ""))
+            .disabled(editor.loadError != nil)
             Divider()
             footer
         }

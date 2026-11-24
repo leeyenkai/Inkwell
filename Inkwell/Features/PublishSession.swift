@@ -10,9 +10,12 @@ struct CheckItem: Identifiable {
     var text: String
 }
 
-/// One publish or update: the checklist shown before it, then commit, push and the Pages build.
+/// One change to the live site (publish, update, delete, unpublish, or a set of files), from the checklist to the
+/// finished GitHub Pages build. File moves made before publishing are undone if publishing fails.
 @Observable
 final class PublishSession: Identifiable {
+    enum Kind { case publish, update, delete, unpublish, changes }
+
     enum Phase: Equatable {
         case ready
         case publishing
@@ -20,37 +23,122 @@ final class PublishSession: Identifiable {
         case live
         case pushed
         case committedOnly
+        case pushFailed(String)
+        case conflict([String])
         case failed(String)
     }
 
     let id = UUID()
-    let document: SiteDocument
-    let text: String
-    let site: Site
-    let isUpdate: Bool
+    let kind: Kind
+    let heading: String
     var message: String
     private(set) var checks: [CheckItem] = []
-    private(set) var paths: [String] = []
+    private(set) var paths: [String]
     private(set) var phase: Phase = .ready
     private(set) var liveURL: URL?
-    private weak var model: AppModel?
+    let displayURL: String?
 
-    init(document: SiteDocument, text: String, site: Site, model: AppModel) {
-        self.document = document
-        self.text = text
-        self.site = site
+    private let backend: any SiteBackend
+    private weak var model: AppModel?
+    private weak var editor: EditorDocument?
+    private var prepare: () throws -> Void = {}
+    private var rollback: () -> Void = {}
+    private var succeeded: () -> Void = {}
+    private var selectAfter: String?
+
+    private init(kind: Kind, heading: String, message: String, paths: [String], displayURL: String?, backend: any SiteBackend, model: AppModel) {
+        self.kind = kind
+        self.heading = heading
+        self.message = message
+        self.paths = paths
+        self.displayURL = displayURL
+        self.backend = backend
         self.model = model
-        isUpdate = document.origin == .repository && model.status(of: document) == .edited
-        let title = FrontMatterDocument(text: text).value("title")?.string ?? document.title
-        message = "\(isUpdate ? "Update" : "Publish"): \(title.isEmpty ? "Untitled" : title)"
-        liveURL = model.liveURL(for: document)
-        buildChecklist(status: model.gitStatus)
     }
 
     var hasErrors: Bool { checks.contains { $0.level == .error } }
-    var displayURL: String { Permalink.display(document.url, config: site.config) }
+    var actionTitle: String {
+        switch kind {
+        case .publish: "Publish"
+        case .update: "Update"
+        case .delete: "Delete from Site"
+        case .unpublish: "Unpublish"
+        case .changes: "Publish \(paths.count) Change\(paths.count == 1 ? "" : "s")"
+        }
+    }
 
-    private func buildChecklist(status: [String: FileStatus]) {
+    // MARK: Kinds
+
+    static func publish(document: SiteDocument, editor: EditorDocument, site: Site, backend: any SiteBackend, model: AppModel) -> PublishSession {
+        let text = editor.fullText
+        let title = FrontMatterDocument(text: text).value("title")?.string ?? document.title
+        let isUpdate = document.origin == .repository && model.changes[document.relativePath] == .modified
+        let name = title.isEmpty ? "Untitled" : title
+        let session = PublishSession(kind: isUpdate ? .update : .publish, heading: "\(isUpdate ? "Update" : "Publish") “\(name)”",
+                                     message: "\(isUpdate ? "Update" : "Publish"): \(name)", paths: [document.relativePath],
+                                     displayURL: Permalink.display(document.url, config: site.config), backend: backend, model: model)
+        session.editor = editor
+        session.liveURL = model.liveURL(for: document)
+        session.selectAfter = document.relativePath
+        session.buildChecklist(document: document, text: text, site: site, changes: model.changes)
+        if document.origin == .localDraft {
+            let target = site.root.appending(path: document.relativePath)
+            session.prepare = { [weak session] in
+                let current = session?.editor?.fullText ?? text
+                try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try Data(current.utf8).write(to: target, options: .withoutOverwriting)
+            }
+            session.rollback = { try? FileManager.default.removeItem(at: target) }
+            session.succeeded = { [weak session] in
+                session?.editor?.retire()
+                try? FileManager.default.removeItem(at: document.fileURL)
+            }
+        }
+        return session
+    }
+
+    static func delete(document: SiteDocument, backend: any SiteBackend, model: AppModel) -> PublishSession {
+        let session = PublishSession(kind: .delete, heading: "Delete “\(document.title)”", message: "Delete: \(document.title)",
+                                     paths: [document.relativePath], displayURL: nil, backend: backend, model: model)
+        var saved: Data?
+        session.checks = [CheckItem(level: .info, text: "The page at \(document.url) stops working once GitHub Pages rebuilds the site.")]
+        session.prepare = {
+            saved = try Data(contentsOf: document.fileURL)
+            try FileManager.default.removeItem(at: document.fileURL)
+        }
+        session.rollback = { if let saved { try? saved.write(to: document.fileURL) } }
+        return session
+    }
+
+    static func unpublish(document: SiteDocument, draftURL: URL, backend: any SiteBackend, model: AppModel) -> PublishSession {
+        let session = PublishSession(kind: .unpublish, heading: "Unpublish “\(document.title)”", message: "Unpublish: \(document.title)",
+                                     paths: [document.relativePath], displayURL: nil, backend: backend, model: model)
+        session.checks = [CheckItem(level: .info, text: "The post leaves your site and goes back to Drafts on this Mac, where you can keep working on it.")]
+        var saved: Data?
+        session.prepare = {
+            let data = try Data(contentsOf: document.fileURL)
+            saved = data
+            try FileManager.default.createDirectory(at: draftURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: draftURL, options: .withoutOverwriting)
+            try FileManager.default.removeItem(at: document.fileURL)
+        }
+        session.rollback = {
+            if let saved { try? saved.write(to: document.fileURL) }
+            try? FileManager.default.removeItem(at: draftURL)
+        }
+        return session
+    }
+
+    static func changes(paths: [String], message: String, backend: any SiteBackend, model: AppModel) -> PublishSession {
+        let session = PublishSession(kind: .changes, heading: "Publish changes", message: message, paths: paths, displayURL: nil,
+                                     backend: backend, model: model)
+        session.checks = [CheckItem(level: .info, text: "\(paths.count) file\(paths.count == 1 ? "" : "s") go to your site in one change.")]
+        return session
+    }
+
+    // MARK: Checklist
+
+    private func buildChecklist(document: SiteDocument, text: String, site: Site, changes: [String: ChangeKind]) {
         let doc = FrontMatterDocument(text: text)
         var items: [CheckItem] = []
         let issues = Validation.frontMatter(doc, filename: document.filename, inCollection: !document.isPage)
@@ -70,15 +158,23 @@ final class PublishSession: Identifiable {
         var bytes = 0
         var missingAlt = 0
         var withLocation = 0
-        for ref in ContentChecks.images(in: doc.body) where ref.path.hasPrefix("/") {
-            let relative = String(ref.path.dropFirst())
-            let file = site.root.appending(path: relative)
+        for ref in ContentChecks.images(in: doc.body) {
             if ref.alt.trimmingCharacters(in: .whitespaces).isEmpty { missingAlt += 1 }
+            if ref.path.hasPrefix("http://") || ref.path.hasPrefix("https://") || ref.path.hasPrefix("//") { continue }
+            guard ref.path.hasPrefix("/") else {
+                items.append(CheckItem(level: .warning, text: "“\(ref.path)” is a relative image path, which may break on the live site."))
+                continue
+            }
+            var relative = String(ref.path.dropFirst())
+            if !site.config.baseurl.isEmpty, ref.path.hasPrefix(site.config.baseurl + "/") {
+                relative = String(ref.path.dropFirst(site.config.baseurl.count + 1))
+            }
+            let file = site.root.appending(path: relative)
             guard FileManager.default.fileExists(atPath: file.path) else {
                 items.append(CheckItem(level: .error, text: "Image not found: \(ref.path)"))
                 continue
             }
-            if [.untracked, .modified, .added].contains(status[relative]), !imagePaths.contains(relative) {
+            if changes[relative] == .added || changes[relative] == .modified, !imagePaths.contains(relative) {
                 imagePaths.append(relative)
                 bytes += (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
                 if ImageImport.hasLocation(file) { withLocation += 1 }
@@ -94,24 +190,20 @@ final class PublishSession: Identifiable {
         if missingAlt > 0 {
             items.append(CheckItem(level: .warning, text: "\(missingAlt) image\(missingAlt == 1 ? " is" : "s are") missing alt text"))
         }
-
-        let broken = brokenInternalLinks(doc.body)
+        let broken = brokenInternalLinks(doc.body, site: site)
         if broken.isEmpty {
             items.append(CheckItem(level: .ok, text: "No broken links"))
         } else {
             for link in broken { items.append(CheckItem(level: .warning, text: "Link goes nowhere on the site: \(link)")) }
         }
-        let repo = model?.remote.flatMap(Git.gitHubRepository)
-        if let repo {
-            items.append(CheckItem(level: .info, text: "Commits to \(repo.owner)/\(repo.name), then GitHub Pages rebuilds the site."))
-        } else if model?.remote == nil {
-            items.append(CheckItem(level: .info, text: "This site has no remote, so the change is committed here only."))
+        if let repo = backend.repository {
+            items.append(CheckItem(level: .info, text: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site."))
         }
         checks = items
         paths = [document.relativePath] + imagePaths
     }
 
-    private func brokenInternalLinks(_ body: String) -> [String] {
+    private func brokenInternalLinks(_ body: String, site: Site) -> [String] {
         guard let regex = try? NSRegularExpression(pattern: #"(?<!\!)\[[^\]]*\]\((/[^)\s#]*)"#) else { return [] }
         let ns = body as NSString
         let known = Set(site.documents.flatMap { [$0.url, $0.url.hasSuffix("/") ? String($0.url.dropLast()) : $0.url + "/"] })
@@ -128,46 +220,55 @@ final class PublishSession: Identifiable {
 
     // MARK: Run
 
-    func publish() async {
-        guard let git = Git(root: site.root) else {
-            phase = .failed("git was not found on this Mac. Install the Xcode command line tools and try again.")
+    func run() async {
+        phase = .publishing
+        editor?.saveNow()
+        do {
+            try prepare()
+        } catch {
+            phase = .failed(error.localizedDescription)
             return
         }
-        phase = .publishing
-        let target = site.root.appending(path: document.relativePath)
-        var wroteDraft = false
         do {
-            if document.origin == .localDraft {
-                try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try Data(text.utf8).write(to: target, options: .withoutOverwriting)
-                wroteDraft = true
-            }
-            let result = try await git.publish(paths: paths, message: message.trimmingCharacters(in: .whitespacesAndNewlines))
-            if document.origin == .localDraft { try? FileManager.default.removeItem(at: document.fileURL) }
-            model?.adoptPublished(relativePath: document.relativePath)
-            guard result.pushed else {
-                phase = .committedOnly
+            let outcome = try await backend.publish(paths: paths, message: message.trimmingCharacters(in: .whitespacesAndNewlines))
+            succeeded()
+            model?.didPublish(selecting: selectAfter)
+            guard outcome.pushed else {
+                phase = outcome.pushError.map { .pushFailed($0) } ?? .committedOnly
                 return
             }
-            guard let remote = await git.remoteURL(), let repo = Git.gitHubRepository(from: remote) else {
+            guard let client = backend.client, let repo = backend.repository else {
                 phase = .pushed
                 return
             }
             phase = .building(.waiting)
-            let status = PagesStatus(owner: repo.owner, repository: repo.name)
-            let final = await status.watch(commit: result.commit) { [weak self] state in
+            let watcher = BuildWatcher(client: client, owner: repo.owner, repository: repo.name)
+            let final = await watcher.watch(commit: outcome.commit) { [weak self] state in
                 await self?.update(state)
             }
             phase = final == .live ? .live : .building(final)
+        } catch let SyncError.conflict(paths) {
+            rollback()
+            phase = .conflict(paths)
+            model?.refreshChanges()
         } catch {
-            if wroteDraft, (try? await git.status())?[document.relativePath] == .untracked {
-                try? FileManager.default.removeItem(at: target)
-            }
+            rollback()
             phase = .failed(error.localizedDescription)
         }
     }
 
     private func update(_ state: PagesBuildState) {
         phase = state == .live ? .live : .building(state)
+    }
+
+    func retryPush() async {
+        phase = .publishing
+        do {
+            try await backend.pushAgain()
+            phase = .pushed
+        } catch {
+            phase = .pushFailed(error.localizedDescription)
+        }
+        model?.refreshChanges()
     }
 }

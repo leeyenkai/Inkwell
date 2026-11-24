@@ -6,43 +6,22 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if model.site != nil {
+            if model.site != nil && !model.showSitePicker {
                 SiteWindow(model: model)
+            } else if model.account.isSignedIn {
+                SitePickerView(model: model)
             } else {
                 WelcomeView(model: model)
             }
+        }
+        .overlay {
+            if let opening = model.opening, model.site != nil || !model.account.isSignedIn { OpeningOverlay(message: opening) }
         }
         .alert("Inkwell", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
         }
-    }
-}
-
-struct WelcomeView: View {
-    var model: AppModel
-
-    var body: some View {
-        VStack(spacing: 18) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 112, height: 112)
-            Text("Inkwell")
-                .font(.largeTitle.weight(.semibold))
-            Text("Write, preview and publish to your GitHub Pages site.\nOpen the folder where your site lives on this Mac.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-            Button("Open Site Folder…") { model.openSitePanel() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .keyboardShortcut("o")
-            if let error = model.loadError {
-                Text(error).foregroundStyle(.red).font(.callout)
-            }
-        }
-        .padding(60)
-        .frame(minWidth: 640, minHeight: 440)
     }
 }
 
@@ -63,6 +42,9 @@ struct SiteWindow: View {
         .navigationTitle(model.site?.name ?? "Inkwell")
         .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search")
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                SiteMenu(model: model)
+            }
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     model.newPost()
@@ -92,6 +74,8 @@ struct SiteWindow: View {
         .sheet(item: $model.pendingImage) { _ in
             ImageSheet(model: model)
         }
+        .sheet(isPresented: $model.showChanges) { ChangesSheet(model: model) }
+        .sheet(isPresented: $model.showConflicts) { ConflictSheet(model: model) }
     }
 }
 
@@ -106,7 +90,7 @@ struct SidebarView: View {
                         HStack {
                             Text(section.label)
                             Spacer()
-                            if section.collectionName != nil {
+                            if section.listsDocuments {
                                 Text("\(model.count(for: section.id))")
                                     .foregroundStyle(.secondary)
                                     .monospacedDigit()
@@ -147,23 +131,82 @@ struct SyncFooter: View {
     var model: AppModel
 
     var body: some View {
-        HStack(spacing: 6) {
-            if !model.hasGit {
-                Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
-                Text("Not a git folder")
-            } else if model.pendingChanges == 0 {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text(model.drafts.isEmpty ? "Everything is published" : "Site up to date · \(model.drafts.count) draft\(model.drafts.count == 1 ? "" : "s")")
-            } else {
-                Image(systemName: "pencil.circle.fill").foregroundStyle(Color.accentColor)
-                Text("\(model.pendingChanges) not yet published")
+        VStack(alignment: .leading, spacing: 6) {
+            if !model.conflicts.isEmpty {
+                Button {
+                    model.showConflicts = true
+                } label: {
+                    Label("\(model.conflicts.count) changed in two places", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+                .buttonStyle(.plain)
             }
-            Spacer()
+            if model.unpushed > 0 {
+                Button {
+                    model.pushAgain()
+                } label: {
+                    Label("\(model.unpushed) not pushed · Push", systemImage: "arrow.up.circle")
+                }
+                .buttonStyle(.plain)
+            }
+            if model.pendingChanges > 0 {
+                Button {
+                    model.showChanges = true
+                } label: {
+                    Label("\(model.pendingChanges) unpublished change\(model.pendingChanges == 1 ? "" : "s")", systemImage: "pencil.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .help("Review and publish them (⌥⇧⌘P)")
+            } else {
+                Label(model.drafts.isEmpty ? "Site up to date" : "Site up to date · \(model.drafts.count) draft\(model.drafts.count == 1 ? "" : "s")",
+                      systemImage: "checkmark.circle.fill")
+                    .symbolRenderingMode(.multicolor)
+            }
+            switch model.syncStatus {
+            case .syncing:
+                Label("Checking GitHub…", systemImage: "arrow.triangle.2.circlepath").font(.caption)
+            case let .offline(reason):
+                Label("Offline", systemImage: "wifi.slash").font(.caption).help(reason)
+            case let .upToDate(date):
+                Text("Checked \(date.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.tertiary)
+            case .idle:
+                EmptyView()
+            }
         }
         .font(.callout)
         .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+}
+
+/// The site name in the toolbar, with switching, syncing and links.
+struct SiteMenu: View {
+    var model: AppModel
+
+    var body: some View {
+        Menu {
+            Button("Check GitHub for Changes") { Task { await model.sync() } }
+            Button("Review Unpublished Changes…") { model.showChanges = true }
+            Divider()
+            if let url = model.pagesURL { Button("Open Live Site") { NSWorkspace.shared.open(url) } }
+            if let repo = model.backend?.repository, let url = URL(string: "https://github.com/\(repo.owner)/\(repo.name)") {
+                Button("Open Repository on GitHub") { NSWorkspace.shared.open(url) }
+            }
+            Divider()
+            Button("Switch Site…") { model.closeSite() }
+            if model.account.isSignedIn {
+                Button("Sign Out of GitHub") {
+                    model.closeSite()
+                    model.account.signOut()
+                }
+            }
+        } label: {
+            Label(model.backend?.displayName ?? "Site", systemImage: "globe")
+                .labelStyle(.titleAndIcon)
+        }
+        .help("Site")
     }
 }
 
@@ -182,17 +225,9 @@ struct DocumentListView: View {
         let docs = model.documents(for: model.sidebarSelection)
         List(selection: Binding(get: { model.selectedDocumentID }, set: { model.select($0) })) {
             ForEach(docs) { doc in
-                DocumentRow(doc: doc, status: model.status(of: doc), committed: model.lastCommitDates[doc.relativePath])
+                DocumentRow(doc: doc, status: model.status(of: doc))
                     .tag(doc.id)
-                    .contextMenu {
-                        if doc.origin == .localDraft {
-                            Button("Delete Draft…", role: .destructive) { model.deleteDraft(doc) }
-                        }
-                        Button("Show in Finder") { model.revealInFinder(doc) }
-                        if let url = model.liveURL(for: doc), doc.origin == .repository {
-                            Button("Open on Site") { NSWorkspace.shared.open(url) }
-                        }
-                    }
+                    .contextMenu { DocumentMenu(model: model, doc: doc) }
             }
         }
         .listStyle(.inset)
@@ -210,10 +245,34 @@ struct DocumentListView: View {
     }
 }
 
+struct DocumentMenu: View {
+    var model: AppModel
+    var doc: SiteDocument
+
+    var body: some View {
+        if doc.origin == .localDraft {
+            Button("Delete Draft…", role: .destructive) { model.deleteDraft(doc) }
+        } else {
+            if let url = model.liveURL(for: doc), model.status(of: doc) != .notPublished {
+                Button("Open on Site") { NSWorkspace.shared.open(url) }
+            }
+            if model.changes[doc.relativePath] != nil {
+                Button("Discard Unpublished Changes…") { model.discardChanges(doc) }
+            }
+            Divider()
+            if doc.relativePath.hasPrefix("_"), model.status(of: doc) != .notPublished {
+                Button("Unpublish to Drafts…") { model.unpublish(doc) }
+            }
+            Button("Delete from Site…", role: .destructive) { model.deleteFromSite(doc) }
+        }
+        Divider()
+        Button("Show in Finder") { model.revealInFinder(doc) }
+    }
+}
+
 struct DocumentRow: View {
     let doc: SiteDocument
     let status: DocumentStatus
-    let committed: Date?
 
     var subtitle: String {
         switch status {

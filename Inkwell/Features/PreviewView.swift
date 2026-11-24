@@ -7,6 +7,7 @@ import WebKit
 final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
     static let scheme = "inkwell-site"
     var root: URL
+    var baseurl = ""
 
     init(root: URL) {
         self.root = root
@@ -15,6 +16,8 @@ final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
     func webView(_: WKWebView, start task: any WKURLSchemeTask) {
         guard let url = task.request.url else { return }
         var path = url.path.removingPercentEncoding ?? url.path
+        // Project sites live under /<repository>/; files are at the site root here.
+        if !baseurl.isEmpty, path.hasPrefix(baseurl) { path = String(path.dropFirst(baseurl.count)) }
         if path.hasSuffix("/") { path += "index.html" }
         let file = root.appending(path: String(path.drop { $0 == "/" })).standardizedFileURL
         guard file.path.hasPrefix(root.standardizedFileURL.path), let data = try? Data(contentsOf: file) else {
@@ -36,12 +39,14 @@ struct SitePreview: NSViewRepresentable {
     var html: String
     var pageURL: String
     var root: URL
+    var baseurl = ""
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let handler = SiteSchemeHandler(root: root)
+        handler.baseurl = baseurl
         config.setURLSchemeHandler(handler, forURLScheme: SiteSchemeHandler.scheme)
         context.coordinator.handler = handler
         let web = WKWebView(frame: .zero, configuration: config)
@@ -54,6 +59,7 @@ struct SitePreview: NSViewRepresentable {
     func updateNSView(_ web: WKWebView, context: Context) {
         let c = context.coordinator
         c.handler?.root = root
+        c.handler?.baseurl = baseurl
         guard c.html != html else { return }
         let base = URL(string: "\(SiteSchemeHandler.scheme)://site\(pageURL.hasPrefix("/") ? pageURL : "/" + pageURL)")
         // Same page: swap the body in place so the scroll position stays where the writer is reading.
@@ -134,7 +140,7 @@ struct PreviewPane: View {
                 HStack {
                     Spacer(minLength: 0)
                     if let page, let root = model.site?.root {
-                        SitePreview(html: page.html, pageURL: editor.currentURL, root: root)
+                        SitePreview(html: page.html, pageURL: editor.currentURL, root: root, baseurl: model.site?.config.baseurl ?? "")
                             .frame(width: model.previewWidth == .phone ? min(390, geo.size.width) : geo.size.width)
                             .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .phone ? 18 : 0))
                             .overlay {

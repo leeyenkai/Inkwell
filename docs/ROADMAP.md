@@ -19,6 +19,17 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
 
 ---
 
+## Progress (24 Nov 2026)
+
+- **M0 Icon: done.** The ink-roller Liquid Glass icon (four groups, the most Xcode allows), checked in every appearance with `ictool`.
+- **M1 Foundation: mostly done.**
+  - Done: sign-in with a personal token, with device flow ready for an OAuth client ID; site picker; Pages-aware download into Application Support; one-commit publishing through the GitHub API; pull with conflicts (Keep mine / Use GitHub’s / Compare); "Unpublished changes" sheet; delete, unpublish and discard; build status through the signed-in account; "New site" (creates the repository, applies a theme, publishes, turns on Pages); local-folder mode hardened (timeouts, rebase abort, push again).
+  - Audit fixes done: CRLF/BOM, wrapped YAML, permalink styles and `_posts`, time zone, Pages section, repo-keyed drafts, `site.baseurl` images and preview, IME guard, undo across Liquid chips, stable editor identity, disk reload with conflict banner, no saving after a failed load, no ghost drafts, preview, search and image import off the main thread.
+  - Left: the OAuth App client ID (from the user); a live publish test against a throwaway repository (needs the user’s go-ahead); incremental restyling for very long posts. App Sandbox is deferred: the local-folder mode needs the user’s own git configuration and credential helpers, which the sandbox blocks. GitHub mode keeps everything in Application Support and is sandbox-ready.
+- **M3 design engine: done** (`InkwellDesign`, see [DESIGN-ENGINE.md](DESIGN-ENGINE.md)). The Design panel, navigation editor, settings form and theme gallery UI are next.
+
+---
+
 ## Part 1: Audit of the MVP
 
 (Filled in from the independent code audit and my own notes. Severity: **B** blocker for 1.0, **M** major, **m** minor.)

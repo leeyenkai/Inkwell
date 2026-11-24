@@ -63,7 +63,7 @@ public struct GitHubClient: Sendable {
         return (data, http)
     }
 
-    public func json<T: Decodable>(_ type: T.Type, _ method: String = "GET", _ path: String, query: [String: String] = [:],
+    public func json<T: Decodable>(_: T.Type, _ method: String = "GET", _ path: String, query: [String: String] = [:],
                                    body: (any Encodable & Sendable)? = nil) async throws -> T {
         let (data, _) = try await self.data(method, path, query: query, body: body)
         do {
@@ -218,6 +218,12 @@ public struct GitHubUser: Decodable, Sendable, Equatable {
     public var login: String
     public var name: String?
     public var avatar_url: String?
+
+    public init(login: String, name: String?, avatar_url: String?) {
+        self.login = login
+        self.name = name
+        self.avatar_url = avatar_url
+    }
 }
 
 public struct GitHubRepo: Decodable, Sendable, Equatable, Identifiable {

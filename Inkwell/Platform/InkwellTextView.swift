@@ -25,7 +25,8 @@ final class InkwellTextView: NSTextView {
 
     // Liquid tags behave as one piece: they can be selected and deleted whole, but not edited from inside.
     override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
-        if !sourceMode {
+        let undoing = undoManager?.isUndoing == true || undoManager?.isRedoing == true
+        if !sourceMode, !undoing {
             for chip in liquidRanges {
                 let inside = affectedCharRange.location > chip.location && affectedCharRange.location < NSMaxRange(chip)
                 let overlaps = NSIntersectionRange(chip, affectedCharRange).length > 0
@@ -316,7 +317,8 @@ struct MarkdownEditor: NSViewRepresentable {
         }
 
         func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? InkwellTextView else { return }
+            // While an input method is composing (accents, Chinese, Japanese), leave the text alone until it commits.
+            guard let textView = notification.object as? InkwellTextView, !textView.hasMarkedText() else { return }
             isEditing = true
             textView.restyle()
             parent.text = textView.string

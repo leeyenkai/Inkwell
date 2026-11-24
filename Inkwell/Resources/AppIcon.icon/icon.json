@@ -97,29 +97,14 @@
       "layers": [
         {
           "glass": true,
-          "image-name": "ink.svg",
-          "name": "ink",
-          "opacity": 1.0
-        }
-      ],
-      "lighting": "combined",
-      "name": "Ink",
-      "shadow": {
-        "kind": "layer-color",
-        "opacity": 0.2
-      },
-      "specular": true,
-      "translucency": {
-        "enabled": true,
-        "value": 0.15
-      }
-    },
-    {
-      "layers": [
-        {
-          "glass": true,
           "image-name": "lines.svg",
           "name": "lines",
+          "opacity": 1.0
+        },
+        {
+          "glass": true,
+          "image-name": "ink.svg",
+          "name": "ink",
           "opacity": 1.0
         },
         {

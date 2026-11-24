@@ -4,17 +4,14 @@
 
 ## Implementation status
 
-The MVP slice described in §9 is built and runs on a copy of `leeyenkai.github.io`:
+[ROADMAP.md](ROADMAP.md) has the milestone plan and current progress. Working today:
 
-- Opens a local Jekyll site. Sections come from `_data/navigation.yml` and `_config.yml` collections, with counts.
-- Three panes. List rows show status: published, local draft, edited since the last publish, committed but not pushed, hidden (`published: false`).
-- Live-styled Markdown editor (dimmed markers, Liquid chips, footnotes) with the formatting commands in §4.2 except the slash menu, embeds, tables and math, which can be typed but have no command yet. Source view, word count and reading time.
-- Properties panel inferred per section, with date, toggle, text and tag widgets, validation, and a URL field.
-- Image paste, drop and Add Image: HEIC/RAW to JPEG, at most 2400 px on the long edge, turned upright, location and camera metadata removed, slug-based name, `relative_url` Markdown, alt text and caption.
-- Instant preview through the site's own layouts and CSS, desktop or phone width.
-- Local drafts outside the repo. A publish checklist, then commit (named files only), push, and the Pages build watched until it is live.
+- **Accounts and sites.** Sign in with GitHub (personal token now; device flow once an OAuth App client ID is set in `Info.plist` as `InkwellGitHubClientID`). Pick a repository; Inkwell downloads it into Application Support, building from the Pages source folder and branch. Create a new site from one of four themes. Advanced: open a local git clone.
+- **Writing.** Sections from the navigation, collections, `_posts` and other pages; the live-styled Markdown editor and formatting commands; Properties with validation; images with metadata removed; the instant preview through the site's own layouts.
+- **Publishing.** One commit per publish through the GitHub API, with exactly the post and its images. Update, delete, unpublish to drafts, discard changes, "publish all changes", automatic pulls with conflict resolution, and Pages build status.
+- **Design engine.** Token, `_config.yml` and navigation editors, and four bundled themes with a reviewable theme switch. The design UI comes next.
 
-Verified: 36 package tests (`swift test`) and the end-to-end publish self-test (`Inkwell --site <copy> --selftest-publish`). Not yet checked by a person: typing with an input method (IME), drag and drop from Photos, and a publish to the real GitHub repository.
+Verified by 62 package tests (including a fake GitHub server for sync) and the publish self-test. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). Not yet checked by a person: publishing to a real GitHub repository, typing with input methods, drag and drop from Photos.
 
 ---
 

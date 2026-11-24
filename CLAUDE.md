@@ -20,11 +20,16 @@ If a request conflicts with the spec, say so and update the spec before the code
 
 ```
 Inkwell/                 app target (synchronized folder)
-  App/                   InkwellApp (scenes, commands, launch flags, self-test), AppModel, EditorDocument
-  Features/              ContentView (window, sidebar, list, detail), EditorView (+ Properties), PreviewView, PublishSession, Sheets
+  App/                   InkwellApp (scenes, commands, launch flags, self-test), AppModel, AccountModel, Backends (GitHub / local git),
+                         EditorDocument, SiteCreation
+  Features/              ContentView (window, sidebar, list, detail, site menu), Onboarding (welcome, sign-in, site picker, new site),
+                         EditorView (+ Properties), PreviewView, PublishSession (publish/update/delete/unpublish/changes), Sheets
   Platform/              InkwellTextView (NSTextView, MarkdownStyler, MarkdownEditor representable)
   Resources/             AppIcon.icon (Liquid Glass: icon.json + SVG layers), Assets.xcassets (accent colour)
 InkwellKit/Sources/
+  InkwellGitHub          GitHubClient (REST, Git Data API, Pages, Actions), DeviceFlow, TokenStore (keychain), BuildWatcher
+  InkwellSync            WorkingCopy (download, blob-SHA changes, one-commit publish, pull, conflicts, discard), SiteRef
+  InkwellDesign          CSSTokenDocument, ConfigDocument, NavigationDocument, ThemeManifest + Themes/, ThemeApplier, DesignTokens
   InkwellCore            YAML subset, FrontMatterDocument, SiteLoader, Permalink, Filename, Slug, SchemaInference, Validation, ContentChecks, DraftStore
   InkwellMarkdown        MarkdownScanner (editor styling), MarkdownRenderer (kramdown + GFM HTML), Formatting (editor commands)
   InkwellTemplate        LiquidTemplate, LiquidContext, LiquidFilters, PreviewBuilder
@@ -40,14 +45,21 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
   `cd InkwellKit && swift test --scratch-path ~/Library/Caches/InkwellBuild/spm`.
 - Run against a copy, never the real site: `scripts/make-sample-site.sh` clones the site into `~/Library/Caches/InkwellBuild/sample-site` with a local bare repo as `origin`.
 - End to end: `Inkwell.app/Contents/MacOS/Inkwell --site <sample-site> --selftest-publish` prints `SELFTEST PASS` when a draft and its image are published as exactly one two-file commit. It refuses GitHub remotes.
-- Launch flags for checking UI states: `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
+- Launch the built app with `open -n <app> --args …` (running the binary directly from a shell may show no window), and use
+  `open -W --stdout <file>` to read self-test output.
+- Live GitHub check (read-only): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_REPO=owner/name swift test --filter LiveGitHubTests`.
+  Never publish to a real repository from tests; use a throwaway repository the user has agreed to.
+- Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
 - README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
 ## Rules
 
 - **Never write to `~/Desktop/leeyenkai.github.io`** (or any real site) from tests, scripts or manual runs. Use the sample clone.
 - **Markdown is source-preserving.** Display is attributes only. Opening and saving a file without edits must give the same bytes; a front matter edit rewrites only that field's lines. Keep the round-trip tests passing.
-- **Publish commits only the paths it names** (`Git.publish`, `commit --only`). Never `git add -A` or commit the whole tree.
+- **Publish commits only the paths it names**: `WorkingCopy.publish` (GitHub API) and `Git.publish` (`commit --only`). Never
+  commit the whole tree.
+- **Sign-in tokens live only in the keychain** (`TokenStore`). Never log them or write them to disk or test fixtures.
+- **Sync never overwrites local edits**: a file changed both here and on GitHub becomes a conflict for the person to resolve.
 - **Drafts stay out of the repo** until publish (`DraftStore`, Application Support). Images are written into the site when added; they are committed only with the post that uses them.
 - **Image import strips location and camera metadata** and never keeps the original file in the site.
 - Text views: formatting commands go through `Formatting` (pure, tested) and `InkwellTextView.apply`, so each is one undo step.
@@ -61,7 +73,7 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 - Collection URLs come from the filename slug (`permalink: /:collection/:title/`), not the title. A draft's filename follows its title; a published file is never renamed.
 - The preview serves site files through the `inkwell-site://site/` scheme, so `/assets/...` resolves as on the live site. Updates replace `<body>` in place to keep the scroll position.
 - The app icon is `AppIcon.icon` (Icon Composer format: `icon.json` + SVG layers in `Assets/`), not an asset-catalog icon set.
-  Groups front to back: Grip, Roller (core, roller, fork), Ink, Page (lines, page), Sheet. Shapes stay flat; the system adds
+  Groups front to back (Xcode allows at most four): Grip, Roller (core, roller, fork), Page (lines, ink, page), Sheet. The system adds
   glass, highlights and shadows. `scripts/icon/render.sh` renders every appearance with Icon Composer's `ictool` and writes a
   contact sheet to `~/Library/Caches/InkwellBuild/icon/`; `docs/images/icon.png` is the Default render at 256 px.
 - This folder is in an iCloud-synced Desktop. iCloud can leave duplicates named `File 2.swift`; `.gitignore` excludes them, but check before deleting one.

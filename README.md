@@ -10,12 +10,13 @@
 
 ## Features
 
+- **Sign in with GitHub and pick your site**, or create a new one from a theme. No git, Terminal or local folder needed: Inkwell keeps its own copy and publishes through GitHub.
 - **Opens your existing site.** Sections, fields and URLs come from `_config.yml`, `_data/navigation.yml` and the posts already there. No config file.
 - **Writes clean Markdown.** The editor styles Markdown as you type but saves exactly what you wrote, so untouched lines never change. Liquid tags show as chips you can't break by accident.
 - **Properties instead of YAML.** Title, date, byline and the rest as fields, inferred per section, with warnings for unclosed quotes, bad dates and filename mismatches.
 - **Images done for you.** Paste or drop a photo: it is resized, turned upright, cleaned of location data, named after the post and linked with `relative_url`.
 - **A real preview.** Posts render through the site's own layouts and CSS as you type, at desktop or phone width.
-- **Private drafts, one-click publish.** Drafts stay on your Mac until you publish. Publishing checks the post, commits only its own files, pushes, and tells you when GitHub Pages has it live.
+- **Private drafts, one-click publish.** Drafts stay on your Mac until you publish. Publishing checks the post, sends only its own files in one change, and tells you when GitHub Pages has it live. Update, unpublish or delete posts the same way; changes made on GitHub come in automatically.
 
 | Draft with preview | Publish |
 |---|---|
@@ -31,6 +32,6 @@ The screenshots show [leeyenkai.github.io](https://leeyenkai.github.io), the sit
 ./scripts/build.sh
 ```
 
-Needs macOS 26 or later on Apple silicon, Xcode 27 and git. Tests: `cd InkwellKit && swift test`. Try it on a throwaway copy of a site with `./scripts/make-sample-site.sh <site folder>`.
+Needs macOS 26 or later on Apple silicon and Xcode 27. To sign in, create a GitHub token with the `public_repo` and `workflow` scopes (the app links to the page). Tests: `cd InkwellKit && swift test`. Try it on a throwaway copy of a site with `./scripts/make-sample-site.sh <site folder>`.
 
 Status: an early MVP. The plan and what is built are in [docs/SPEC.md](docs/SPEC.md), and the review behind them is in [docs/REVIEW.md](docs/REVIEW.md).

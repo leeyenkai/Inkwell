@@ -31,14 +31,17 @@ public struct Git: Sendable {
     public let executable: URL
 
     public init?(root: URL) {
-        let candidates = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
+        // /usr/bin/git is only a stub that offers to install the developer tools unless they are present.
+        let toolsInstalled = FileManager.default.fileExists(atPath: "/Library/Developer/CommandLineTools/usr/bin/git")
+            || FileManager.default.fileExists(atPath: "/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+        let candidates = ["/opt/homebrew/bin/git", "/usr/local/bin/git"] + (toolsInstalled ? ["/usr/bin/git"] : [])
         guard let path = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return nil }
         self.root = root
         executable = URL(fileURLWithPath: path)
     }
 
     @discardableResult
-    public func run(_ arguments: [String], allowFailure: Bool = false) async throws -> String {
+    public func run(_ arguments: [String], allowFailure: Bool = false, timeout: TimeInterval = 120) async throws -> String {
         let process = Process()
         process.executableURL = executable
         process.arguments = ["-C", root.path] + arguments
@@ -69,6 +72,10 @@ public struct Git: Sendable {
             }
             do {
                 try process.run()
+                // A credential or passphrase prompt would wait forever; stop it instead.
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { [process] in
+                    if process.isRunning { process.terminate() }
+                }
             } catch {
                 continuation.resume(throwing: GitError(command: arguments.first ?? "", output: error.localizedDescription))
             }
@@ -129,26 +136,73 @@ public struct Git: Sendable {
         public var commit: String
         public var branch: String
         public var pushed: Bool
+        /// Why the push failed, when the commit was made but could not be pushed.
+        public var pushError: String?
     }
 
-    /// Commits exactly `paths` (added, changed or removed) with `message`, brings in remote changes, and pushes.
+    /// Commits exactly `paths` (added, changed or removed) with `message`, then tries to push. A failed push does not
+    /// throw: the commit is kept and `pushError` says why, so the app can offer to push again.
     public func publish(paths: [String], message: String, push: Bool = true) async throws -> PublishResult {
         precondition(!paths.isEmpty)
         try await run(["add", "--all", "--"] + paths)
-        try await run(["commit", "-m", message, "--only", "--"] + paths)
+        do {
+            try await run(["commit", "-m", message, "--only", "--"] + paths)
+        } catch {
+            _ = try? await run(["reset", "-q", "--"] + paths, allowFailure: true)
+            throw error
+        }
         let branch = try await currentBranch()
         var pushed = false
+        var pushError: String?
         if push, await remoteURL() != nil {
-            try await run(["fetch", "origin", branch], allowFailure: true)
-            let behind = try await run(["rev-list", "--count", "HEAD..origin/\(branch)"], allowFailure: true)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if let n = Int(behind), n > 0 {
-                try await run(["pull", "--rebase", "--autostash", "origin", branch])
+            do {
+                try await self.push()
+                pushed = true
+            } catch {
+                pushError = error.localizedDescription
             }
-            try await run(["push", "origin", "HEAD:\(branch)"])
-            pushed = true
         }
-        return try await PublishResult(commit: head(), branch: branch, pushed: pushed)
+        return try await PublishResult(commit: head(), branch: branch, pushed: pushed, pushError: pushError)
+    }
+
+    /// Brings in remote commits (rebasing local ones on top) and pushes. A rebase that stops on a conflict is
+    /// undone, so the folder is never left half-way through one.
+    public func push() async throws {
+        let branch = try await currentBranch()
+        try await run(["fetch", "origin", branch], allowFailure: true)
+        let behind = try await run(["rev-list", "--count", "HEAD..origin/\(branch)"], allowFailure: true)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let n = Int(behind), n > 0 {
+            do {
+                try await run(["pull", "--rebase", "--autostash", "origin", branch])
+            } catch {
+                _ = try? await run(["rebase", "--abort"], allowFailure: true)
+                throw GitError(command: "pull", output: "rejected: the site changed on GitHub in the same files. \(error.localizedDescription)")
+            }
+        }
+        try await run(["push", "origin", "HEAD:\(branch)"])
+    }
+
+    /// Commits made here that are not on the remote yet.
+    public func unpushedCount() async -> Int {
+        guard let branch = try? await currentBranch(),
+              let out = try? await run(["rev-list", "--count", "origin/\(branch)..HEAD"], allowFailure: true) else { return 0 }
+        return Int(out.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+    }
+
+    /// The folder's path inside the repository ("" at the top, "docs/" for a site in /docs).
+    public func prefix() async -> String {
+        (try? await run(["rev-parse", "--show-prefix"]).trimmingCharacters(in: .whitespacesAndNewlines)) ?? ""
+    }
+
+    /// Puts a file back as it was in the last commit, or removes it if it was never committed.
+    public func discard(path: String) async throws {
+        let tracked = (try? await run(["ls-files", "--error-unmatch", "--", path])) != nil
+        if tracked {
+            try await run(["checkout", "HEAD", "--", path])
+        } else {
+            try FileManager.default.removeItem(at: root.appending(path: path))
+        }
     }
 
     /// `owner/repo` when the remote is on GitHub.

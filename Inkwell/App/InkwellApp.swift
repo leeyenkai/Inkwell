@@ -11,6 +11,9 @@ struct InkwellApp: App {
             ContentView(model: model)
                 .frame(minWidth: 900, minHeight: 560)
                 .task { await Launch.start(model) }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    model.appBecameActive()
+                }
         }
         .defaultSize(width: 1380, height: 860)
         .commands {
@@ -18,13 +21,20 @@ struct InkwellApp: App {
                 Button("New Post") { model.newPost() }
                     .keyboardShortcut("n")
                     .disabled(model.site == nil)
-                Button("Open Site Folder…") { model.openSitePanel() }
+                Button("Switch Site…") { model.closeSite() }
                     .keyboardShortcut("o")
+                    .disabled(model.site == nil)
             }
             CommandGroup(after: .saveItem) {
                 Button(model.publishTitle + "…") { model.beginPublish() }
                     .keyboardShortcut("p", modifiers: [.command, .shift])
                     .disabled(!model.canPublish)
+                Button("Review Unpublished Changes…") { model.showChanges = true }
+                    .keyboardShortcut("p", modifiers: [.command, .shift, .option])
+                    .disabled(model.site == nil)
+                Button("Check GitHub for Changes") { Task { await model.sync() } }
+                    .keyboardShortcut("r")
+                    .disabled(model.site == nil)
             }
             CommandGroup(after: .toolbar) {
                 Toggle("Preview", isOn: $model.showPreview)
@@ -78,7 +88,8 @@ struct FormatCommands: Commands {
     }
 }
 
-/// Launch arguments: `--site <folder>`, `--open <path in site>`, `--section <id>`, `--preview`, `--source`, `--publish-sheet`,
+/// Launch arguments: `--fresh` (do not reopen the last site), `--site <folder>`, `--open <path in site>`, `--section <id>`, `--preview`,
+/// `--source`, `--publish-sheet`,
 /// `--new-draft <title>` with optional `--draft-body <file>`, and `--selftest-publish` (needs a site whose remote is not GitHub).
 enum Launch {
     static var started = false
@@ -91,10 +102,14 @@ enum Launch {
             guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
             return args[i + 1]
         }
+        if args.contains("--selftest-publish") { setvbuf(stdout, nil, _IONBF, 0) }
         if let path = value("--site") {
-            model.open(URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
-        } else if let recent = UserDefaults.standard.string(forKey: AppModel.recentSiteKey), FileManager.default.fileExists(atPath: recent) {
-            model.open(URL(fileURLWithPath: recent))
+            await model.account.restore()
+            await model.openFolder(URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
+        } else if args.contains("--fresh") {
+            await model.account.restore()
+        } else {
+            await model.start()
         }
         if args.contains("--selftest-publish") {
             let ok = await SelfTest.publish(model)
@@ -119,7 +134,7 @@ enum Launch {
         if args.contains("--source") { model.showSource = true }
         if args.contains("--publish-sheet") {
             try? await Task.sleep(for: .milliseconds(600))
-            model.refreshGit()
+            model.refreshChanges()
             try? await Task.sleep(for: .milliseconds(600))
             model.beginPublish()
         }
@@ -138,6 +153,7 @@ enum SelfTest {
             print("Refusing to self-test against a GitHub remote: \(remote)")
             return false
         }
+        print("selftest: site loaded")
         model.sidebarSelection = .section("notes")
         model.newPost()
         guard let editor = model.editor else { return false }
@@ -159,20 +175,22 @@ enum SelfTest {
         editor.body = "\nWritten by the self-test.\n\n" + imported.markdown(alt: "A teal square", useRelativeURL: true) + "\n"
         editor.saveNow()
         try? await Task.sleep(for: .milliseconds(300))
-        model.refreshGit()
+        model.refreshChanges()
         try? await Task.sleep(for: .milliseconds(800))
         model.beginPublish()
         guard let session = model.publishSheet else {
             print("Publish was not offered.")
             return false
         }
-        await session.publish()
+        print("selftest: publishing")
+        await session.run()
+        print("selftest: published")
         let files = (try? await git.run(["show", "--name-only", "--format=", "HEAD"]))?
             .split(separator: "\n").map(String.init).sorted() ?? []
         let expected = [editor.document.relativePath, String(imported.sitePath.dropFirst())].sorted()
         print("Phase: \(session.phase)")
         print("Committed: \(files)")
-        let draftsLeft = model.drafts.filter { $0.title == "Self-test post" }.count
+        let draftsLeft = FileManager.default.fileExists(atPath: editor.document.fileURL.path) ? 1 : 0
         return (session.phase == .pushed || session.phase == .committedOnly) && files == expected && draftsLeft == 0
     }
 }

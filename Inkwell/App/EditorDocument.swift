@@ -15,20 +15,64 @@ final class EditorDocument {
     /// Bumped when the text changes from outside the text view (Source toggle, reload), so the view reloads it.
     private(set) var revision = 0
 
+    /// Set when the file could not be read; the editor then shows the error and never saves.
+    private(set) var loadError: String?
+    /// Set when the file changed on disk while there were unsaved edits here.
+    private(set) var diskConflict: String?
+
     private let site: Site
     private weak var model: AppModel?
     private var lastSaved: String
     private var saveTask: Task<Void, Never>?
+    private var retired = false
 
     init(document: SiteDocument, site: Site, model: AppModel) {
         self.document = document
         self.site = site
         self.model = model
-        let text = (try? String(contentsOf: document.fileURL, encoding: .utf8)) ?? ""
+        var text = ""
+        do {
+            text = try String(contentsOf: document.fileURL, encoding: .utf8)
+        } catch {
+            loadError = "“\(document.filename)” could not be opened: \(error.localizedDescription)"
+        }
         frontMatter = FrontMatterDocument(text: text)
         lastSaved = text
         fields = document.isPage ? [] : model.schema(for: document.sectionID)
         validate()
+    }
+
+    /// Stops all saving, for an editor whose file is being published, moved or deleted.
+    func retire() {
+        saveTask?.cancel()
+        retired = true
+    }
+
+    /// Picks up a change made outside the editor (a sync, another app). Unsaved edits here are never overwritten.
+    func reloadIfChangedOnDisk() {
+        guard !retired, loadError == nil, let disk = try? String(contentsOf: document.fileURL, encoding: .utf8), disk != lastSaved else { return }
+        if frontMatter.text == lastSaved {
+            frontMatter = FrontMatterDocument(text: disk)
+            lastSaved = disk
+            validate()
+            revision += 1
+        } else {
+            diskConflict = disk
+        }
+    }
+
+    func resolveDiskConflict(keepMine: Bool) {
+        guard let disk = diskConflict else { return }
+        diskConflict = nil
+        if keepMine {
+            lastSaved = disk
+            saveNow()
+        } else {
+            frontMatter = FrontMatterDocument(text: disk)
+            lastSaved = disk
+            validate()
+            revision += 1
+        }
     }
 
     var body: String {
@@ -68,11 +112,11 @@ final class EditorDocument {
     }
 
     func date(_ key: String) -> Date? {
-        frontMatter.value(key)?.string.flatMap { SiteDate.parse($0) }
+        frontMatter.value(key)?.string.flatMap { SiteDate.parse($0, timeZone: site.config.timeZone) }
     }
 
     func setDate(_ key: String, _ date: Date?) {
-        frontMatter.set(key, raw: date.map { YAMLFormat.date($0) }, order: fieldOrder)
+        frontMatter.set(key, raw: date.map { YAMLFormat.date($0, timeZone: site.config.timeZone) }, order: fieldOrder)
         changed()
     }
 
@@ -143,7 +187,7 @@ final class EditorDocument {
     func saveNow() {
         saveTask?.cancel()
         let text = frontMatter.text
-        guard text != lastSaved else { return }
+        guard !retired, loadError == nil, diskConflict == nil, text != lastSaved else { return }
         do {
             try Data(text.utf8).write(to: document.fileURL, options: .atomic)
             lastSaved = text
@@ -154,7 +198,7 @@ final class EditorDocument {
         if document.origin == .localDraft {
             renameDraftIfNeeded()
         } else {
-            model?.documentSaved(document)
+            model?.documentSaved(document, text: text)
         }
     }
 
@@ -168,19 +212,18 @@ final class EditorDocument {
               let free = model.freeDraftFilename(collection: collection, date: date, slug: slug, current: document.fileURL),
               free != document.filename,
               let target = model.draftURL(collection: collection, filename: free) else {
-            model.documentSaved(document)
+            model.documentSaved(document, text: frontMatter.text)
             return
         }
         do {
             try FileManager.default.moveItem(at: document.fileURL, to: target)
-            let old = document
             document.fileURL = target
             document.relativePath = "_\(collection)/\(free)"
             document.id = "draft:\(target.path)"
             validate()
-            model.draftRenamed(from: old, to: target)
+            model.draftRenamed(to: target, editor: self)
         } catch {
-            model.documentSaved(document)
+            model.documentSaved(document, text: frontMatter.text)
         }
     }
 }
