@@ -7,8 +7,15 @@ import UniformTypeIdentifiers
 /// so the file always holds exactly what was typed.
 final class InkwellTextView: NSTextView {
     var onImportImages: (([URL], Int) -> Void)?
+    /// Called with the location of a typed `[[`, to pick a post to link to.
+    var onLinkPicker: ((Int) -> Void)?
+    /// Called for slash-menu items the view cannot do alone (image, embed).
+    var onSlashAction: ((String, Int) -> Void)?
     var sourceMode = false
+    /// Hide Markdown markers on every line except the one being edited.
+    var hidesSyntax = true
     private(set) var liquidRanges: [NSRange] = []
+    private var styledParagraph: NSRange?
     static let columnWidth: CGFloat = 700
 
     override func setFrameSize(_ newSize: NSSize) {
@@ -19,8 +26,118 @@ final class InkwellTextView: NSTextView {
 
     func restyle() {
         guard let storage = textStorage else { return }
-        liquidRanges = MarkdownStyler.apply(to: storage, source: sourceMode)
+        let active = activeParagraph
+        styledParagraph = active
+        liquidRanges = MarkdownStyler.apply(to: storage, source: sourceMode, activeRange: hidesSyntax && !sourceMode ? active : nil)
         typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
+    }
+
+    var activeParagraph: NSRange {
+        let ns = string as NSString
+        let selection = selectedRange()
+        guard ns.length > 0 else { return NSRange(location: 0, length: 0) }
+        let start = min(selection.location, ns.length)
+        return ns.paragraphRange(for: NSRange(location: start, length: min(selection.length, ns.length - start)))
+    }
+
+    /// Markers show again on the line the cursor moves to, and hide on the line it left.
+    func selectionMoved() {
+        let previous = styledParagraph ?? NSRange(location: NSNotFound, length: 0)
+        guard hidesSyntax, !sourceMode, !hasMarkedText(), !NSEqualRanges(activeParagraph, previous) else { return }
+        restyle()
+    }
+
+    // MARK: Smart typing
+
+    override func insertNewline(_ sender: Any?) {
+        if !sourceMode, selectedRange().length == 0, let result = SmartTyping.newline(in: string, at: selectedRange().location) {
+            apply(result)
+            return
+        }
+        super.insertNewline(sender)
+    }
+
+    override func insertTab(_ sender: Any?) {
+        if !sourceMode, let result = SmartTyping.indent(in: string, selection: selectedRange(), outdent: false) {
+            apply(result)
+            return
+        }
+        super.insertTab(sender)
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        if !sourceMode, let result = SmartTyping.indent(in: string, selection: selectedRange(), outdent: true) {
+            apply(result)
+            return
+        }
+        super.insertBacktab(sender)
+    }
+
+    override func insertText(_ text: Any, replacementRange: NSRange) {
+        super.insertText(text, replacementRange: replacementRange)
+        guard !sourceMode, let typed = text as? String else { return }
+        let ns = string as NSString
+        let cursor = selectedRange().location
+        if typed == "/", cursor >= 1 {
+            let line = ns.lineRange(for: NSRange(location: cursor - 1, length: 0))
+            let before = ns.substring(with: NSRange(location: line.location, length: cursor - 1 - line.location))
+            if before.trimmingCharacters(in: .whitespaces).isEmpty { showSlashMenu(slashAt: cursor - 1) }
+        } else if typed == "[", cursor >= 2, ns.substring(with: NSRange(location: cursor - 2, length: 2)) == "[[" {
+            onLinkPicker?(cursor - 2)
+        }
+    }
+
+    func showSlashMenu(slashAt location: Int) {
+        let menu = NSMenu(title: "Insert")
+        for block in SmartTyping.Block.allCases {
+            let item = NSMenuItem(title: block.title, action: #selector(slashBlock(_:)), keyEquivalent: "")
+            item.representedObject = [block.rawValue, location] as [Any]
+            item.target = self
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        for (title, key) in [("Image…", "image"), ("Link to a Post…", "link"), ("Embed a Video…", "embed"), ("Footnote", "footnote")] {
+            let item = NSMenuItem(title: title, action: #selector(slashAction(_:)), keyEquivalent: "")
+            item.representedObject = [key, location] as [Any]
+            item.target = self
+            menu.addItem(item)
+        }
+        guard let layout = layoutManager, let container = textContainer else {
+            menu.popUp(positioning: nil, at: .zero, in: self)
+            return
+        }
+        let glyph = layout.glyphIndexForCharacter(at: location)
+        var rect = layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+        rect.origin.x += textContainerOrigin.x
+        rect.origin.y += textContainerOrigin.y + rect.height + 4
+        menu.popUp(positioning: nil, at: rect.origin, in: self)
+    }
+
+    @objc func slashBlock(_ sender: NSMenuItem) {
+        guard let info = sender.representedObject as? [Any], let raw = info.first as? String, let block = SmartTyping.Block(rawValue: raw),
+              let location = info.last as? Int, location < (string as NSString).length else { return }
+        apply(SmartTyping.insert(block, in: string, slashAt: location))
+    }
+
+    @objc func slashAction(_ sender: NSMenuItem) {
+        guard let info = sender.representedObject as? [Any], let key = info.first as? String, let location = info.last as? Int,
+              location < (string as NSString).length else { return }
+        // Remove the typed slash first.
+        apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: 1), "")], selection: NSRange(location: location, length: 0)))
+        switch key {
+        case "footnote": footnote()
+        case "link": onLinkPicker?(location)
+        default: onSlashAction?(key, location)
+        }
+    }
+
+    /// Replaces the `[[` typed at `location` with a link.
+    func insertLink(title: String, url: String, replacing location: Int) {
+        let ns = string as NSString
+        let length = location + 2 <= ns.length && ns.substring(with: NSRange(location: location, length: 2)) == "[[" ? 2 : 0
+        let link = "[\(title)](\(url))"
+        apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: length), link)],
+                               selection: NSRange(location: location + (link as NSString).length, length: 0)))
     }
 
     // Liquid tags behave as one piece: they can be selected and deleted whole, but not edited from inside.
@@ -111,6 +228,15 @@ final class InkwellTextView: NSTextView {
             apply(Formatting.link(string, selection: selectedRange(), url: pasted))
             return
         }
+        // Rich text from a web page or document comes in as Markdown with its structure (headings, lists, links) kept.
+        if !sourceMode, let html = board.string(forType: .html),
+           html.range(of: #"<(h[1-6]|li|a |strong|b>|em|i>|blockquote|p[ >])"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            let markdown = HTMLToMarkdown.convert(html)
+            if !markdown.isEmpty {
+                insertText(markdown, replacementRange: selectedRange())
+                return
+            }
+        }
         pasteAsPlainText(sender)
     }
 
@@ -140,6 +266,16 @@ final class InkwellTextView: NSTextView {
 }
 
 enum MarkdownStyler {
+    /// Markers that stay visible everywhere: section breaks, code fences and anything inside code, math or front matter.
+    static func keepVisible(_ range: NSRange, _ spans: [StyleSpan]) -> Bool {
+        spans.contains { span in
+            switch span.style {
+            case .rule, .codeBlock, .math, .frontMatter: NSIntersectionRange(span.range, range).length > 0
+            default: false
+            }
+        }
+    }
+
     static let bodySize: CGFloat = 15
     static let sourceSize: CGFloat = 13
 
@@ -160,7 +296,7 @@ enum MarkdownStyler {
 
     /// Restyles the whole text and returns the Liquid ranges, which the view keeps whole.
     @discardableResult
-    static func apply(to storage: NSTextStorage, source: Bool) -> [NSRange] {
+    static func apply(to storage: NSTextStorage, source: Bool, activeRange: NSRange? = nil) -> [NSRange] {
         let full = NSRange(location: 0, length: storage.length)
         let spans = MarkdownScanner.scan(storage.string)
         var liquid: [NSRange] = []
@@ -239,6 +375,10 @@ enum MarkdownStyler {
                 storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: r)
             case .frontMatter:
                 storage.addAttribute(.foregroundColor, value: NSColor.systemBrown, range: r)
+            case .syntax where activeRange.map { NSIntersectionRange($0, r).length == 0 && !keepVisible(r, spans) } == true:
+                // Markers away from the cursor are kept in the text but drawn at almost no width.
+                storage.addAttribute(.foregroundColor, value: NSColor.clear, range: r)
+                storage.addAttribute(.font, value: NSFont.systemFont(ofSize: 0.01), range: r)
             case .syntax:
                 storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: r)
             }
@@ -280,6 +420,9 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.string = text
         textView.restyle()
         textView.onImportImages = { [weak model] urls, location in model?.importImages(urls, at: location) }
+        textView.onLinkPicker = { [weak model] location in model?.linkPick = AppModel.LinkPick(location: location) }
+        textView.onSlashAction = { [weak model] action, location in model?.slashAction(action, at: location) }
+        textView.hidesSyntax = model.hideSyntax
 
         let scroll = NSScrollView()
         scroll.documentView = textView
@@ -295,7 +438,8 @@ struct MarkdownEditor: NSViewRepresentable {
         guard let textView = scroll.documentView as? InkwellTextView else { return }
         context.coordinator.parent = self
         model.textView = textView
-        let modeChanged = textView.sourceMode != sourceMode
+        let modeChanged = textView.sourceMode != sourceMode || textView.hidesSyntax != model.hideSyntax
+        textView.hidesSyntax = model.hideSyntax
         if modeChanged || context.coordinator.revision != revision || (textView.string != text && !context.coordinator.isEditing) {
             context.coordinator.revision = revision
             textView.sourceMode = sourceMode
@@ -323,6 +467,10 @@ struct MarkdownEditor: NSViewRepresentable {
             textView.restyle()
             parent.text = textView.string
             isEditing = false
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            (notification.object as? InkwellTextView)?.selectionMoved()
         }
 
         func textDidBeginEditing(_ notification: Notification) {

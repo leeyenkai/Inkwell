@@ -123,6 +123,36 @@ extension AppModel {
         didPublish(selecting: path)
     }
 
+    // MARK: Editor actions
+
+    func slashAction(_ action: String, at location: Int) {
+        switch action {
+        case "image":
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.image]
+            panel.allowsMultipleSelection = true
+            if panel.runModal() == .OK { importImages(panel.urls, at: location) }
+        case "embed":
+            let alert = NSAlert()
+            alert.messageText = "Embed a video"
+            alert.informativeText = "Paste a YouTube or Vimeo address."
+            let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+            field.placeholderString = "https://www.youtube.com/watch?v=…"
+            field.stringValue = NSPasteboard.general.string(forType: .string) ?? ""
+            alert.accessoryView = field
+            alert.addButton(withTitle: "Embed")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            if let html = SmartTyping.embed(for: field.stringValue) {
+                textView?.insertBlock(html, at: location)
+            } else {
+                errorMessage = "That is not a YouTube or Vimeo address Inkwell can embed."
+            }
+        default:
+            break
+        }
+    }
+
     // MARK: Tags
 
     var allTags: [(name: String, count: Int)] {

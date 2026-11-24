@@ -103,6 +103,15 @@ final class AppModel {
     var showSitePicker = false
     var showThemeGallery = false
     var codeFile: CodeFile?
+    var linkPick: LinkPick?
+    var hideSyntax = UserDefaults.standard.object(forKey: "HideSyntax") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(hideSyntax, forKey: "HideSyntax") }
+    }
+
+    struct LinkPick: Identifiable {
+        let id = UUID()
+        var location: Int
+    }
     var moveRequest: SiteDocument?
     var historyRequest: SiteDocument?
     var selectedTag: String?

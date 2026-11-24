@@ -110,6 +110,7 @@ struct SiteWindow: View {
         .sheet(item: $model.moveRequest) { doc in MoveSheet(model: model, doc: doc) }
         .sheet(item: $model.historyRequest) { doc in HistorySheet(model: model, doc: doc) }
         .sheet(isPresented: $model.showNewPage) { NewPageSheet(model: model) }
+        .sheet(item: $model.linkPick) { pick in LinkPickerSheet(model: model, location: pick.location) }
         .sheet(isPresented: $model.showConflicts) { ConflictSheet(model: model) }
     }
 }

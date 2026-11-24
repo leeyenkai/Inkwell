@@ -291,3 +291,54 @@ struct TagDetail: View {
         .onChange(of: tag) { newName = tag }
     }
 }
+
+/// Picks a post or page to link to, for `[[` and the slash menu.
+struct LinkPickerSheet: View {
+    var model: AppModel
+    var location: Int
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @FocusState private var focused: Bool
+
+    var results: [SiteDocument] {
+        let docs = (model.site?.documents ?? []).sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+        let q = query.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty ? Array(docs.prefix(40)) : docs.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.url.localizedCaseInsensitiveContains(q) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextField("Link to a post or page", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .focused($focused)
+                .onSubmit { if let first = results.first { choose(first) } }
+            List(results) { doc in
+                Button {
+                    choose(doc)
+                } label: {
+                    HStack {
+                        Image(systemName: model.site?.section(doc.sectionID)?.symbol ?? "doc.text").foregroundStyle(.secondary)
+                        Text(doc.title)
+                        Spacer()
+                        Text(doc.url).font(.caption.monospaced()).foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(height: 280)
+            HStack {
+                Text("Links use the page’s address, so they keep working if you rename it in Inkwell.").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(18)
+        .frame(width: 520)
+        .onAppear { focused = true }
+    }
+
+    func choose(_ doc: SiteDocument) {
+        model.textView?.insertLink(title: doc.title, url: doc.url, replacing: location)
+        dismiss()
+    }
+}

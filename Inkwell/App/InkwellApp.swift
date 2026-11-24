@@ -49,6 +49,8 @@ struct InkwellApp: App {
                     .keyboardShortcut("p", modifiers: [.command, .option])
                 Toggle("Source", isOn: $model.showSource)
                     .keyboardShortcut("e", modifiers: [.command, .shift])
+                Toggle("Hide Markdown Syntax", isOn: $model.hideSyntax)
+                    .keyboardShortcut("h", modifiers: [.command, .option])
                 Toggle("Properties", isOn: $model.showProperties)
                     .keyboardShortcut("i", modifiers: [.command, .option])
                 Divider()
