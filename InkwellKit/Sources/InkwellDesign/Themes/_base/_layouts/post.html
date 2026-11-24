@@ -17,7 +17,7 @@ layout: default
   </div>
   {% if page.collection %}
   <footer class="post-footer">
-    <a href="{{ page.collection | prepend: '/' | relative_url }}" class="back-link">← All {{ page.collection }}</a>
+    {% if page.collection == 'posts' %}<a href="{{ '/' | relative_url }}" class="back-link">← All posts</a>{% else %}<a href="{{ page.collection | prepend: '/' | relative_url }}" class="back-link">← All {{ page.collection }}</a>{% endif %}
   </footer>
   {% endif %}
 </article>

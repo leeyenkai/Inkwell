@@ -62,6 +62,8 @@ final class DesignModel {
 
     var theme: ThemeManifest? { tokens?.theme }
     var isInkwellTheme: Bool { theme != nil }
+    /// The gem or remote theme's own files, when the site builds with one.
+    var themeRoot: URL? { model?.themeRoot }
 
     func plan(for theme: ThemeManifest) -> AdoptionPlan {
         ThemeApplier.plan(theme: theme, siteRoot: root)
@@ -90,6 +92,43 @@ final class DesignModel {
         }
         self.tokens = DesignTokens.load(siteRoot: root, themeRoot: model?.themeRoot)
         changed()
+    }
+
+    /// Several values at once (a preset), saved like single edits but refreshed once.
+    func setTokens(_ values: [(name: String, value: String, scheme: ColorSchemeKind)]) {
+        guard let tokens else { return }
+        var wrote = false
+        for item in values where tokens.entries.contains(where: { $0.name == item.name }) {
+            do {
+                if try tokens.set(item.name, to: item.value, scheme: item.scheme, siteRoot: root) != nil { wrote = true }
+            } catch {
+                model?.errorMessage = error.localizedDescription
+                break
+            }
+        }
+        guard wrote else { return }
+        self.tokens = DesignTokens.load(siteRoot: root, themeRoot: model?.themeRoot)
+        changed()
+    }
+
+    // MARK: Presets
+
+    var palettes: [ColorPalette] { theme.map(DesignPresets.palettes) ?? [] }
+
+    func isCurrent(_ palette: ColorPalette) -> Bool { tokens.map(palette.matches) ?? false }
+    func isCurrent(_ pairing: FontPairing) -> Bool { tokens.map(pairing.matches) ?? false }
+
+    func apply(_ palette: ColorPalette) {
+        var values: [(name: String, value: String, scheme: ColorSchemeKind)] = []
+        for name in DesignPresets.colorTokens {
+            if let light = palette.light[name] { values.append((name, light, .light)) }
+            if secondScheme == .dark, let dark = palette.dark[name] { values.append((name, dark, .dark)) }
+        }
+        setTokens(values)
+    }
+
+    func apply(_ pairing: FontPairing) {
+        setTokens([("--font-heading", pairing.heading.value, .light), ("--font-body", pairing.body.value, .light)])
     }
 
     private var pendingTokens: [String: (String, ColorSchemeKind)] = [:]

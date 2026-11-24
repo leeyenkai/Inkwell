@@ -1,0 +1,153 @@
+{
+  "id": "studio",
+  "name": "Studio",
+  "summary": "A portfolio: a welcome with your picture and tagline, rounded project cards and a pill-shaped menu.",
+  "tokens": [
+    {
+      "name": "--bg",
+      "label": "Background",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#F7F6FB",
+      "dark": "#141319"
+    },
+    {
+      "name": "--surface",
+      "label": "Panels",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#FFFFFF",
+      "dark": "#1F1E26"
+    },
+    {
+      "name": "--text",
+      "label": "Text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#1C1B22",
+      "dark": "#EEEDF3"
+    },
+    {
+      "name": "--muted",
+      "label": "Secondary text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#5E5C6B",
+      "dark": "#A5A3B3"
+    },
+    {
+      "name": "--accent",
+      "label": "Accent",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#5442D6",
+      "dark": "#A99CFF"
+    },
+    {
+      "name": "--border",
+      "label": "Lines",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#E5E3EE",
+      "dark": "#2E2C38"
+    },
+    {
+      "name": "--font-body",
+      "label": "Body font",
+      "kind": "font",
+      "group": "Fonts",
+      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+    },
+    {
+      "name": "--font-heading",
+      "label": "Heading font",
+      "kind": "font",
+      "group": "Fonts",
+      "light": "ui-rounded, \"SF Pro Rounded\", \"Hiragino Maru Gothic ProN\", sans-serif"
+    },
+    {
+      "name": "--font-mono",
+      "label": "Code font",
+      "kind": "font",
+      "group": "Fonts",
+      "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    },
+    {
+      "name": "--font-size",
+      "label": "Text size",
+      "kind": "length",
+      "group": "Fonts",
+      "light": "17px"
+    },
+    {
+      "name": "--line-height",
+      "label": "Line spacing",
+      "kind": "number",
+      "group": "Fonts",
+      "light": "1.6"
+    },
+    {
+      "name": "--width",
+      "label": "Content width",
+      "kind": "length",
+      "group": "Layout",
+      "light": "44rem"
+    },
+    {
+      "name": "--radius",
+      "label": "Corner rounding",
+      "kind": "length",
+      "group": "Layout",
+      "light": "18px"
+    }
+  ],
+  "options": [
+    {
+      "key": "home_style",
+      "label": "Home page list",
+      "kind": "choice",
+      "values": [
+        "cards",
+        "list",
+        "chain"
+      ]
+    },
+    {
+      "key": "date_format",
+      "label": "Date format",
+      "kind": "choice",
+      "values": [
+        "%B %-d, %Y",
+        "%b %-d, %Y",
+        "%-d %B %Y",
+        "%Y-%m-%d"
+      ]
+    },
+    {
+      "key": "reading_time",
+      "label": "Show reading time",
+      "kind": "bool"
+    },
+    {
+      "key": "appearance",
+      "label": "Appearance",
+      "kind": "choice",
+      "values": [
+        "auto",
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "key": "avatar",
+      "label": "Profile picture",
+      "kind": "image"
+    }
+  ],
+  "defaults": {
+    "home_style": "cards",
+    "date_format": "%b %-d, %Y",
+    "reading_time": false,
+    "appearance": "auto"
+  }
+}

@@ -1,0 +1,25 @@
+---
+layout: default
+---
+{% assign date_format = site.inkwell.date_format | default: "%B %-d, %Y" %}
+<article class="post">
+  <header class="post-header">
+    {% include inkwell-kicker.html post=page %}
+    <h1 class="post-title">{{ page.title }}</h1>
+    {% if page.byline %}<p class="post-byline">{{ page.byline }}</p>{% endif %}
+    <p class="post-meta">
+      {% assign writer = page.author | default: site.author %}{% if writer %}<span class="post-author">By {{ writer }}</span>{% endif %}
+      {% if page.date %}<time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: date_format }}</time>{% endif %}
+      {% if site.inkwell.reading_time %}{% assign words = content | strip_html | number_of_words %}<span class="reading-time">{{ words | divided_by: 230 | plus: 1 }} min read</span>{% endif %}
+    </p>
+  </header>
+  {% if page.image %}<figure class="post-cover"><img class="post-image" src="{{ page.image | relative_url }}" alt="{{ page.image_alt | default: '' | escape }}"></figure>{% endif %}
+  <div class="post-content">
+    {{ content }}
+  </div>
+  {% if page.collection %}
+  <footer class="post-footer">
+    {% if page.collection == 'posts' %}<a href="{{ '/' | relative_url }}" class="back-link">← All stories</a>{% else %}<a href="{{ page.collection | prepend: '/' | relative_url }}" class="back-link">← All {{ page.collection }}</a>{% endif %}
+  </footer>
+  {% endif %}
+</article>

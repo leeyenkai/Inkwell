@@ -1,0 +1,63 @@
+/* A portfolio: a welcome with picture and tagline, rounded project cards with soft shadows, and a pill-shaped menu. */
+
+body { overflow-x: clip; }
+
+.site-header { background: none; border-bottom: none; padding: 1rem 1rem 0; }
+.site-header-inner {
+    max-width: 72rem; align-items: center; padding: 0.5rem 0.55rem 0.5rem 0.75rem; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 20px rgb(0 0 0 / 0.05);
+}
+.site-title { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.02em; }
+.site-avatar { width: 2rem; height: 2rem; border-radius: 50%; object-fit: cover; }
+.site-nav { gap: 0.25rem; }
+.site-nav a { color: var(--text); padding: 0.42rem 1rem; border-radius: 999px; font-size: 0.92em; font-weight: 500; }
+.site-nav a:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); }
+.site-nav a.active { background: var(--accent); color: var(--bg); }
+
+h1, h2, h3 { font-weight: 700; letter-spacing: -0.015em; }
+.layout-home .container { max-width: 72rem; }
+
+.hero { text-align: center; padding: 1.4rem 0 0.4rem; max-width: 40rem; margin: 0 auto; }
+.hero-avatar { width: 5.5rem; height: 5.5rem; border-radius: 50%; object-fit: cover; border: 4px solid var(--surface); box-shadow: 0 8px 24px rgb(0 0 0 / 0.1); }
+.hero-title { font-size: clamp(2.1rem, 4.4vw, 3rem); line-height: 1.05; margin: 0.6rem 0 0.4rem; letter-spacing: -0.03em; }
+.hero-tagline { font-size: 1.25em; color: var(--muted); margin: 0 0 0.6rem; }
+.hero-intro { color: var(--muted); }
+.hero-intro > :first-child { margin-top: 0.4rem; }
+
+.section-title { font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); margin: 1.8rem 0 1.1rem; }
+.project-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1.5rem; }
+.project-card a {
+    display: flex; flex-direction: column; height: 100%; overflow: hidden; color: var(--text); text-decoration: none; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 28px rgb(0 0 0 / 0.06);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.project-card a:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgb(0 0 0 / 0.05), 0 18px 40px rgb(0 0 0 / 0.1); }
+.project-image { aspect-ratio: 4 / 3; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 55%, var(--surface)), var(--surface)); }
+.project-image img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.project-text { padding: 1.1rem 1.25rem 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+.project-title { font-size: 1.15em; margin: 0; }
+.project-summary { margin: 0; color: var(--muted); font-size: 0.93em; line-height: 1.5; flex: 1; }
+.project-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.5rem; color: var(--muted); font-size: 0.8em; }
+.chip { display: inline-block; padding: 0.12rem 0.6rem; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font-size: 0.92em; }
+.project-meta time { margin-right: 0.3rem; }
+
+.post-cover { margin: 0 0 2rem; width: min(100vw - 2rem, 60rem); position: relative; left: 50%; transform: translateX(-50%); }
+.post-cover .post-image { width: 100%; margin: 0; aspect-ratio: 16 / 9; object-fit: cover; box-shadow: 0 12px 36px rgb(0 0 0 / 0.12); }
+.post-header { text-align: center; }
+.post-title { font-size: 2.4em; letter-spacing: -0.03em; }
+.post-meta { justify-content: center; align-items: center; }
+.post-content img { box-shadow: 0 8px 24px rgb(0 0 0 / 0.08); }
+blockquote { border-left: none; background: var(--surface); border-radius: var(--radius); padding: 1rem 1.4rem; color: var(--text); border: 1px solid var(--border); }
+.post-footer { border-top: none; text-align: center; }
+.back-link { display: inline-block; padding: 0.5rem 1.1rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
+.page-title { text-align: center; font-size: 2.4em; }
+.post-list--cards .post-list-item { box-shadow: 0 10px 28px rgb(0 0 0 / 0.06); }
+
+.site-footer { border-top: none; text-align: center; }
+
+@media (max-width: 640px) {
+    .site-header-inner { border-radius: calc(var(--radius) + 4px); justify-content: center; padding: 0.6rem; }
+    .site-nav { justify-content: center; }
+    .site-nav a { padding: 0.36rem 0.8rem; }
+    .hero { padding-top: 1.6rem; }
+}

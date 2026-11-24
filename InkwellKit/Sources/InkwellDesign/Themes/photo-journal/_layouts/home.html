@@ -1,0 +1,28 @@
+---
+layout: default
+---
+{% assign home_collection = page.list | default: site.inkwell.home_collection | default: 'posts' %}
+{% assign items = site[home_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% assign style = site.inkwell.home_style | default: 'grid' %}
+{% assign date_format = site.inkwell.date_format | default: "%-d %B %Y" %}
+{% assign intro = content | strip %}
+{% if intro != '' %}<section class="home-intro">{{ content }}</section>{% endif %}
+{% if style == 'grid' %}
+<ul class="photo-grid">
+  {% for post in items %}
+  {% include inkwell-cover.html post=post %}
+  <li class="photo-tile{% if cover == '' %} photo-tile--text{% endif %}">
+    <a href="{{ post.url | relative_url }}">
+      {% if cover != '' %}<img src="{{ cover }}" alt="" loading="lazy">{% endif %}
+      <span class="photo-tile-caption">
+        <span class="photo-tile-title">{{ post.title }}</span>
+        {% if post.date %}<time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time>{% endif %}
+      </span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% if items.size == 0 %}<p class="empty">Nothing here yet.</p>{% endif %}
+{% else %}
+{% include inkwell-post-list.html items=items style=style %}
+{% endif %}

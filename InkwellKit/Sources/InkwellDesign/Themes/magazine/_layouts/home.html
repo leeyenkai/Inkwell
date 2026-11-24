@@ -1,0 +1,54 @@
+---
+layout: default
+---
+{% assign home_collection = page.list | default: site.inkwell.home_collection | default: 'posts' %}
+{% assign items = site[home_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% assign style = site.inkwell.home_style | default: 'front' %}
+{% assign date_format = site.inkwell.date_format | default: "%B %-d, %Y" %}
+{% assign intro = content | strip %}
+{% if intro != '' %}<section class="home-intro">{{ content }}</section>{% endif %}
+{% if style == 'front' %}
+{% assign lead = items.first %}
+{% if lead %}
+{% include inkwell-cover.html post=lead %}
+<section class="lead-story{% if cover == '' %} lead-story--text{% endif %}" aria-label="Lead story">
+  {% if cover != '' %}<a class="lead-image" href="{{ lead.url | relative_url }}" tabindex="-1" aria-hidden="true"><img src="{{ cover }}" alt=""></a>{% endif %}
+  <div class="lead-text">
+    {% include inkwell-kicker.html post=lead %}
+    <h2 class="lead-title"><a href="{{ lead.url | relative_url }}">{{ lead.title }}</a></h2>
+    {% if lead.byline %}<p class="lead-standfirst">{{ lead.byline }}</p>{% endif %}
+    <p class="lead-excerpt">{{ lead.excerpt | strip_html | truncatewords: 32 }}</p>
+    {% if lead.date %}<p class="story-meta"><time datetime="{{ lead.date | date_to_xmlschema }}">{{ lead.date | date: date_format }}</time></p>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% if items.size > 1 %}
+<h2 class="section-label"><span>Latest</span></h2>
+<ul class="story-grid">
+  {% for post in items offset: 1 limit: 6 %}
+  {% include inkwell-cover.html post=post %}
+  <li class="story-card">
+    {% if cover != '' %}<a class="story-image" href="{{ post.url | relative_url }}" tabindex="-1" aria-hidden="true"><img src="{{ cover }}" alt="" loading="lazy"></a>{% endif %}
+    {% include inkwell-kicker.html post=post %}
+    <h3 class="story-title"><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
+    {% if post.byline %}<p class="story-standfirst">{{ post.byline }}</p>{% else %}<p class="story-standfirst">{{ post.excerpt | strip_html | truncatewords: 22 }}</p>{% endif %}
+    {% if post.date %}<p class="story-meta"><time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time></p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% if items.size > 7 %}
+<h2 class="section-label"><span>More stories</span></h2>
+<ul class="post-list post-list--list story-list">
+  {% for post in items offset: 7 %}
+  <li class="post-list-item">
+    {% if post.date %}<time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time>{% endif %}
+    <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% if items.size == 0 %}<p class="empty">Nothing here yet.</p>{% endif %}
+{% else %}
+{% include inkwell-post-list.html items=items style=style %}
+{% endif %}

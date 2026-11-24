@@ -174,6 +174,7 @@ struct FormatCommands: Commands {
 /// `--source`, `--publish-sheet`, `--table-cursor` (cursor in the first table), `--edit-table` (and open the grid),
 /// `--new-draft <title>` with optional `--draft-body <file>`, `--select <text>` (select it in the post), `--link-popover <text>`
 /// (and open the link popover over it), and `--selftest-publish` (needs a site whose remote is not GitHub).
+/// `--render-theme-previews <folder>` draws each theme's gallery pictures into `<folder>/<theme id>/` and quits.
 enum Launch {
     static var started = false
 
@@ -186,6 +187,11 @@ enum Launch {
             return args[i + 1]
         }
         if args.contains(where: { $0.hasPrefix("--selftest") || $0 == "--measure-typing" }) { setvbuf(stdout, nil, _IONBF, 0) }
+        if let folder = value("--render-theme-previews") {
+            setvbuf(stdout, nil, _IONBF, 0)
+            let ok = await ThemePreviewRenderer.renderAll(into: URL(fileURLWithPath: (folder as NSString).expandingTildeInPath), arguments: args)
+            exit(ok ? 0 : 1)
+        }
         if let path = value("--site") {
             model.suppressSiteSummary = !args.contains("--summary")
             await model.account.restore()

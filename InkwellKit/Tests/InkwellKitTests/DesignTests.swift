@@ -99,9 +99,9 @@ final class ThemeTests: XCTestCase {
 
     func testBundledThemes() {
         let themes = ThemeManifest.bundled()
-        XCTAssertEqual(themes.map(\.id), ["essayist", "notebook", "photo-journal", "minimal"])
+        XCTAssertEqual(themes.map(\.id), ["essayist", "notebook", "photo-journal", "minimal", "magazine", "studio"])
         for theme in themes {
-            XCTAssertEqual(theme.tokens.count, 13, theme.id)
+            XCTAssertGreaterThanOrEqual(theme.tokens.count, 13, theme.id)
             XCTAssertTrue(theme.tokens.filter { $0.kind == .color }.allSatisfy { $0.dark != nil }, theme.id)
         }
     }
@@ -112,7 +112,10 @@ final class ThemeTests: XCTestCase {
             if index == 0 {
                 XCTAssertTrue(plan.changes.contains { $0.path == "_layouts/post.html" && $0.oldText != nil }, "replaces the site's post layout")
             } else {
-                XCTAssertEqual(Set(plan.changes.map(\.path)), ["assets/css/inkwell.css", "assets/css/inkwell-dark.css", "_config.yml"])
+                let paths = Set(plan.changes.map(\.path))
+                XCTAssertTrue(paths.isSuperset(of: ["assets/css/inkwell.css", "assets/css/inkwell-dark.css", "_config.yml"]), theme.id)
+                XCTAssertTrue(paths.allSatisfy { $0.hasPrefix("_layouts/") || $0.hasPrefix("_includes/") || $0.hasPrefix("assets/") || $0 == "_config.yml" },
+                              "switching between Inkwell themes changes only theme files: \(paths)")
             }
             XCTAssertFalse(plan.changes.contains { $0.path.hasPrefix("_notes/") || $0.path.hasSuffix(".md") }, "never touches content")
             try plan.apply(to: temp)
@@ -126,7 +129,8 @@ final class ThemeTests: XCTestCase {
                 XCTAssertEqual(page.unsupportedTags, [], "\(theme.id) \(doc.relativePath)")
                 XCTAssertTrue(page.html.contains("/assets/css/inkwell.css"), "\(theme.id) \(doc.relativePath)")
                 XCTAssertTrue(page.html.contains("class=\"site-nav\""), "\(theme.id) \(doc.relativePath)")
-                XCTAssertTrue(page.html.contains("media=\"(prefers-color-scheme: dark)\""), "\(theme.id) \(doc.relativePath)")
+                XCTAssertTrue(page.html.contains("/assets/css/inkwell-dark.css"), "\(theme.id) \(doc.relativePath)")
+                XCTAssertTrue(page.html.contains("/assets/css/inkwell-blocks.css"), "\(theme.id) \(doc.relativePath)")
             }
             let post = try XCTUnwrap(site.documents(in: "notes").first)
             let html = try builder.render(text: String(contentsOf: post.fileURL, encoding: .utf8), relativePath: post.relativePath, url: post.url).html
@@ -140,12 +144,12 @@ final class ThemeTests: XCTestCase {
         let theme = try XCTUnwrap(ThemeManifest.named("photo-journal"))
         try ThemeApplier.plan(theme: theme, siteRoot: temp).apply(to: temp)
         let config = ConfigDocument(text: try String(contentsOf: temp.appending(path: "_config.yml"), encoding: .utf8))
-        XCTAssertEqual(config.value("inkwell.home_style"), .string("cards"))
+        XCTAssertEqual(config.value("inkwell.home_style"), .string("grid"))
         XCTAssertEqual(config.value("inkwell.home_collection"), .string("sidenotes"), "the first collection with output")
         let site = try SiteLoader.load(temp)
         let home = "---\nlayout: home\ntitle: Home\nlist: notes\n---\n\nWelcome.\n"
         let html = PreviewBuilder(site: site).render(text: home, relativePath: "index.md", url: "/").html
-        XCTAssertTrue(html.contains("post-list--cards"))
+        XCTAssertTrue(html.contains("class=\"photo-grid\""))
         let first = try XCTUnwrap(html.range(of: "A sample essay")), second = try XCTUnwrap(html.range(of: "Second note"))
         XCTAssertLessThan(first.lowerBound, second.lowerBound, "newest first")
         XCTAssertTrue(html.contains("<title>Sample Site</title>"))
@@ -158,10 +162,10 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(tokens.theme?.id, "notebook")
         let accent = try XCTUnwrap(tokens.entries.first { $0.name == "--accent" })
         XCTAssertEqual(accent.label, "Accent")
-        XCTAssertEqual(accent.dark, "#7FA4FF")
+        XCTAssertEqual(accent.dark, "#86A8FF")
         try tokens.set("--accent", to: "#123456", scheme: .dark, siteRoot: temp)
         XCTAssertEqual(DesignTokens.load(siteRoot: temp)?.entries.first { $0.name == "--accent" }?.dark, "#123456")
-        XCTAssertEqual(DesignTokens.load(siteRoot: temp)?.entries.first { $0.name == "--accent" }?.light, "#3D6CF0")
+        XCTAssertEqual(DesignTokens.load(siteRoot: temp)?.entries.first { $0.name == "--accent" }?.light, "#2F5FD0")
 
         let other = temp.appending(path: "handmade", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: other.appending(path: "assets/css"), withIntermediateDirectories: true)

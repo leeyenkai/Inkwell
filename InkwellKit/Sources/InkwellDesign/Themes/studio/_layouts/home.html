@@ -1,0 +1,38 @@
+---
+layout: default
+---
+{% assign home_collection = page.list | default: site.inkwell.home_collection | default: 'posts' %}
+{% assign items = site[home_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% assign style = site.inkwell.home_style | default: 'cards' %}
+{% assign date_format = site.inkwell.date_format | default: "%b %-d, %Y" %}
+{% assign intro = content | strip %}
+<section class="hero">
+  {% if site.inkwell.avatar %}<img class="hero-avatar" src="{{ site.inkwell.avatar | relative_url }}" alt="">{% endif %}
+  <h1 class="hero-title">{{ site.title }}</h1>
+  {% if site.description %}<p class="hero-tagline">{{ site.description }}</p>{% endif %}
+  {% if intro != '' %}<div class="hero-intro">{{ content }}</div>{% endif %}
+</section>
+{% if style == 'cards' %}
+<h2 class="section-title">Latest work</h2>
+<ul class="project-grid">
+  {% for post in items %}
+  {% include inkwell-cover.html post=post %}
+  <li class="project-card">
+    <a href="{{ post.url | relative_url }}">
+      <div class="project-image{% if cover == '' %} project-image--blank{% endif %}">{% if cover != '' %}<img src="{{ cover }}" alt="" loading="lazy">{% endif %}</div>
+      <div class="project-text">
+        <h3 class="project-title">{{ post.title }}</h3>
+        {% if post.byline %}<p class="project-summary">{{ post.byline }}</p>{% else %}<p class="project-summary">{{ post.excerpt | strip_html | truncatewords: 20 }}</p>{% endif %}
+        <span class="project-meta">
+          {% if post.date %}<time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time>{% endif %}
+          {% for tag in post.tags limit: 2 %}<span class="chip">{{ tag }}</span>{% endfor %}
+        </span>
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% if items.size == 0 %}<p class="empty">Nothing here yet.</p>{% endif %}
+{% else %}
+{% include inkwell-post-list.html items=items style=style %}
+{% endif %}

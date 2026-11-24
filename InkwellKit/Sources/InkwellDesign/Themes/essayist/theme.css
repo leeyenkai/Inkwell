@@ -1,0 +1,56 @@
+/* A centred column of serif text with a quiet header, small capitals and a drop cap. */
+
+.site-header { background: none; border-bottom: none; }
+.site-header-inner { flex-direction: column; align-items: center; text-align: center; gap: 0.35rem; padding: 3.2rem 1.4rem 0; }
+.site-title { font-size: 1.5em; font-weight: 600; letter-spacing: 0.08em; font-variant-caps: all-small-caps; }
+.site-description { font-style: italic; font-size: 0.95em; }
+.site-nav { justify-content: center; gap: 0; margin-top: 0.6rem; }
+.site-nav a { font-variant-caps: all-small-caps; letter-spacing: 0.1em; font-size: 1.05em; padding: 0.1rem 0.9rem; }
+.site-nav a + a { border-left: 1px solid var(--border); }
+.site-header-inner::after { content: ""; display: block; width: 3rem; height: 1px; background: var(--border); margin-top: 1.6rem; }
+
+.container { padding-top: 2.6rem; }
+
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: 0; }
+h2 { font-size: 1.35em; }
+h3 { font-size: 1.12em; font-style: italic; font-weight: 500; }
+hr::after { content: "\2042"; letter-spacing: 0; font-size: 1.2em; }
+blockquote { border-left: none; padding: 0 1.6em; font-style: italic; color: var(--text); }
+blockquote p { margin: 0.5em 0; }
+.post-content a, .page-content a { text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.post-header, .page-title { text-align: center; }
+.post-header { margin: 0.6em 0 2.4em; }
+.post-meta { justify-content: center; font-variant-caps: all-small-caps; letter-spacing: 0.1em; font-size: 0.95em; }
+.post-title { font-size: 2.35em; line-height: 1.12; margin: 0.25em 0 0.35em; }
+.post-byline { font-style: italic; font-size: 1.15em; margin: 0; }
+.page-title { font-size: 2.2em; margin-bottom: 1.2em; }
+.post-image { margin-bottom: 2.4em; }
+
+.post-content > p:first-of-type::first-letter {
+    float: left; font-family: var(--font-heading); font-size: 3.6em; line-height: 0.82; font-weight: 600;
+    padding: 0.08em 0.1em 0 0; color: var(--accent);
+}
+.post-content > p:first-of-type::first-line { font-variant-caps: small-caps; letter-spacing: 0.04em; }
+
+.post-footer { border-top: none; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.fleuron { color: var(--muted); font-size: 1.4em; }
+.back-link { font-variant-caps: all-small-caps; letter-spacing: 0.1em; }
+
+.home-intro { text-align: center; font-style: italic; color: var(--muted); font-size: 1.08em; max-width: 30rem; margin: 0 auto 1.4em; }
+.post-list--list .post-list-item, .post-list--chain .post-list-item { text-align: center; border-bottom: none; padding: 1.3em 0; }
+.post-list--list .post-list-item + .post-list-item::before, .post-list--chain .post-list-item + .post-list-item::before {
+    content: ""; display: block; width: 2.2rem; height: 1px; background: var(--border); margin: 0 auto 2.2em;
+}
+.post-list--chain .post-list-item { text-align: left; }
+.post-list-item time { font-variant-caps: all-small-caps; letter-spacing: 0.1em; font-size: 0.9em; }
+.post-list-item h3 { font-size: 1.45em; font-style: normal; font-weight: 600; margin: 0.15em 0; }
+.post-list-byline { font-style: italic; }
+
+.site-footer { border-top: none; text-align: center; font-variant-caps: all-small-caps; letter-spacing: 0.08em; font-size: 0.9em; }
+
+@media (max-width: 600px) {
+    .site-header-inner { padding-top: 2rem; }
+    .post-title { font-size: 1.85em; }
+    .site-nav a { padding: 0.1rem 0.6rem; }
+}

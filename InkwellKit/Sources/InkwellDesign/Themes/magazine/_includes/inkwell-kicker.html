@@ -1,0 +1,1 @@
+{% comment %}The small label above a headline: the first tag, else the category or the collection.{% endcomment %}{% assign kicker = include.post.tags.first | default: include.post.categories.first | default: include.post.collection %}{% if kicker == 'posts' %}{% assign kicker = '' %}{% endif %}{% if kicker != '' %}<p class="kicker">{{ kicker }}</p>{% endif %}

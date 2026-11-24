@@ -1,7 +1,7 @@
 {
   "id": "notebook",
   "name": "Notebook",
-  "summary": "Clean sans-serif notes and short posts, light and dark.",
+  "summary": "A sidebar with your title and menu beside the page, and a compact dated list of posts.",
   "tokens": [
     {
       "name": "--bg",
@@ -9,47 +9,47 @@
       "kind": "color",
       "group": "Colours",
       "light": "#FFFFFF",
-      "dark": "#17181B"
+      "dark": "#16181D"
     },
     {
       "name": "--surface",
       "label": "Panels",
       "kind": "color",
       "group": "Colours",
-      "light": "#F6F7F9",
-      "dark": "#1F2125"
+      "light": "#F4F5F7",
+      "dark": "#1D2026"
     },
     {
       "name": "--text",
       "label": "Text",
       "kind": "color",
       "group": "Colours",
-      "light": "#1D1F24",
-      "dark": "#E3E5E8"
+      "light": "#1B1E24",
+      "dark": "#E6E8EC"
     },
     {
       "name": "--muted",
       "label": "Secondary text",
       "kind": "color",
       "group": "Colours",
-      "light": "#6A7079",
-      "dark": "#9AA0A8"
+      "light": "#5D6470",
+      "dark": "#9CA3AF"
     },
     {
       "name": "--accent",
       "label": "Accent",
       "kind": "color",
       "group": "Colours",
-      "light": "#3D6CF0",
-      "dark": "#7FA4FF"
+      "light": "#2F5FD0",
+      "dark": "#86A8FF"
     },
     {
       "name": "--border",
       "label": "Lines",
       "kind": "color",
       "group": "Colours",
-      "light": "#E5E7EB",
-      "dark": "#2C2F35"
+      "light": "#E3E6EB",
+      "dark": "#2C3039"
     },
     {
       "name": "--font-body",
@@ -84,14 +84,14 @@
       "label": "Line spacing",
       "kind": "number",
       "group": "Fonts",
-      "light": "1.7"
+      "light": "1.6"
     },
     {
       "name": "--width",
       "label": "Content width",
       "kind": "length",
       "group": "Layout",
-      "light": "46rem"
+      "light": "44rem"
     },
     {
       "name": "--radius",
@@ -141,7 +141,7 @@
   ],
   "defaults": {
     "home_style": "list",
-    "date_format": "%b %-d, %Y",
+    "date_format": "%-d %B %Y",
     "reading_time": false,
     "appearance": "auto"
   }

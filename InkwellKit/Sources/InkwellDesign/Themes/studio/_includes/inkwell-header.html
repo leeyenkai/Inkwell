@@ -1,0 +1,17 @@
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="{{ '/' | relative_url }}" class="site-title">{% if site.inkwell.avatar %}<img class="site-avatar" src="{{ site.inkwell.avatar | relative_url }}" alt="">{% endif %}<span>{{ site.title }}</span></a>
+    {% if site.data.navigation %}
+    <nav class="site-nav" aria-label="Site">
+      {% for item in site.data.navigation %}
+      {% if item.url == '/' %}
+        {% assign is_active = false %}{% if page.url == '/' %}{% assign is_active = true %}{% endif %}
+      {% else %}
+        {% assign is_active = false %}{% if page.url contains item.url %}{% assign is_active = true %}{% endif %}
+      {% endif %}
+      <a href="{{ item.url | relative_url }}"{% if is_active %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </div>
+</header>
