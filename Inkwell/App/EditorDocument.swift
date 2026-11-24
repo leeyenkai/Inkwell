@@ -111,6 +111,12 @@ final class EditorDocument {
         changed()
     }
 
+    /// A plain value (a site path, for example) written as it is, or removed with nil.
+    func setRaw(_ key: String, _ raw: String?) {
+        frontMatter.set(key, raw: raw, order: fieldOrder)
+        changed()
+    }
+
     func date(_ key: String) -> Date? {
         frontMatter.value(key)?.string.flatMap { SiteDate.parse($0, timeZone: site.config.timeZone) }
     }
@@ -151,7 +157,7 @@ final class EditorDocument {
 
     /// Fields in the file that the section's schema does not know, kept exactly as written.
     var otherKeys: [String] {
-        let known = Set(fields.map(\.key)).union(["layout"])
+        let known = Set(fields.map(\.key)).union(["layout", "description", "image"])
         return frontMatter.keys.filter { !known.contains($0) }
     }
 

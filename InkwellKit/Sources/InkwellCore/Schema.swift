@@ -138,10 +138,15 @@ public struct ImageReference: Sendable, Hashable {
     public var alt: String
     public var path: String
     public var range: Range<String.Index>
+
+    public init(alt: String, path: String, range: Range<String.Index>) {
+        self.alt = alt
+        self.path = path
+        self.range = range
+    }
 }
 
 public enum ContentChecks {
-    /// Images in Markdown and HTML, with Liquid `relative_url` wrappers reduced to the plain path.
     /// The text with HTML comments and fenced code blanked out (same length, so ranges still line up),
     /// because examples there are not real links or images.
     public static func masked(_ text: String) -> String {
@@ -157,6 +162,7 @@ public enum ContentChecks {
         return ns as String
     }
 
+    /// Images in Markdown and HTML, with Liquid `relative_url` wrappers reduced to the plain path.
     public static func images(in original: String) -> [ImageReference] {
         let body = masked(original)
         var refs: [ImageReference] = []

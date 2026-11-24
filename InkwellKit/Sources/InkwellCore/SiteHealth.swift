@@ -116,7 +116,7 @@ public enum SiteHealth {
         return issues
     }
 
-    static func normalized(_ url: String) -> String {
+    public static func normalized(_ url: String) -> String {
         var u = url.lowercased()
         if u.hasSuffix("/index.html") { u = String(u.dropLast("index.html".count)) }
         if u.hasSuffix(".html") { u = String(u.dropLast(5)) }

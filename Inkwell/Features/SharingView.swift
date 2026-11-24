@@ -1,0 +1,130 @@
+import InkwellKit
+import SwiftUI
+
+/// The post's description and share image, with a preview of how a link to it looks in search results and chats.
+struct SharingView: View {
+    @Bindable var model: AppModel
+    @Bindable var editor: EditorDocument
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $model.showSharing) {
+            HStack(alignment: .top, spacing: 18) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !editor.fields.contains(where: { $0.key == "description" }) {
+                        TextField("Description", text: Binding(get: { editor.string("description") }, set: { editor.setString("description", $0) }),
+                                  prompt: Text("A sentence for search results and link previews"), axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(2 ... 4)
+                    }
+                    HStack {
+                        Button(editor.string("image").isEmpty ? "Choose Share Image…" : "Change Share Image…") { chooseImage() }
+                        if !editor.string("image").isEmpty {
+                            Button("Remove") { editor.setRaw("image", nil) }
+                        }
+                    }
+                    .controlSize(.small)
+                    ForEach(hints, id: \.self) { hint in
+                        Label(hint, systemImage: "info.circle").font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                LinkPreviewCard(title: cardTitle, description: cardDescription, host: host, image: imageURL)
+                    .frame(width: 260)
+            }
+            .font(.callout)
+            .padding(.top, 8)
+            .padding(.leading, 4)
+        } label: {
+            Text("Search and sharing").font(.callout.weight(.medium)).foregroundStyle(.secondary)
+        }
+    }
+
+    var siteTitle: String { model.site?.config.title ?? "" }
+
+    /// jekyll-seo-tag writes "Post title | Site title".
+    var cardTitle: String {
+        let title = editor.isCollectionPost ? editor.title : editor.document.title
+        guard !siteTitle.isEmpty, title != siteTitle else { return title }
+        return title.isEmpty ? siteTitle : "\(title) | \(siteTitle)"
+    }
+
+    var description: String {
+        let own = editor.string("description")
+        if !own.isEmpty { return own }
+        return editor.string("byline")
+    }
+
+    var cardDescription: String {
+        description.isEmpty ? Excerpt.make(editor.body) : description
+    }
+
+    var host: String {
+        guard let url = model.site?.config.url, let host = URL(string: url)?.host() else { return "" }
+        return host
+    }
+
+    var imageURL: URL? {
+        let own = editor.string("image")
+        let site = model.site?.config.raw["inkwell"]?["social_image"]?.string ?? model.site?.config.raw["image"]?.string ?? ""
+        return model.fileURL(forSitePath: own.isEmpty ? site : own)
+    }
+
+    var hints: [String] {
+        var result: [String] = []
+        if cardTitle.count > 60 { result.append("Search results cut titles after about 60 characters.") }
+        if description.isEmpty {
+            result.append("Without a description, search engines and previews use the first paragraph.")
+        } else if description.count > 160 {
+            result.append("Search results cut descriptions after about 160 characters.")
+        }
+        return result
+    }
+
+    func chooseImage() {
+        guard let site = model.site else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.message = "Choose the picture shown when this post is shared. A wide image (1200 × 630) works best."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let slug = Filename.parse(editor.document.filename).slug
+        do {
+            let image = try ImageImport().importImage(at: url, siteRoot: site.root, slug: (slug == "untitled" ? "post" : slug) + "-share")
+            editor.setRaw("image", image.sitePath)
+            model.refreshChanges()
+        } catch {
+            model.errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// Roughly how chat apps and social sites show a link: picture, title, description, address.
+struct LinkPreviewCard: View {
+    var title: String
+    var description: String
+    var host: String
+    var image: URL?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let image, let picture = Thumbnails.shared.image(for: image, size: 600) {
+                Color.clear.aspectRatio(1.91, contentMode: .fit)
+                    .overlay { Image(nsImage: picture).resizable().scaledToFill() }
+                    .clipped()
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(host.uppercased()).font(.caption2).foregroundStyle(.secondary)
+                Text(title.isEmpty ? "Untitled" : title).font(.callout.weight(.semibold)).lineLimit(2)
+                if !description.isEmpty {
+                    Text(description).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                }
+            }
+            .padding(10)
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Link preview: \(title). \(description)")
+    }
+}

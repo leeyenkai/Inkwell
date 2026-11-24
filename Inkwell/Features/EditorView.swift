@@ -63,6 +63,7 @@ struct EditorView: View {
                 Text(editor.document.title).font(.system(size: 28, weight: .bold))
             }
             PropertiesView(model: model, editor: editor)
+            SharingView(model: model, editor: editor)
             Divider().padding(.top, 2)
         }
         .padding(.top, 22)

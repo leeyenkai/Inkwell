@@ -163,7 +163,13 @@ final class PublishSession: Identifiable {
         var bytes = 0
         var missingAlt = 0
         var withLocation = 0
-        for ref in ContentChecks.images(in: doc.body) {
+        var large: [String] = []
+        var refs = ContentChecks.images(in: doc.body)
+        // The share image in the properties travels with the post too.
+        if let share = doc.value("image")?.string, !share.isEmpty {
+            refs.append(ImageReference(alt: "share image", path: ContentChecks.plainPath(share), range: doc.body.startIndex ..< doc.body.startIndex))
+        }
+        for ref in refs {
             if ref.alt.trimmingCharacters(in: .whitespaces).isEmpty { missingAlt += 1 }
             if ref.path.hasPrefix("http://") || ref.path.hasPrefix("https://") || ref.path.hasPrefix("//") { continue }
             guard ref.path.hasPrefix("/") else {
@@ -181,7 +187,9 @@ final class PublishSession: Identifiable {
             }
             if changes[relative] == .added || changes[relative] == .modified, !imagePaths.contains(relative) {
                 imagePaths.append(relative)
-                bytes += (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                bytes += size
+                if size > 1_000_000 { large.append((relative as NSString).lastPathComponent) }
                 if ImageImport.hasLocation(file) { withLocation += 1 }
             }
         }
@@ -192,8 +200,20 @@ final class PublishSession: Identifiable {
         if withLocation > 0 {
             items.append(CheckItem(level: .warning, text: "\(withLocation) image\(withLocation == 1 ? " still has" : "s still have") location data."))
         }
+        if !large.isEmpty {
+            items.append(CheckItem(level: .warning, text: "Over 1 MB, slow on phones: \(large.joined(separator: ", "))"))
+        }
         if missingAlt > 0 {
             items.append(CheckItem(level: .warning, text: "\(missingAlt) image\(missingAlt == 1 ? " is" : "s are") missing alt text"))
+        }
+        let address = SiteHealth.normalized(document.url)
+        if let twin = site.documents.first(where: { $0.relativePath != document.relativePath && $0.publishedFlag && SiteHealth.normalized($0.url) == address }) {
+            items.append(CheckItem(level: .error, text: "\(twin.relativePath) already uses the address \(document.url)."))
+        }
+        let title = doc.value("title")?.string ?? ""
+        let fullTitle = site.config.title.isEmpty ? title : "\(title) | \(site.config.title)"
+        if fullTitle.count > 60 {
+            items.append(CheckItem(level: .info, text: "Search results show about 60 characters of the title; this one has \(fullTitle.count)."))
         }
         let broken = brokenInternalLinks(doc.body, site: site)
         if broken.isEmpty {

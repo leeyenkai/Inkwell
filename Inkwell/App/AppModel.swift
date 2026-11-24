@@ -101,6 +101,9 @@ final class AppModel {
     var showPreview = false
     var showSource = false
     var showProperties = true
+    var showSharing = UserDefaults.standard.bool(forKey: "ShowSharing") {
+        didSet { UserDefaults.standard.set(showSharing, forKey: "ShowSharing") }
+    }
     var previewWidth: PreviewWidth = .desktop
     var publishSheet: PublishSession?
     var showChanges = false
