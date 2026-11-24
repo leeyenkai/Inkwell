@@ -1,0 +1,13 @@
+# A small made-up site, used to draw the pictures in the theme gallery.
+title: Field Notes
+description: Walks, small projects and the occasional photograph.
+author: Sam Rivers
+url: "https://example.github.io"
+baseurl: ""
+lang: en
+timezone: UTC
+markdown: kramdown
+permalink: /:year/:month/:title/
+
+inkwell:
+  avatar: "/assets/images/avatar.jpg"

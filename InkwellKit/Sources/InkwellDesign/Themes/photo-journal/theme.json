@@ -1,15 +1,15 @@
 {
   "id": "photo-journal",
   "name": "Photo journal",
-  "summary": "A wide layout where pictures lead and posts show as cards.",
+  "summary": "Dark and wide, with a grid of pictures on the home page and full-width photos in posts.",
   "tokens": [
     {
       "name": "--bg",
       "label": "Background",
       "kind": "color",
       "group": "Colours",
-      "light": "#F7F7F5",
-      "dark": "#111113"
+      "light": "#F6F5F2",
+      "dark": "#0E0F10"
     },
     {
       "name": "--surface",
@@ -17,53 +17,53 @@
       "kind": "color",
       "group": "Colours",
       "light": "#FFFFFF",
-      "dark": "#1B1B1E"
+      "dark": "#18191B"
     },
     {
       "name": "--text",
       "label": "Text",
       "kind": "color",
       "group": "Colours",
-      "light": "#18181A",
-      "dark": "#EDEDED"
+      "light": "#161616",
+      "dark": "#EDEBE7"
     },
     {
       "name": "--muted",
       "label": "Secondary text",
       "kind": "color",
       "group": "Colours",
-      "light": "#6E6E73",
-      "dark": "#9C9CA1"
+      "light": "#5C5B57",
+      "dark": "#A6A39D"
     },
     {
       "name": "--accent",
       "label": "Accent",
       "kind": "color",
       "group": "Colours",
-      "light": "#E0583A",
-      "dark": "#FF7A57"
+      "light": "#A8502A",
+      "dark": "#E9A464"
     },
     {
       "name": "--border",
       "label": "Lines",
       "kind": "color",
       "group": "Colours",
-      "light": "#E4E4E1",
-      "dark": "#2A2A2E"
+      "light": "#E2E0DA",
+      "dark": "#2A2C2F"
     },
     {
       "name": "--font-body",
       "label": "Body font",
       "kind": "font",
       "group": "Fonts",
-      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+      "light": "Avenir, \"Avenir Next\", Montserrat, \"Segoe UI\", sans-serif"
     },
     {
       "name": "--font-heading",
       "label": "Heading font",
       "kind": "font",
       "group": "Fonts",
-      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+      "light": "Avenir, \"Avenir Next\", Montserrat, \"Segoe UI\", sans-serif"
     },
     {
       "name": "--font-mono",
@@ -77,28 +77,28 @@
       "label": "Text size",
       "kind": "length",
       "group": "Fonts",
-      "light": "17px"
+      "light": "18px"
     },
     {
       "name": "--line-height",
       "label": "Line spacing",
       "kind": "number",
       "group": "Fonts",
-      "light": "1.6"
+      "light": "1.65"
     },
     {
       "name": "--width",
       "label": "Content width",
       "kind": "length",
       "group": "Layout",
-      "light": "62rem"
+      "light": "40rem"
     },
     {
       "name": "--radius",
       "label": "Corner rounding",
       "kind": "length",
       "group": "Layout",
-      "light": "10px"
+      "light": "2px"
     }
   ],
   "options": [
@@ -107,8 +107,9 @@
       "label": "Home page list",
       "kind": "choice",
       "values": [
-        "list",
+        "grid",
         "cards",
+        "list",
         "chain"
       ]
     },
@@ -140,9 +141,9 @@
     }
   ],
   "defaults": {
-    "home_style": "cards",
+    "home_style": "grid",
     "date_format": "%-d %B %Y",
     "reading_time": false,
-    "appearance": "auto"
+    "appearance": "dark"
   }
 }

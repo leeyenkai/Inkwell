@@ -1,0 +1,59 @@
+/* A sticky sidebar with the title, description and menu, and the page beside it. On phones it becomes a bar at the top. */
+
+.shell { display: grid; grid-template-columns: 16.5rem minmax(0, 1fr); min-height: 100vh; }
+.shell-main { min-width: 0; display: flex; flex-direction: column; }
+.shell-main .container { width: 100%; flex: 1; margin: 0 auto; padding: 3.4rem 2.6rem 4rem; }
+
+.site-header {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    border-bottom: none; border-right: 1px solid var(--border); background: var(--surface);
+}
+.site-header-inner { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 1.6rem; padding: 2.4rem 1.4rem; max-width: none; }
+.site-brand { display: flex; flex-direction: column; gap: 0.6rem; }
+.site-title { display: flex; align-items: center; gap: 0.65rem; font-size: 1.05em; line-height: 1.25; }
+.site-mark {
+    flex: none; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: var(--radius);
+    background: var(--accent); color: var(--surface); font-weight: 700; font-size: 1.05em;
+}
+.site-description { font-size: 0.86em; line-height: 1.5; }
+.site-nav { flex-direction: column; gap: 0.1rem; }
+.site-nav a { color: var(--text); padding: 0.38rem 0.65rem; border-radius: var(--radius); font-size: 0.94em; }
+.site-nav a:hover { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
+.site-nav a.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 600; }
+
+.site-footer { width: 100%; padding: 1.6rem 2.6rem 2.4rem; border-top: 1px solid var(--border); }
+
+h1, h2, h3 { letter-spacing: -0.015em; font-weight: 680; }
+h1 { font-size: 1.95em; }
+.post-header { display: flex; flex-direction: column; gap: 0.2rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+.post-meta { order: -1; font-family: var(--font-mono); font-size: 0.78em; letter-spacing: 0.02em; }
+.post-title { margin: 0.1em 0 0.1em; }
+.post-byline { font-size: 1.1em; margin: 0; }
+blockquote { border-left-width: 3px; background: var(--surface); padding: 0.6em 1em; border-radius: 0 var(--radius) var(--radius) 0; }
+
+.home-intro { color: var(--muted); font-size: 1.05em; margin-bottom: 0.4em; }
+.home-intro > :first-child { margin-top: 0; }
+.post-list--list { margin-top: 0.4em; }
+.post-list--list .post-list-item {
+    display: grid; grid-template-columns: 8.2rem minmax(0, 1fr); column-gap: 1.2rem; align-items: baseline; padding: 0.7em 0;
+}
+.post-list--list .post-list-item time { font-family: var(--font-mono); font-size: 0.78em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.post-list--list .post-list-item h3 { grid-column: 2; font-size: 1.02em; font-weight: 600; letter-spacing: 0; margin: 0; }
+.post-list--list .post-list-byline { grid-column: 2; font-size: 0.9em; margin: 0.1em 0 0; }
+
+@media (max-width: 820px) {
+    .shell { display: block; }
+    .site-header { position: sticky; top: 0; z-index: 10; height: auto; overflow: visible; border-right: none; border-bottom: 1px solid var(--border); }
+    .site-header-inner { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem; padding: 0.7rem 1.1rem; }
+    .site-description { display: none; }
+    .site-mark { width: 1.8rem; height: 1.8rem; }
+    .site-nav { flex-direction: row; flex-wrap: wrap; gap: 0.1rem; }
+    .site-nav a { padding: 0.3rem 0.55rem; }
+    .shell-main .container { padding: 2rem 1.1rem 3rem; }
+    .site-footer { padding: 1.4rem 1.1rem 2rem; }
+}
+
+@media (max-width: 520px) {
+    .post-list--list .post-list-item { grid-template-columns: minmax(0, 1fr); }
+    .post-list--list .post-list-item h3, .post-list--list .post-list-byline { grid-column: 1; }
+}

@@ -1,0 +1,149 @@
+{
+  "id": "magazine",
+  "name": "Magazine",
+  "summary": "A bold front page: the latest story large with its picture, then a grid of stories under section labels.",
+  "tokens": [
+    {
+      "name": "--bg",
+      "label": "Background",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#FFFFFF",
+      "dark": "#121212"
+    },
+    {
+      "name": "--surface",
+      "label": "Panels",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#F4F1EA",
+      "dark": "#1C1B19"
+    },
+    {
+      "name": "--text",
+      "label": "Text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#111111",
+      "dark": "#F0EEE9"
+    },
+    {
+      "name": "--muted",
+      "label": "Secondary text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#57544E",
+      "dark": "#AAA59C"
+    },
+    {
+      "name": "--accent",
+      "label": "Accent",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#C8102E",
+      "dark": "#FF6B6B"
+    },
+    {
+      "name": "--border",
+      "label": "Lines",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#DCD7CC",
+      "dark": "#302E2A"
+    },
+    {
+      "name": "--font-body",
+      "label": "Body font",
+      "kind": "font",
+      "group": "Fonts",
+      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+    },
+    {
+      "name": "--font-heading",
+      "label": "Heading font",
+      "kind": "font",
+      "group": "Fonts",
+      "light": "ui-serif, \"New York\", \"Iowan Old Style\", Georgia, serif"
+    },
+    {
+      "name": "--font-mono",
+      "label": "Code font",
+      "kind": "font",
+      "group": "Fonts",
+      "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    },
+    {
+      "name": "--font-size",
+      "label": "Text size",
+      "kind": "length",
+      "group": "Fonts",
+      "light": "18px"
+    },
+    {
+      "name": "--line-height",
+      "label": "Line spacing",
+      "kind": "number",
+      "group": "Fonts",
+      "light": "1.6"
+    },
+    {
+      "name": "--width",
+      "label": "Content width",
+      "kind": "length",
+      "group": "Layout",
+      "light": "42rem"
+    },
+    {
+      "name": "--radius",
+      "label": "Corner rounding",
+      "kind": "length",
+      "group": "Layout",
+      "light": "0px"
+    }
+  ],
+  "options": [
+    {
+      "key": "home_style",
+      "label": "Home page list",
+      "kind": "choice",
+      "values": [
+        "front",
+        "cards",
+        "list",
+        "chain"
+      ]
+    },
+    {
+      "key": "date_format",
+      "label": "Date format",
+      "kind": "choice",
+      "values": [
+        "%B %-d, %Y",
+        "%b %-d, %Y",
+        "%-d %B %Y",
+        "%Y-%m-%d"
+      ]
+    },
+    {
+      "key": "reading_time",
+      "label": "Show reading time",
+      "kind": "bool"
+    },
+    {
+      "key": "appearance",
+      "label": "Appearance",
+      "kind": "choice",
+      "values": [
+        "auto",
+        "light",
+        "dark"
+      ]
+    }
+  ],
+  "defaults": {
+    "home_style": "front",
+    "date_format": "%B %-d, %Y",
+    "reading_time": true,
+    "appearance": "auto"
+  }
+}

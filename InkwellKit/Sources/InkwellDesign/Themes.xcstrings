@@ -1,8 +1,20 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "A wide layout where pictures lead and posts show as cards.": {
-      "comment": "Summary of the Photo journal theme",
+    "A bold front page: the latest story large with its picture, then a grid of stories under section labels.": {
+      "comment": "Summary of the Magazine theme",
+      "extractionState": "manual"
+    },
+    "A centred serif column on warm paper, with a drop cap and small capitals. For long essays.": {
+      "comment": "Summary of the Essayist theme",
+      "extractionState": "manual"
+    },
+    "A portfolio: a welcome with your picture and tagline, rounded project cards and a pill-shaped menu.": {
+      "comment": "Summary of the Studio theme",
+      "extractionState": "manual"
+    },
+    "A sidebar with your title and menu beside the page, and a compact dated list of posts.": {
+      "comment": "Summary of the Notebook theme",
       "extractionState": "manual"
     },
     "Accent": {
@@ -21,10 +33,6 @@
       "comment": "Design panel: a style setting",
       "extractionState": "manual"
     },
-    "Clean sans-serif notes and short posts, light and dark.": {
-      "comment": "Summary of the Notebook theme",
-      "extractionState": "manual"
-    },
     "Code font": {
       "comment": "Design panel: a style setting",
       "extractionState": "manual"
@@ -39,6 +47,10 @@
     },
     "Corner rounding": {
       "comment": "Design panel: a style setting",
+      "extractionState": "manual"
+    },
+    "Dark and wide, with a grid of pictures on the home page and full-width photos in posts.": {
+      "comment": "Summary of the Photo journal theme",
       "extractionState": "manual"
     },
     "Date format": {
@@ -69,16 +81,16 @@
       "comment": "Design panel: a style setting",
       "extractionState": "manual"
     },
-    "Long-form writing in a calm serif column, on warm paper.": {
-      "comment": "Summary of the Essayist theme",
-      "extractionState": "manual"
-    },
     "Panels": {
       "comment": "Design panel: a style setting",
       "extractionState": "manual"
     },
-    "Plain text and generous space, with monospaced headings.": {
+    "Plain monospaced text with lots of space, dates in the margin and almost nothing else.": {
       "comment": "Summary of the Minimal theme",
+      "extractionState": "manual"
+    },
+    "Profile picture": {
+      "comment": "Design panel: a theme option",
       "extractionState": "manual"
     },
     "Secondary text": {

@@ -1,7 +1,7 @@
 {
   "id": "essayist",
   "name": "Essayist",
-  "summary": "Long-form writing in a calm serif column, on warm paper.",
+  "summary": "A centred serif column on warm paper, with a drop cap and small capitals. For long essays.",
   "tokens": [
     {
       "name": "--bg",
@@ -16,8 +16,8 @@
       "label": "Panels",
       "kind": "color",
       "group": "Colours",
-      "light": "#F4EFE6",
-      "dark": "#24211D"
+      "light": "#F3EDE3",
+      "dark": "#25221E"
     },
     {
       "name": "--text",
@@ -32,24 +32,24 @@
       "label": "Secondary text",
       "kind": "color",
       "group": "Colours",
-      "light": "#6B655C",
-      "dark": "#A39A8C"
+      "light": "#675F55",
+      "dark": "#A99F91"
     },
     {
       "name": "--accent",
       "label": "Accent",
       "kind": "color",
       "group": "Colours",
-      "light": "#A3452B",
-      "dark": "#E58A63"
+      "light": "#9C3F26",
+      "dark": "#E8916B"
     },
     {
       "name": "--border",
       "label": "Lines",
       "kind": "color",
       "group": "Colours",
-      "light": "#E7E0D4",
-      "dark": "#34302A"
+      "light": "#E5DDCF",
+      "dark": "#38332C"
     },
     {
       "name": "--font-body",
@@ -91,14 +91,14 @@
       "label": "Content width",
       "kind": "length",
       "group": "Layout",
-      "light": "40rem"
+      "light": "37rem"
     },
     {
       "name": "--radius",
       "label": "Corner rounding",
       "kind": "length",
       "group": "Layout",
-      "light": "4px"
+      "light": "3px"
     }
   ],
   "options": [

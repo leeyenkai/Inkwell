@@ -55,7 +55,7 @@ public struct ThemeManifest: Decodable, Sendable, Identifiable, Equatable {
     static var baseFolder: URL { themesFolder.appending(path: "_base", directoryHint: .isDirectory) }
 
     public static func bundled() -> [ThemeManifest] {
-        let order = ["essayist", "notebook", "photo-journal", "minimal"]
+        let order = ["essayist", "notebook", "photo-journal", "minimal", "magazine", "studio"]
         let folders = (try? FileManager.default.contentsOfDirectory(at: themesFolder, includingPropertiesForKeys: nil)) ?? []
         let themes = folders.compactMap { folder -> ThemeManifest? in
             guard let data = try? Data(contentsOf: folder.appending(path: "theme.json")) else { return nil }
@@ -102,10 +102,19 @@ public struct ThemeManifest: Decodable, Sendable, Identifiable, Equatable {
     }
 
     /// A picture of the theme's home page, rendered from its real files (`--render-theme-previews`).
-    public var previewImage: URL? {
-        let url = folder.appending(path: "preview.png")
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    public var previewImage: URL? { previewImage(dark: false) }
+
+    /// The light or dark picture; the light one when there is no dark one.
+    public func previewImage(dark: Bool) -> URL? {
+        for name in dark ? ["preview-dark.png", "preview.png"] : ["preview.png"] {
+            let url = folder.appending(path: name)
+            if FileManager.default.fileExists(atPath: url.path) { return url }
+        }
+        return nil
     }
+
+    /// A small made-up site (posts with pictures, an About page) for showing what a theme looks like.
+    public static var sampleSite: URL { themesFolder.appending(path: "_sample", directoryHint: .isDirectory) }
 
     var darkStylesheet: String {
         "/* \(name) theme, dark palette. Loaded when the reader's system is in dark mode. */\n" + tokenBlock(.dark)
@@ -180,6 +189,8 @@ public enum ThemeApplier {
             "_includes/inkwell-header.html": localized("The site title and navigation."),
             "_includes/inkwell-footer.html": localized("The footer line."),
             "_includes/inkwell-post-list.html": localized("The list of posts used on the home page."),
+            "_includes/inkwell-head.html": localized("The page title, description, link preview and stylesheets."),
+            "_includes/inkwell-cover.html": localized("Finds a post’s picture for cards and grids."),
         ]
         for (path, text) in theme.siteFiles.sorted(by: { $0.key < $1.key }) {
             propose(path, text, reasons[path] ?? localized("Part of the \(theme.name) theme."))

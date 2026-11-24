@@ -3,7 +3,7 @@
 <ul class="post-list post-list--{{ style }}">
   {% for post in include.items %}
   <li class="post-list-item">
-    {% if style == 'cards' and post.image %}<a href="{{ post.url | relative_url }}" class="card-image"><img src="{{ post.image | relative_url }}" alt="" loading="lazy"></a>{% endif %}
+    {% if style == 'cards' %}{% include inkwell-cover.html post=post %}{% if cover != '' %}<a href="{{ post.url | relative_url }}" class="card-image" tabindex="-1" aria-hidden="true"><img src="{{ cover }}" alt="" loading="lazy"></a>{% endif %}{% endif %}
     {% if post.date %}<time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time>{% endif %}
     {% if style == 'chain' %}
       <div class="chain-content">{{ post.content }}</div>
