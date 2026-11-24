@@ -57,10 +57,14 @@ struct InkwellApp: App {
                     .keyboardShortcut("h", modifiers: [.command, .option])
                 Toggle("Properties", isOn: $model.showProperties)
                     .keyboardShortcut("i", modifiers: [.command, .option])
+                EditorViewCommands(model: model)
                 Divider()
             }
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesItem(updates: model.updates)
+            }
+            CommandGroup(after: .textEditing) {
+                EditorFindCommands(model: model)
             }
             FormatCommands(model: model)
             CommandGroup(replacing: .help) {
@@ -119,19 +123,30 @@ struct FormatCommands: Commands {
             Button("Strikethrough") { model.textView?.toggle("~~") }.keyboardShortcut("x", modifiers: [.command, .shift])
             Button("Highlight") { model.textView?.toggle("<mark>", "</mark>") }.keyboardShortcut("h", modifiers: [.command, .shift])
             Button("Inline Code") { model.textView?.toggle("`") }.keyboardShortcut("e")
-            Button("Link") { model.textView?.link() }.keyboardShortcut("k")
+            Button("Superscript") { model.textView?.toggle("<sup>", "</sup>") }
+            Button("Subscript") { model.textView?.toggle("<sub>", "</sub>") }
+            Button("Clear Formatting") { model.textView?.clearFormatting() }
+            Divider()
+            Button("Link…") { model.textView?.showLinkPopover() }.keyboardShortcut("k")
             Divider()
             Button("Heading 1") { model.textView?.heading(1) }.keyboardShortcut("1")
             Button("Heading 2") { model.textView?.heading(2) }.keyboardShortcut("2")
             Button("Heading 3") { model.textView?.heading(3) }.keyboardShortcut("3")
             Button("Heading 4") { model.textView?.heading(4) }.keyboardShortcut("4")
             Button("Body Text") { model.textView?.heading(0) }.keyboardShortcut("0")
+            Button("Code Block") { model.textView?.setTextStyle(.monospaced) }
             Divider()
             Button("Quote") { model.textView?.prefixLines("> ") }.keyboardShortcut("'", modifiers: [.command])
-            Button("Bulleted List") { model.textView?.prefixLines("- ") }.keyboardShortcut("l", modifiers: [.command, .shift])
-            Button("Checklist") { model.textView?.prefixLines("- [ ] ") }.keyboardShortcut("l", modifiers: [.command, .option])
+            Button("Bulleted List") { model.textView?.setList(.bullets) }.keyboardShortcut("l", modifiers: [.command, .shift])
+            Button("Numbered List") { model.textView?.setList(.numbers) }
+            Button("Checklist") { model.textView?.setList(.checklist) }.keyboardShortcut("l", modifiers: [.command, .option])
             Button("Footnote") { model.textView?.footnote() }.keyboardShortcut("f", modifiers: [.command, .shift])
             Button("Section Break") { model.textView?.divider() }.keyboardShortcut(.return, modifiers: [.command, .shift])
+            Divider()
+            Button("Indent") { model.textView?.indentLines(outdent: false) }.keyboardShortcut("]")
+            Button("Outdent") { model.textView?.indentLines(outdent: true) }.keyboardShortcut("[")
+            Button("Move Line Up") { model.textView?.moveLines(up: true) }.keyboardShortcut(.upArrow, modifiers: [.command, .option])
+            Button("Move Line Down") { model.textView?.moveLines(up: false) }.keyboardShortcut(.downArrow, modifiers: [.command, .option])
             Divider()
             Button("Add Image…") { addImage() }.keyboardShortcut("i", modifiers: [.command, .shift])
             Button("Table…") { model.textView?.editTable() }.keyboardShortcut("t", modifiers: [.command, .shift])
@@ -152,7 +167,8 @@ struct FormatCommands: Commands {
 /// `--theme-file`), `--apply-theme <id>`, `--site <folder>`,
 /// `--open <path in site>`, `--section <id>`, `--preview`,
 /// `--source`, `--publish-sheet`, `--table-cursor` (cursor in the first table), `--edit-table` (and open the grid),
-/// `--new-draft <title>` with optional `--draft-body <file>`, and `--selftest-publish` (needs a site whose remote is not GitHub).
+/// `--new-draft <title>` with optional `--draft-body <file>`, `--select <text>` (select it in the post), `--link-popover <text>`
+/// (and open the link popover over it), and `--selftest-publish` (needs a site whose remote is not GitHub).
 enum Launch {
     static var started = false
 
@@ -226,6 +242,17 @@ enum Launch {
         if let path = value("--open"), let doc = model.allDocuments.first(where: { $0.relativePath == path }) {
             if case .section = model.sidebarSelection, model.site?.section(doc.sectionID) != nil { model.sidebarSelection = .section(doc.sectionID) }
             model.select(doc.id)
+        }
+        if let text = value("--link-popover") ?? value("--select") {
+            // Selects the first occurrence of the text in the post, and opens the link popover over it.
+            try? await Task.sleep(for: .milliseconds(900))
+            if let textView = model.textView {
+                NSApp.activate()
+                let found = (textView.string as NSString).range(of: text)
+                textView.window?.makeFirstResponder(textView)
+                if found.location != NSNotFound { textView.setSelectedRange(found) }
+                if args.contains("--link-popover") { textView.showLinkPopover() }
+            }
         }
         if args.contains("--preview") { model.showPreview = true }
         if args.contains("--source") { model.showSource = true }
@@ -456,6 +483,49 @@ enum SelfTest {
             ok = check(quick.isEqual(to: storage) && quickChips == textView.chipRanges, "quick restyle matches a full one") && ok
         } else {
             ok = check(false, "long post in the editor") && ok
+        }
+
+        // Editor: a link made the way the link popover makes it, a checklist tick and a renumbered list, each one undo step.
+        model.newPost()
+        if let editor = model.editor {
+            editor.title = "Self-test links"
+            editor.body = "\nRead about Estonia today.\n\n- [ ] milk\n\n1. one\n2. two\n"
+            editor.reloadFromView()
+            await settle()
+        }
+        if let textView = model.textView, textView.string.contains("Estonia today") {
+            let before = textView.string as NSString
+            let entry = LinkSearch.results(query: "estonia", entries: model.linkEntries, headings: []).first
+            textView.applyLink(url: entry?.url ?? "", title: entry?.title ?? "", selection: before.range(of: "Estonia"))
+            ok = check(entry?.url == "/notes/estonia/" && textView.string.contains("[Estonia](/notes/estonia/) today"),
+                       "link from the popover's search") && ok
+            ok = check(model.document(forLink: "/notes/estonia")?.relativePath == "_notes/2025-12-01-estonia.md",
+                       "link leads to its post") && ok
+            textView.undoManager?.undo()
+            ok = check(textView.string == before as String, "one undo removes the link") && ok
+            textView.toggleCheckbox(atLine: before.range(of: "milk").location)
+            ok = check(textView.string.contains("- [x] milk"), "checklist ticked") && ok
+            textView.undoManager?.undo()
+            ok = check(textView.string == before as String, "one undo unticks it") && ok
+            textView.setSelectedRange(NSRange(location: NSMaxRange(before.range(of: "1. one")), length: 0))
+            textView.insertNewline(nil)
+            ok = check(textView.string.contains("1. one\n2. \n3. two"), "Return renumbers the list") && ok
+            // Clicks go through the same hit test as the mouse: the box ticks, and ⌘-click on a link opens its post.
+            func click(_ range: NSRange, _ flags: NSEvent.ModifierFlags = []) -> Bool {
+                let rect = textView.rect(for: range)
+                let point = textView.convert(NSPoint(x: rect.midX, y: rect.midY), to: nil)
+                guard let event = NSEvent.mouseEvent(with: .leftMouseDown, location: point, modifierFlags: flags, timestamp: 0,
+                                                     windowNumber: textView.window?.windowNumber ?? 0, context: nil, eventNumber: 0,
+                                                     clickCount: 1, pressure: 1) else { return false }
+                return textView.handleClick(event)
+            }
+            let box = EditorCommands.checkbox(in: textView.string, line: (textView.string as NSString).range(of: "milk").location)
+            ok = check(click(box ?? NSRange()) && textView.string.contains("- [x] milk"), "clicking the box ticks it") && ok
+            textView.applyLink(url: "/notes/estonia/", title: "", selection: (textView.string as NSString).range(of: "Estonia"))
+            ok = check(click((textView.string as NSString).range(of: "Estonia"), .command)
+                && model.editor?.document.relativePath == "_notes/2025-12-01-estonia.md", "⌘-click opens the linked post") && ok
+        } else {
+            ok = check(false, "link draft in the editor") && ok
         }
 
         // Health: a missing 404 page is found, and its fix adds the page as an unpublished change.

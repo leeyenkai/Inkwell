@@ -75,7 +75,8 @@ public enum EditorCommands {
         let ns = text as NSString
         guard location <= ns.length else { return nil }
         let line = ns.lineRange(for: NSRange(location: location, length: 0))
-        guard let m = MarkdownScanner.regex("(?m)" + taskPattern)?.firstMatch(in: text, range: line), m.range.location == line.location else { return nil }
+        let match = MarkdownScanner.regex("(?m)" + taskPattern)?.firstMatch(in: text, range: line)
+        guard let m = match, m.range.location == line.location else { return nil }
         return m.range(at: 1)
     }
 
@@ -99,7 +100,8 @@ public enum EditorCommands {
 
     static func listLine(_ ns: NSString, _ range: NSRange) -> ListLine? {
         let line = ns.substring(with: range)
-        guard let m = SmartTyping.listPattern?.firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) else { return nil }
+        let whole = NSRange(location: 0, length: (line as NSString).length)
+        guard let m = SmartTyping.listPattern?.firstMatch(in: line, range: whole) else { return nil }
         let indent = (line as NSString).substring(with: m.range(at: 1)).reduce(0) { $0 + ($1 == "\t" ? 4 : 1) }
         let numberRange = m.range(at: 3)
         guard numberRange.location != NSNotFound else { return ListLine(range: range, indent: indent, ordered: false) }
@@ -113,7 +115,8 @@ public enum EditorCommands {
         let start = ns.lineRange(for: NSRange(location: min(location, ns.length), length: 0))
         func belongs(_ r: NSRange) -> Bool {
             let s = ns.substring(with: r)
-            return listLine(ns, r) != nil || (s.first == " " || s.first == "\t") && !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let indented = (s.first == " " || s.first == "\t") && !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return indented || listLine(ns, r) != nil
         }
         func blank(_ r: NSRange) -> Bool { ns.substring(with: r).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         guard belongs(start) || blank(start) else { return [] }
@@ -123,7 +126,8 @@ public enum EditorCommands {
             let previous = ns.lineRange(for: NSRange(location: r.location - 1, length: 0))
             if belongs(previous) {
                 lines.insert(previous, at: 0)
-            } else if blank(previous), previous.location > 0, belongs(ns.lineRange(for: NSRange(location: previous.location - 1, length: 0))) {
+            } else if blank(previous), previous.location > 0,
+                      belongs(ns.lineRange(for: NSRange(location: previous.location - 1, length: 0))) {
                 lines.insert(previous, at: 0)
             } else {
                 break
@@ -135,7 +139,8 @@ public enum EditorCommands {
             let next = ns.lineRange(for: NSRange(location: NSMaxRange(r), length: 0))
             if belongs(next) {
                 lines.append(next)
-            } else if blank(next), NSMaxRange(next) < ns.length, belongs(ns.lineRange(for: NSRange(location: NSMaxRange(next), length: 0))) {
+            } else if blank(next), NSMaxRange(next) < ns.length,
+                      belongs(ns.lineRange(for: NSRange(location: NSMaxRange(next), length: 0))) {
                 lines.append(next)
             } else {
                 break
@@ -185,12 +190,16 @@ public enum EditorCommands {
 
     // MARK: Nesting
 
+    /// Tab and Shift-Tab on list items: nest or unnest them, then renumber the list. Nil outside a list.
+    public static func indentList(_ text: String, selection: NSRange, outdent: Bool) -> FormattingResult? {
+        guard let result = SmartTyping.indent(in: text, selection: selection, outdent: outdent) else { return nil }
+        return renumbered(result, text: text, near: lineBlock(text as NSString, selection).location)
+    }
+
     /// Nests or unnests list items (renumbering the list) or quote lines. Nil when the lines are neither.
     public static func indent(_ text: String, selection: NSRange, outdent: Bool) -> FormattingResult? {
         let ns = text as NSString
-        if let result = SmartTyping.indent(in: text, selection: selection, outdent: outdent) {
-            return renumbered(result, text: text, near: lineBlock(ns, selection).location)
-        }
+        if let result = indentList(text, selection: selection, outdent: outdent) { return result }
         let block = lineBlock(ns, selection)
         var lines: [NSRange] = []
         var location = block.location
@@ -221,8 +230,9 @@ public enum EditorCommands {
                                                                  length: max(0, selection.length + delta - firstShift)))
     }
 
-    /// Makes the selected lines a numbered list, numbered from 1, or takes the numbers away when they all have them.
-    public static func numberedList(_ text: String, selection: NSRange) -> FormattingResult {
+    /// Makes the selected lines a bulleted, numbered or checklist list, replacing any other list marker, or takes the
+    /// markers away when every line already has this kind. Numbers count from 1.
+    public static func list(_ kind: FormatState.List, in text: String, selection: NSRange) -> FormattingResult {
         let ns = text as NSString
         let block = lineBlock(ns, selection)
         var lines: [NSRange] = []
@@ -232,20 +242,26 @@ public enum EditorCommands {
             lines.append(line)
             location = NSMaxRange(line)
         } while location < NSMaxRange(block)
-        let pattern = MarkdownScanner.regex(#"^(\s*)(\d+[.)]|[-*+])\s+"#)
+        let pattern = MarkdownScanner.regex(#"^([ \t]*)((\d+[.)]|[-*+])[ \t]+(\[[ xX]\][ \t]+)?)"#)
         func marker(_ line: NSRange) -> NSTextCheckingResult? { pattern?.firstMatch(in: text, range: line) }
         func blank(_ line: NSRange) -> Bool { ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        let allNumbered = lines.filter { !blank($0) }.allSatisfy { line in
-            marker(line).map { ns.substring(with: $0.range(at: 2)).first?.isNumber == true } ?? false
+        func kindOf(_ m: NSTextCheckingResult) -> FormatState.List {
+            if m.range(at: 4).location != NSNotFound { return .checklist }
+            return (48 ... 57).contains(ns.character(at: m.range(at: 3).location)) ? .numbers : .bullets
         }
+        let content = lines.filter { !blank($0) || lines.count == 1 }
+        let removing = content.allSatisfy { marker($0).map(kindOf) == kind }
         var edits: [TextEdit] = []
         var delta = 0, firstShift = 0, number = 1
-        for line in lines {
-            if blank(line), lines.count > 1 { continue }
+        for line in content {
             let existing = marker(line)
-            let replace = existing.map { NSRange(location: $0.range(at: 2).location, length: $0.range.length - $0.range(at: 1).length) }
-                ?? NSRange(location: line.location, length: 0)
-            let new = allNumbered ? "" : "\(number). "
+            let replace = existing?.range(at: 2) ?? NSRange(location: line.location, length: 0)
+            let new = switch kind {
+            case _ where removing: ""
+            case .bullets: "- "
+            case .numbers: "\(number). "
+            case .checklist: "- [ ] "
+            }
             number += 1
             edits.append(TextEdit(NSRange(location: replace.location + delta, length: replace.length), new))
             let change = (new as NSString).length - replace.length
@@ -254,7 +270,7 @@ public enum EditorCommands {
         }
         let result = FormattingResult(edits: edits, selection: NSRange(location: max(block.location, selection.location + firstShift),
                                                                        length: max(0, selection.length + delta - firstShift)))
-        return allNumbered ? result : renumbered(result, text: text, near: block.location)
+        return kind == .numbers && !removing ? renumbered(result, text: text, near: block.location) : result
     }
 
     // MARK: Code blocks
@@ -322,7 +338,8 @@ public enum EditorCommands {
             let edits = [TextEdit(closeRemove, ""), TextEdit(open, "")]
             let newLength = ns.length - closeRemove.length - open.length
             let location = min(max(open.location, selection.location - open.length), newLength)
-            return FormattingResult(edits: edits, selection: NSRange(location: location, length: min(selection.length, newLength - location)))
+            return FormattingResult(edits: edits,
+                                    selection: NSRange(location: location, length: min(selection.length, newLength - location)))
         }
         let block = lineBlock(ns, selection)
         var inner = ns.substring(with: block)
@@ -330,7 +347,7 @@ public enum EditorCommands {
         if hadNewline { inner.removeLast() }
         let replacement = "```\n" + inner + "\n```" + (hadNewline ? "\n" : "")
         return FormattingResult(edits: [TextEdit(block, replacement)],
-                                selection: NSRange(location: block.location + 4 + (selection.location - block.location), length: selection.length))
+                                selection: NSRange(location: selection.location + 4, length: selection.length))
     }
 
     /// Languages offered for code blocks, as written after the fence.
@@ -355,11 +372,14 @@ public enum EditorCommands {
         let styled: Set<MarkdownStyle> = [.bold, .italic, .strike, .highlight, .underline, .code]
         // A styled span touching the selection loses its markers at both ends.
         for span in spans where styled.contains(span.style) && NSIntersectionRange(span.range, selection).length > 0 {
-            remove += spans.filter { $0.style == .syntax && $0.range.length <= 7 && NSIntersectionRange($0.range, span.range).length == $0.range.length }
+            remove += spans
+                .filter { $0.style == .syntax && $0.range.length <= 7 }
+                .filter { NSIntersectionRange($0.range, span.range).length == $0.range.length }
                 .filter { $0.range.location == span.range.location || NSMaxRange($0.range) == NSMaxRange(span.range) }
                 .map(\.range)
         }
-        for link in MarkdownLink.all(in: text, range: paragraph) where NSIntersectionRange(link.range, selection).length > 0 && !link.isAutolink {
+        for link in MarkdownLink.all(in: text, range: paragraph)
+            where NSIntersectionRange(link.range, selection).length > 0 && !link.isAutolink {
             remove.append(NSRange(location: link.range.location, length: link.textRange.location - link.range.location))
             remove.append(NSRange(location: NSMaxRange(link.textRange), length: NSMaxRange(link.range) - NSMaxRange(link.textRange)))
         }
@@ -378,7 +398,11 @@ public enum EditorCommands {
         // Merged where they touch or repeat, and removed from the end so each range stays valid.
         var merged: [NSRange] = []
         for r in remove.filter({ $0.length > 0 }).sorted(by: { $0.location < $1.location }) {
-            if let last = merged.last, r.location <= NSMaxRange(last) { merged[merged.count - 1] = NSUnionRange(last, r) } else { merged.append(r) }
+            if let last = merged.last, r.location <= NSMaxRange(last) {
+                merged[merged.count - 1] = NSUnionRange(last, r)
+            } else {
+                merged.append(r)
+            }
         }
         let unique = Array(merged.reversed())
         guard !unique.isEmpty else { return nil }

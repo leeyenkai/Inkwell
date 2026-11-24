@@ -22,7 +22,9 @@ public struct MarkdownLink: Sendable, Equatable {
         var links: [MarkdownLink] = []
         for m in MarkdownScanner.regex(inlinePattern)?.matches(in: text, range: lines) ?? [] {
             var urlRange = m.range(at: 2)
-            if ns.character(at: urlRange.location) == 60 { urlRange = NSRange(location: urlRange.location + 1, length: urlRange.length - 2) }
+            if ns.character(at: urlRange.location) == 60 {
+                urlRange = NSRange(location: urlRange.location + 1, length: urlRange.length - 2)
+            }
             links.append(MarkdownLink(range: m.range, textRange: m.range(at: 1), urlRange: urlRange,
                                       text: ns.substring(with: m.range(at: 1)), url: ns.substring(with: urlRange)))
         }
@@ -56,7 +58,8 @@ public enum LinkDestination: Equatable, Sendable {
 
     public init?(_ raw: String) {
         var target = raw.trimmingCharacters(in: .whitespaces)
-        for prefix in ["{{ site.baseurl }}", "{{site.baseurl}}", "{{ site.url }}{{ site.baseurl }}", "{{ site.url }}"] where target.hasPrefix(prefix) {
+        let prefixes = ["{{ site.url }}{{ site.baseurl }}", "{{ site.baseurl }}", "{{site.baseurl}}", "{{ site.url }}"]
+        for prefix in prefixes where target.hasPrefix(prefix) {
             target.removeFirst(prefix.count)
         }
         if target.hasPrefix("#") {
@@ -109,10 +112,10 @@ public enum LinkInput {
     }
 }
 
-extension Formatting {
+public extension Formatting {
     /// Links the selection to `url`. Inside an existing link only the address changes; with nothing selected, `title`
     /// is inserted as the link text. The cursor ends after the link.
-    public static func setLink(_ text: String, selection: NSRange, url: String, title: String) -> FormattingResult {
+    static func setLink(_ text: String, selection: NSRange, url: String, title: String) -> FormattingResult {
         if let link = MarkdownLink.find(in: text, at: selection) {
             if link.isAutolink {
                 let replacement = "[\(link.text)](\(url))"
@@ -125,7 +128,8 @@ extension Formatting {
                 urlRange = NSRange(location: urlRange.location - 1, length: urlRange.length + 2)
             }
             let delta = (written as NSString).length - urlRange.length
-            return FormattingResult(edits: [TextEdit(urlRange, written)], selection: NSRange(location: NSMaxRange(link.range) + delta, length: 0))
+            return FormattingResult(edits: [TextEdit(urlRange, written)],
+                                    selection: NSRange(location: NSMaxRange(link.range) + delta, length: 0))
         }
         let ns = text as NSString
         var core = selection
@@ -144,12 +148,12 @@ extension Formatting {
     }
 
     /// Takes the link away and keeps its text, selected.
-    public static func removeLink(_ text: String, link: MarkdownLink) -> FormattingResult {
+    static func removeLink(_: String, link: MarkdownLink) -> FormattingResult {
         FormattingResult(edits: [TextEdit(link.range, link.text)],
                          selection: NSRange(location: link.range.location, length: (link.text as NSString).length))
     }
 
-    static func escapeLabel(_ title: String) -> String {
+    internal static func escapeLabel(_ title: String) -> String {
         title.replacingOccurrences(of: "[", with: "\\[").replacingOccurrences(of: "]", with: "\\]")
     }
 }
@@ -171,10 +175,12 @@ public struct HeadingAnchor: Sendable, Equatable {
         guard markdown.contains("#") || markdown.contains("\n=") || markdown.contains("\n-") else { return [] }
         let html = MarkdownRenderer().html(markdown)
         let ns = html as NSString
-        return (MarkdownScanner.regex(#"<h([1-6]) id="([^"]+)">(.*?)</h\1>"#)?.matches(in: html, range: NSRange(location: 0, length: ns.length)) ?? [])
+        let pattern = MarkdownScanner.regex(#"<h([1-6]) id="([^"]+)">(.*?)</h\1>"#)
+        return (pattern?.matches(in: html, range: NSRange(location: 0, length: ns.length)) ?? [])
             .map { m in
                 let title = MarkdownRenderer.decodeEntities(MarkdownRenderer.stripTags(ns.substring(with: m.range(at: 3))))
-                return HeadingAnchor(level: Int(ns.substring(with: m.range(at: 1))) ?? 1, title: title, anchor: ns.substring(with: m.range(at: 2)))
+                let level = Int(ns.substring(with: m.range(at: 1))) ?? 1
+                return HeadingAnchor(level: level, title: title, anchor: ns.substring(with: m.range(at: 2)))
             }
     }
 }
@@ -247,7 +253,9 @@ public enum LinkSearch {
             posts.sort { a, b in a.score != b.score ? a.score < b.score : (a.entry.date ?? .distantPast) > (b.entry.date ?? .distantPast) }
         }
         let headingTerm = q.hasPrefix("#") ? String(q.dropFirst()) : q
-        let matchingHeadings = headings.filter { headingTerm.isEmpty || score($0.title, headingTerm) != nil || $0.anchor.hasPrefix(fold(headingTerm)) }
+        let matchingHeadings = headings.filter {
+            headingTerm.isEmpty || score($0.title, headingTerm) != nil || $0.anchor.hasPrefix(fold(headingTerm))
+        }
         let headingSuggestions = matchingHeadings.map {
             LinkSuggestion(kind: .heading, title: $0.title, detail: localized("In this post"), url: "#" + $0.anchor)
         }
@@ -263,7 +271,7 @@ public enum LinkSearch {
         return Array(out.filter { seen.insert($0.id).inserted }.prefix(limit))
     }
 
-    static func suggestion(for url: String, typed: String, fromClipboard: Bool = false) -> LinkSuggestion {
+    static func suggestion(for url: String, typed _: String, fromClipboard: Bool = false) -> LinkSuggestion {
         if url.hasPrefix("mailto:") {
             return LinkSuggestion(kind: .email, title: String(url.dropFirst(7)), detail: localized("Email address"), url: url)
         }

@@ -5,9 +5,15 @@ struct EditorView: View {
     @Bindable var model: AppModel
     @Bindable var editor: EditorDocument
     @FocusState private var titleFocused: Bool
+    @State private var format = EditorFormatState()
+    @AppStorage("ShowFormatBar") private var showFormatBar = true
 
     var body: some View {
         VStack(spacing: 0) {
+            if showFormatBar, editor.loadError == nil {
+                FormatBar(model: model, format: format)
+                Divider()
+            }
             if let error = editor.loadError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
@@ -35,7 +41,8 @@ struct EditorView: View {
                     : Binding(get: { editor.body }, set: { editor.body = $0 }),
                 revision: editor.revision &+ (model.showSource ? 1_000_000 : 0),
                 sourceMode: model.showSource,
-                model: model
+                model: model,
+                format: format
             )
             .id("\(ObjectIdentifier(editor).hashValue)" + (model.showSource ? "-source" : ""))
             .disabled(editor.loadError != nil)
@@ -74,7 +81,11 @@ struct EditorView: View {
 
     var footer: some View {
         HStack(spacing: 14) {
-            Text("\(editor.wordCount) words · \(editor.readingMinutes) min read")
+            if format.selectedCharacters > 0 {
+                Text("^[\(format.selectedWords) words](inflect: true), ^[\(format.selectedCharacters) characters](inflect: true) selected")
+            } else {
+                Text("\(editor.wordCount) words · \(editor.readingMinutes) min read")
+            }
             if let issue = editor.issues.first {
                 Label(issue.message, systemImage: issue.severity == .error ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(issue.severity == .error ? .red : .orange)

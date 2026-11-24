@@ -14,7 +14,8 @@ final class LinkTests: XCTestCase {
         XCTAssertEqual(links.first?.text, "the post")
         let inText = MarkdownLink.find(in: text, at: NSRange(location: range(of: "post", in: text).location, length: 0))
         XCTAssertEqual(inText?.url, "/notes/estonia/")
-        XCTAssertEqual(MarkdownLink.find(in: text, at: NSRange(location: range(of: "example", in: text).location, length: 0))?.isAutolink, true)
+        let example = NSRange(location: range(of: "example", in: text).location, length: 0)
+        XCTAssertEqual(MarkdownLink.find(in: text, at: example)?.isAutolink, true)
         XCTAssertNil(MarkdownLink.find(in: text, at: NSRange(location: range(of: "pic", in: text).location, length: 0)))
         // Just after the closing bracket is outside the link.
         XCTAssertNil(MarkdownLink.find(in: text, at: NSRange(location: NSMaxRange(links[0].range), length: 0)))
@@ -32,7 +33,8 @@ final class LinkTests: XCTestCase {
         XCTAssertEqual(Formatting.setLink(text, selection: NSRange(location: 11, length: 8), url: "/x/", title: "").applied(to: text),
                        "Read about [Estonia](/x/) today")
         // Nothing selected: the post's title becomes the text.
-        let inserted = Formatting.setLink("Go: ", selection: NSRange(location: 4, length: 0), url: "/notes/estonia/", title: "Estonia [draft]")
+        let inserted = Formatting.setLink("Go: ", selection: NSRange(location: 4, length: 0), url: "/notes/estonia/",
+                                          title: "Estonia [draft]")
         XCTAssertEqual(inserted.applied(to: "Go: "), "Go: [Estonia \\[draft\\]](/notes/estonia/)")
         XCTAssertEqual(inserted.selection.location, ("Go: [Estonia \\[draft\\]](/notes/estonia/)" as NSString).length)
     }
@@ -43,8 +45,8 @@ final class LinkTests: XCTestCase {
         XCTAssertEqual(result.edits, [TextEdit(range(of: "https://old.example", in: text), "https://new.example/page")])
         XCTAssertEqual(result.applied(to: text), "A [link](https://new.example/page) here")
         let auto = "Mail <https://a.example> now"
-        XCTAssertEqual(Formatting.setLink(auto, selection: NSRange(location: 8, length: 0), url: "mailto:me@example.com", title: "").applied(to: auto),
-                       "Mail [https://a.example](mailto:me@example.com) now")
+        let mail = Formatting.setLink(auto, selection: NSRange(location: 8, length: 0), url: "mailto:me@example.com", title: "")
+        XCTAssertEqual(mail.applied(to: auto), "Mail [https://a.example](mailto:me@example.com) now")
     }
 
     func testRemoveLinkKeepsText() {
@@ -92,7 +94,8 @@ final class LinkTests: XCTestCase {
     func testSearchRanking() {
         let day: TimeInterval = 86400
         let entries = [
-            LinkSearch.Entry(title: "Winter in Estonia", url: "/notes/estonia/", detail: "Notes", date: Date(timeIntervalSince1970: 3 * day)),
+            LinkSearch.Entry(title: "Winter in Estonia", url: "/notes/estonia/", detail: "Notes",
+                             date: Date(timeIntervalSince1970: 3 * day)),
             LinkSearch.Entry(title: "Estonia", url: "/travel/estonia/", detail: "Travel", date: Date(timeIntervalSince1970: 1 * day)),
             LinkSearch.Entry(title: "Café culture", url: "/notes/cafe/", detail: "Notes", date: Date(timeIntervalSince1970: 2 * day)),
             LinkSearch.Entry(title: "About", url: "/about/", detail: "Page", date: nil),

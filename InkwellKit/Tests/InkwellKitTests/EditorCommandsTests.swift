@@ -25,7 +25,8 @@ final class EditorCommandsTests: XCTestCase {
         XCTAssertNil(EditorCommands.moveLines(text, selection: NSRange(location: 0, length: 0), up: true))
         XCTAssertNil(EditorCommands.moveLines(text, selection: NSRange(location: 10, length: 0), up: false))
         // The last line without a newline moving down past… nothing; the one before it moving down swaps endings.
-        XCTAssertEqual(apply(EditorCommands.moveLines(text, selection: NSRange(location: 5, length: 0), up: false), to: text), "one\nthree\ntwo")
+        let second = EditorCommands.moveLines(text, selection: NSRange(location: 5, length: 0), up: false)
+        XCTAssertEqual(apply(second, to: text), "one\nthree\ntwo")
         // A selection of two whole lines, ending at the start of the next, moves both and not the next.
         let two = EditorCommands.moveLines("a\nb\nc\nd\n", selection: NSRange(location: 2, length: 4), up: true)
         XCTAssertEqual(apply(two, to: "a\nb\nc\nd\n"), "b\nc\na\nd\n")
@@ -51,7 +52,8 @@ final class EditorCommandsTests: XCTestCase {
         let eggs = range(of: "eggs", in: text).location
         XCTAssertEqual(apply(EditorCommands.toggleCheckbox(text, line: eggs, selection: NSRange(location: 0, length: 0)), to: text)?
             .contains("- [ ] eggs"), true)
-        XCTAssertEqual(apply(EditorCommands.toggleCheckbox(text, line: range(of: "bread", in: text).location, selection: NSRange()), to: text)?
+        let bread = range(of: "bread", in: text).location
+        XCTAssertEqual(apply(EditorCommands.toggleCheckbox(text, line: bread, selection: NSRange()), to: text)?
             .contains("* [ ] bread"), true)
         XCTAssertNil(EditorCommands.toggleCheckbox(text, line: range(of: "not a", in: text).location, selection: NSRange()))
         XCTAssertNotNil(EditorCommands.checkbox(in: text, line: range(of: "numbered", in: text).location))
@@ -80,7 +82,8 @@ final class EditorCommandsTests: XCTestCase {
         let afterTab = apply(nested, to: text) ?? ""
         XCTAssertEqual(afterTab, "1. a\n   1. b\n2. c\n3. d")
         XCTAssertEqual(nested?.selection.location, range(of: "b", in: afterTab).location)
-        let back = EditorCommands.indent(afterTab, selection: NSRange(location: range(of: "b", in: afterTab).location, length: 0), outdent: true)
+        let b = NSRange(location: range(of: "b", in: afterTab).location, length: 0)
+        let back = EditorCommands.indent(afterTab, selection: b, outdent: true)
         XCTAssertEqual(apply(back, to: afterTab), text)
         // Two nested items, the first taken out: it joins the outer list and the other becomes its first child.
         let deep = "1. a\n   1. b\n   2. c\n2. d"
@@ -96,14 +99,24 @@ final class EditorCommandsTests: XCTestCase {
         XCTAssertTrue(EditorCommands.renumber("1. a\n2. b", around: 0).isEmpty, "a correct list is not touched")
     }
 
-    func testNumberedListCommand() {
+    func testListCommands() {
         let text = "milk\neggs\n\nbread"
-        let result = EditorCommands.numberedList(text, selection: NSRange(location: 0, length: (text as NSString).length))
+        let all = NSRange(location: 0, length: (text as NSString).length)
+        let result = EditorCommands.list(.numbers, in: text, selection: all)
         XCTAssertEqual(apply(result, to: text), "1. milk\n2. eggs\n\n3. bread")
         let numbered = apply(result, to: text) ?? ""
-        XCTAssertEqual(apply(EditorCommands.numberedList(numbered, selection: NSRange(location: 0, length: (numbered as NSString).length)), to: numbered),
-                       text)
-        XCTAssertEqual(apply(EditorCommands.numberedList("- a\n- b", selection: NSRange(location: 0, length: 7)), to: "- a\n- b"), "1. a\n2. b")
+        let again = EditorCommands.list(.numbers, in: numbered, selection: NSRange(location: 0, length: (numbered as NSString).length))
+        XCTAssertEqual(apply(again, to: numbered), text, "applying it twice gives back the same bytes")
+        func list(_ kind: FormatState.List, _ text: String) -> String? {
+            apply(EditorCommands.list(kind, in: text, selection: NSRange(location: 0, length: (text as NSString).length)), to: text)
+        }
+        XCTAssertEqual(list(.numbers, "- a\n- b"), "1. a\n2. b")
+        XCTAssertEqual(list(.checklist, "1. a\n2. b"), "- [ ] a\n- [ ] b")
+        XCTAssertEqual(list(.bullets, "- [x] a"), "- a")
+        XCTAssertEqual(apply(EditorCommands.list(.bullets, in: "- a", selection: NSRange(location: 3, length: 0)), to: "- a"), "a")
+        let empty = EditorCommands.list(.checklist, in: "", selection: NSRange(location: 0, length: 0))
+        XCTAssertEqual(apply(empty, to: ""), "- [ ] ")
+        XCTAssertEqual(empty.selection, NSRange(location: 6, length: 0))
     }
 
     func testIndentQuotes() {
@@ -154,8 +167,8 @@ final class EditorCommandsTests: XCTestCase {
         let cleared = apply(one, to: text) ?? ""
         XCTAssertEqual(cleared, "Some bold and *it* with <sup>2</sup> and [a link](/x/) end")
         XCTAssertEqual((cleared as NSString).substring(with: one!.selection), "bold")
-        XCTAssertEqual(apply(EditorCommands.clearFormatting("x <u>under</u> y", selection: NSRange(location: 5, length: 5)), to: "x <u>under</u> y"),
-                       "x under y")
+        let under = "x <u>under</u> y"
+        XCTAssertEqual(apply(EditorCommands.clearFormatting(under, selection: NSRange(location: 5, length: 5)), to: under), "x under y")
         XCTAssertNil(EditorCommands.clearFormatting("plain text", selection: NSRange(location: 0, length: 5)))
         XCTAssertEqual(apply(EditorCommands.clearFormatting("a <mark>**b**</mark> c", selection: NSRange(location: 2, length: 18)),
                              to: "a <mark>**b**</mark> c"), "a b c")

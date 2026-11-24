@@ -119,10 +119,14 @@ The layout is three panes like Apple Notes: **Sections → item list → editor*
 | Footnote | ⇧⌘F | `[^1]` with `[^1]: …` appended at the end; numeric footnotes are renumbered in reading order |
 | Section break | ⇧⌘↩ or `***` | `***`, never `---`, which can be confused with front matter |
 | Table | `/table` (v1.0) | GFM table with a grid editor |
-| Code block | ```` ``` ```` | fenced, with language picker (v1.0) |
+| Code block | ```` ``` ````, Monospaced style | fenced, with a language picker |
 | Callout / aside | `/aside` (v1.0) | an HTML/IAL block styled by the site, only if the site supports it |
 | Math | `/math` (v1.0) | `$$…$$`, only if the site loads MathJax/KaTeX |
 | Embed | paste a YouTube/Vimeo/tweet URL (v1.0) | the site's embed include, or an iframe |
+
+**Linking.** ⌘K (or the link button) opens a popover at the selection: search the site's posts and pages by title (with section and date), this post's headings (`#anchor`, using kramdown's ids), or type or paste a web or email address (`mailto:`). Return picks the top result; with nothing selected the post's title becomes the link text. Internal links are written as `[text](/section/slug/)`, the same form as `[[`. On an existing link the popover shows its target with Open, Edit and Remove Link (which keeps the text). ⌘-click or the context menu opens a link: a post of the site in the editor, anything else in the browser; hovering shows the target. Pasting an address over selected words links them; pasted on its own it stays plain text.
+
+**Formatting bar and editing comforts.** A compact bar above the text (View › Formatting Bar, remembered) with a paragraph style menu (Title `#`, Heading `##`, Subheading `###`, Body, Monospaced as a fenced block), bold, italic, underline, strikethrough, highlight, link, lists, quote, inline code, table, image, a code-block language menu when the cursor is in a fenced block, and Insert. Buttons show the formatting at the cursor. Clicking a checklist box ticks it; ⌥⌘↑/↓ move lines; numbered lists renumber on Return, Tab and ⇧Tab; ⌘] / ⌘[ indent and outdent lists and quotes; superscript and subscript (`<sup>`, `<sub>`) and Clear Formatting are in the Format menu; Edit › Find has find and replace; View › Zoom In / Out / Actual Size (⌘+ / ⌘- / ⇧⌘0, since ⌘0 is Body Text) zoom the text for the session without changing the text size setting. With text selected, the footer shows its word and character count.
 
 **Dialect awareness.** Inkwell detects the Markdown engine (kramdown with GFM input on GitHub Pages; Goldmark for Hugo later) and only offers formatting that engine renders. Anything else falls back to safe inline HTML.
 
