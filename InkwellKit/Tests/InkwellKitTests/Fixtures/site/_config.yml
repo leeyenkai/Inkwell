@@ -1,0 +1,41 @@
+# Site settings
+title: Sample Site
+description: A test site shaped like a personal GitHub Pages site
+url: "https://example.github.io"
+baseurl: ""
+author: Sample Author
+lang: en
+
+markdown: kramdown
+permalink: /:collection/:title/
+
+plugins:
+  - jekyll-seo-tag   # <title> and link preview tags
+  - jekyll-sitemap
+
+collections:
+  sidenotes:
+    output: true
+    permalink: /sidenotes/:title/
+  notes:
+    output: true
+    permalink: /notes/:title/
+  travel:
+    output: true
+    permalink: /travel/:title/
+
+defaults:
+  - scope:
+      path: ""
+      type: "sidenotes"
+    values:
+      layout: "post"
+  - scope:
+      path: ""
+      type: "notes"
+    values:
+      layout: "post"
+
+exclude:
+  - Gemfile
+  - README.md

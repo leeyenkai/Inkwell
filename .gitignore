@@ -1,0 +1,10 @@
+# Build output (always build outside the iCloud folder, see CLAUDE.md)
+DerivedData/
+.build/
+.swiftpm/
+xcuserdata/
+*.xcuserstate
+
+# macOS / iCloud
+.DS_Store
+* 2.*

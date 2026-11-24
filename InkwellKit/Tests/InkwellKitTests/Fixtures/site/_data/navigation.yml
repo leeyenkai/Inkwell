@@ -1,0 +1,11 @@
+# Order here = order in the top nav.
+- title: about
+  url: /
+- title: notes
+  url: /notes
+- title: sidenotes
+  url: /sidenotes
+- title: travel
+  url: /travel
+- title: photos
+  url: /photos
