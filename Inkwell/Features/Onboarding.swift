@@ -214,7 +214,7 @@ struct NewSiteSheet: View {
             HStack(spacing: 12) {
                 ForEach(themes) { theme in
                     ThemeCard(theme: theme, selected: theme.id == themeID)
-                        .onTapGesture { themeID = theme.id }
+                        .choosable(theme.name, selected: theme.id == themeID) { themeID = theme.id }
                 }
             }
             HStack {

@@ -10,7 +10,9 @@ struct PhotoGrid: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 6)], spacing: 6) {
                 ForEach(photos) { photo in
                     PhotoTile(model: model, photo: photo, selected: model.selectedPhotoID == photo.id)
-                        .onTapGesture { model.selectedPhotoID = photo.id }
+                        .choosable(photo.caption.isEmpty ? "Photo" : photo.caption, selected: model.selectedPhotoID == photo.id) {
+                            model.selectedPhotoID = photo.id
+                        }
                 }
             }
             .padding(10)
@@ -66,8 +68,16 @@ struct PhotoTile: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 3))
         .opacity(photo.hidden ? 0.5 : 1)
-        .accessibilityLabel(photo.caption.isEmpty ? "Photo" : photo.caption)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+extension View {
+    /// A tile that can be chosen with the mouse or the keyboard (Tab, then Space), and says what it is to VoiceOver.
+    func choosable(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) { self }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -289,7 +299,8 @@ struct MediaGrid: View {
                         Text(item.usedBy.isEmpty ? "Unused" : "\(item.usedBy.count) use\(item.usedBy.count == 1 ? "" : "s")")
                             .font(.caption2).foregroundStyle(item.usedBy.isEmpty ? .orange : .secondary)
                     }
-                    .onTapGesture { model.selectedMedia = item.path }
+                    .choosable("\((item.path as NSString).lastPathComponent), \(item.usedBy.isEmpty ? "unused" : "used \(item.usedBy.count) times")",
+                               selected: model.selectedMedia == item.path) { model.selectedMedia = item.path }
                 }
             }
             .padding(10)

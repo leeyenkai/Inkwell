@@ -156,7 +156,7 @@ enum Launch {
             guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
             return args[i + 1]
         }
-        if args.contains("--selftest-publish") { setvbuf(stdout, nil, _IONBF, 0) }
+        if args.contains(where: { $0.hasPrefix("--selftest") || $0 == "--measure-typing" }) { setvbuf(stdout, nil, _IONBF, 0) }
         if let path = value("--site") {
             model.suppressSiteSummary = !args.contains("--summary")
             await model.account.restore()
@@ -175,6 +175,10 @@ enum Launch {
         if let photo = value("--photo") { model.selectedPhotoID = model.photos.first { $0.doc.relativePath == photo }?.id }
         if let id = value("--apply-theme"), let theme = ThemeManifest.named(id), let design = model.design {
             design.apply(design.plan(for: theme))
+        }
+        if args.contains("--measure-typing") {
+            await SelfTest.measureTyping(model)
+            exit(0)
         }
         if args.contains("--selftest-content") {
             let ok = await SelfTest.content(model)
@@ -249,6 +253,24 @@ enum Launch {
 }
 
 enum SelfTest {
+    /// Times typing into a long post: each character is a keystroke through the text view, with its restyle.
+    static func measureTyping(_ model: AppModel) async {
+        model.newPost()
+        guard let editor = model.editor else { return }
+        let paragraph = "A *long* post with **bold**, `code`, [links](/x/), ~~strike~~ and more words in every paragraph.\n\n"
+        for chars in [15000, 60000, 150_000] {
+            editor.body = String(repeating: paragraph, count: chars / paragraph.count)
+            editor.reloadFromView()
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let textView = model.textView else { return }
+            textView.setSelectedRange(NSRange(location: (textView.string as NSString).length / 2, length: 0))
+            let start = Date()
+            for ch in "typing here" { textView.insertText(String(ch), replacementRange: textView.selectedRange()) }
+            let each = Date().timeIntervalSince(start) / 11 * 1000
+            print("typing: \(chars / 1000)k characters, \(String(format: "%.1f", each)) ms per keystroke")
+        }
+    }
+
     /// Rename with a redirect and publish, history, duplicate, new page, tag rename. Refuses GitHub remotes.
     static func content(_ model: AppModel) async -> Bool {
         guard let site = model.site, let git = Git(root: site.root), let backend = model.backend else { return false }
@@ -393,6 +415,28 @@ enum SelfTest {
             }
         } else {
             ok = check(false, "table draft in the editor") && ok
+        }
+
+        // Typing in a long post restyles only the edited paragraph; the result must match a full restyle.
+        model.newPost()
+        if let editor = model.editor {
+            let paragraph = "Some **bold** and *italic* text with {{ site.title }} and [a link](/notes/).\n\n"
+            editor.title = "Self-test long post"
+            editor.body = String(repeating: paragraph, count: 40) + "| a | b |\n|---|---|\n| 1 | 2 |\n\n![Snow](/assets/images/estonia.jpg)\n\n"
+                + String(repeating: paragraph, count: 40)
+            editor.reloadFromView()
+            await settle()
+        }
+        if let textView = model.textView, let storage = textView.textStorage, storage.length > InkwellTextView.incrementalLength {
+            textView.setSelectedRange(NSRange(location: (textView.string as NSString).range(of: "italic").location + 2, length: 0))
+            for ch in "ab **c**" { textView.insertText(String(ch), replacementRange: textView.selectedRange()) }
+            textView.insertText("\n\nNew *line*", replacementRange: textView.selectedRange())
+            let quick = NSAttributedString(attributedString: storage)
+            let quickChips = textView.chipRanges
+            textView.restyle()
+            ok = check(quick.isEqual(to: storage) && quickChips == textView.chipRanges, "quick restyle matches a full one") && ok
+        } else {
+            ok = check(false, "long post in the editor") && ok
         }
 
         // Health: a missing 404 page is found, and its fix adds the page as an unpublished change.

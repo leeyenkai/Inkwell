@@ -291,7 +291,7 @@ struct ThemeGallery: View {
                 HStack(spacing: 12) {
                     ForEach(themes) { theme in
                         ThemeCard(theme: theme, selected: theme.id == (chosen?.id ?? design.theme?.id))
-                            .onTapGesture { chosen = theme }
+                            .choosable(theme.name, selected: theme.id == (chosen?.id ?? design.theme?.id)) { chosen = theme }
                     }
                 }
                 HStack {
@@ -392,9 +392,10 @@ struct DesignPreview: View {
                 .labelsHidden()
                 .fixedSize()
                 Picker("Appearance", selection: $model.previewAppearance) {
-                    Image(systemName: "circle.lefthalf.filled").help("Follow this Mac").tag(AppModel.PreviewAppearance.system)
-                    Image(systemName: "sun.max").help("Light mode").tag(AppModel.PreviewAppearance.light)
-                    Image(systemName: "moon").help("Dark mode").tag(AppModel.PreviewAppearance.dark)
+                    Image(systemName: "circle.lefthalf.filled").help("Follow this Mac").accessibilityLabel("Follow this Mac")
+                        .tag(AppModel.PreviewAppearance.system)
+                    Image(systemName: "sun.max").help("Light mode").accessibilityLabel("Light mode").tag(AppModel.PreviewAppearance.light)
+                    Image(systemName: "moon").help("Dark mode").accessibilityLabel("Dark mode").tag(AppModel.PreviewAppearance.dark)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

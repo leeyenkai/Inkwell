@@ -50,6 +50,10 @@ final class InkwellTextView: NSTextView {
 
     func restyle() {
         guard let storage = textStorage else { return }
+        fullRestyle?.cancel()
+        fullRestyle = nil
+        pendingEdit = nil
+        editsSinceStyle = 0
         let active = activeParagraph
         styledParagraph = active
         liquidRanges = MarkdownStyler.apply(to: storage, source: sourceMode, activeRange: hidesSyntax && !sourceMode ? active : nil)
@@ -60,11 +64,13 @@ final class InkwellTextView: NSTextView {
     }
 
     /// Tables in a monospaced face, so the columns the grid editor lines up stay lined up here.
-    private func styleTables(in storage: NSTextStorage) {
+    private func styleTables(in storage: NSTextStorage, near window: NSRange? = nil) {
         guard !sourceMode else { return }
         let font = NSFont.monospacedSystemFont(ofSize: MarkdownStyler.bodySize - 2, weight: .regular)
+        let tables = window.map { w in MarkdownTable.find(in: storage.string, at: w.location).map { [$0.range] } ?? [] }
+            ?? MarkdownTable.ranges(in: storage.string)
         storage.beginEditing()
-        for range in MarkdownTable.ranges(in: storage.string) where NSMaxRange(range) <= storage.length {
+        for range in tables where NSMaxRange(range) <= storage.length {
             storage.enumerateAttribute(.font, in: range) { value, sub, _ in
                 let bold = (value as? NSFont)?.fontDescriptor.symbolicTraits.contains(.bold) == true
                 storage.addAttribute(.font, value: bold ? NSFont.monospacedSystemFont(ofSize: font.pointSize, weight: .semibold) : font, range: sub)
@@ -96,11 +102,7 @@ final class InkwellTextView: NSTextView {
                 guard let url = resolve(line.target), let pixels = ImageSizes.shared.size(of: url), pixels.width > 0, pixels.height > 0 else { continue }
                 let scale = min(1, imageWidth / pixels.width, Self.imageMaxHeight / pixels.height)
                 let size = NSSize(width: (pixels.width * scale).rounded(), height: (pixels.height * scale).rounded())
-                let paragraph = ns.paragraphRange(for: line.range)
-                let style = (storage.attribute(.paragraphStyle, at: line.range.location, effectiveRange: nil) as? NSParagraphStyle)?
-                    .mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
-                style.paragraphSpacing = size.height + 14
-                storage.addAttribute(.paragraphStyle, value: style, range: paragraph)
+                applyImageSpacing(line.range, height: size.height)
                 placedImages.append((line.range, size, url, line.alt))
             }
             storage.endEditing()
@@ -205,10 +207,92 @@ final class InkwellTextView: NSTextView {
 
     /// Markers show again on the line the cursor moves to, and hide on the line it left.
     func selectionMoved() {
+        // During an edit, textChanged restyles once the text is in.
+        guard pendingEdit == nil else { return }
         updateTableButton()
         let previous = styledParagraph ?? NSRange(location: NSNotFound, length: 0)
-        guard hidesSyntax, !sourceMode, !hasMarkedText(), !NSEqualRanges(activeParagraph, previous) else { return }
-        restyle()
+        let active = activeParagraph
+        guard hidesSyntax, !sourceMode, !hasMarkedText(), !NSEqualRanges(active, previous) else { return }
+        let length = (string as NSString).length
+        if length > Self.incrementalLength, previous.location != NSNotFound, NSMaxRange(previous) <= length {
+            // Markers show on the new line and hide on the old one; nothing else changes.
+            restyle(windows: [previous, active])
+        } else {
+            restyle()
+        }
+    }
+
+    // MARK: Incremental styling
+
+    /// Above this length, typing restyles only the edited paragraphs at once and the whole text after a pause.
+    static let incrementalLength = 4000
+    /// For the self-test: the chip ranges, which must match after quick and full restyles alike.
+    var chipRanges: [NSRange] { liquidRanges }
+    private var pendingEdit: (range: NSRange, newLength: Int)?
+    private var editsSinceStyle = 0
+    private var fullRestyle: Task<Void, Never>?
+
+    /// Called by the editor after each change to the text.
+    func textChanged() {
+        let edit = pendingEdit
+        pendingEdit = nil
+        let ns = string as NSString
+        guard let edit, editsSinceStyle == 1, !sourceMode, ns.length > Self.incrementalLength else {
+            editsSinceStyle = 0
+            return restyle()
+        }
+        editsSinceStyle = 0
+        let delta = edit.newLength - edit.range.length
+        func shift(_ r: NSRange) -> NSRange? {
+            if NSMaxRange(r) <= edit.range.location { return r }
+            if r.location >= NSMaxRange(edit.range) { return NSRange(location: r.location + delta, length: r.length) }
+            return nil
+        }
+        liquidRanges = liquidRanges.compactMap(shift)
+        placedImages = placedImages.compactMap { p in shift(p.range).map { ($0, p.size, p.url, p.alt) } }
+        let start = min(edit.range.location, ns.length)
+        let changed = NSRange(location: start, length: min(edit.newLength, ns.length - start))
+        restyle(windows: [ns.paragraphRange(for: changed)])
+        fullRestyle?.cancel()
+        fullRestyle = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, let self, !self.hasMarkedText() else { return }
+            self.restyle()
+        }
+    }
+
+    /// Restyles only these paragraphs, keeping chips, tables and picture spacing right inside them.
+    private func restyle(windows: [NSRange]) {
+        guard let storage = textStorage else { return }
+        let active = activeParagraph
+        styledParagraph = active
+        let length = storage.length
+        var merged: [NSRange] = []
+        for w in windows.map({ (string as NSString).paragraphRange(for: NSIntersectionRange($0, NSRange(location: 0, length: length))) })
+            .sorted(by: { $0.location < $1.location }) {
+            if let last = merged.last, NSMaxRange(last) >= w.location { merged[merged.count - 1] = NSUnionRange(last, w) } else { merged.append(w) }
+        }
+        for window in merged {
+            liquidRanges.removeAll { NSIntersectionRange($0, window).length > 0 || ($0.location >= window.location && NSMaxRange($0) <= NSMaxRange(window)) }
+            liquidRanges += MarkdownStyler.apply(to: storage, source: sourceMode, activeRange: hidesSyntax && !sourceMode ? active : nil, window: window)
+            styleTables(in: storage, near: window)
+            for placed in placedImages where NSIntersectionRange(placed.range, window).length > 0 {
+                applyImageSpacing(placed.range, height: placed.size.height)
+            }
+        }
+        liquidRanges.sort { $0.location < $1.location }
+        typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
+        positionImages()
+        updateTableButton()
+    }
+
+    private func applyImageSpacing(_ range: NSRange, height: CGFloat) {
+        guard let storage = textStorage, NSMaxRange(range) <= storage.length else { return }
+        let paragraph = (storage.string as NSString).paragraphRange(for: range)
+        let style = (storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle)?
+            .mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+        style.paragraphSpacing = height + 14
+        storage.addAttribute(.paragraphStyle, value: style, range: paragraph)
     }
 
     // MARK: Smart typing
@@ -323,7 +407,10 @@ final class InkwellTextView: NSTextView {
                 }
             }
         }
-        return super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)
+        guard super.shouldChangeText(in: affectedCharRange, replacementString: replacementString) else { return false }
+        pendingEdit = (affectedCharRange, (replacementString as NSString?)?.length ?? 0)
+        editsSinceStyle += 1
+        return true
     }
 
     // MARK: Formatting
@@ -462,13 +549,24 @@ final class ImageSizes {
 
 enum MarkdownStyler {
     /// Markers that stay visible everywhere: section breaks, code fences and anything inside code, math or front matter.
-    static func keepVisible(_ range: NSRange, _ spans: [StyleSpan]) -> Bool {
-        spans.contains { span in
+    /// `kept` holds only those spans' ranges, sorted, so each marker costs a binary search rather than a pass over every span.
+    static func keepVisible(_ range: NSRange, _ kept: [NSRange]) -> Bool {
+        var low = 0, high = kept.count
+        while low < high {
+            let mid = (low + high) / 2
+            if NSMaxRange(kept[mid]) <= range.location { low = mid + 1 } else { high = mid }
+        }
+        return low < kept.count && NSIntersectionRange(kept[low], range).length > 0
+    }
+
+    static func keptRanges(_ spans: [StyleSpan]) -> [NSRange] {
+        spans.compactMap { span -> NSRange? in
             switch span.style {
-            case .rule, .codeBlock, .math, .frontMatter: NSIntersectionRange(span.range, range).length > 0
-            default: false
+            case .rule, .codeBlock, .math, .frontMatter: span.range
+            default: nil
             }
         }
+        .sorted { $0.location < $1.location }
     }
 
     static var bodySize: CGFloat { Prefs.fontSize }
@@ -491,9 +589,14 @@ enum MarkdownStyler {
 
     /// Restyles the whole text and returns the Liquid ranges, which the view keeps whole.
     @discardableResult
-    static func apply(to storage: NSTextStorage, source: Bool, activeRange: NSRange? = nil) -> [NSRange] {
-        let full = NSRange(location: 0, length: storage.length)
-        let spans = MarkdownScanner.scan(storage.string)
+    static func apply(to storage: NSTextStorage, source: Bool, activeRange: NSRange? = nil, window: NSRange? = nil) -> [NSRange] {
+        let full = window ?? NSRange(location: 0, length: storage.length)
+        let spans = window.map { w in
+            MarkdownScanner.scan((storage.string as NSString).substring(with: w)).map {
+                StyleSpan($0.style, NSRange(location: $0.range.location + w.location, length: $0.range.length))
+            }
+        } ?? MarkdownScanner.scan(storage.string)
+        let kept = keptRanges(spans)
         var liquid: [NSRange] = []
         storage.beginEditing()
         storage.setAttributes(baseAttributes(source: source), range: full)
@@ -570,7 +673,7 @@ enum MarkdownStyler {
                 storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: r)
             case .frontMatter:
                 storage.addAttribute(.foregroundColor, value: NSColor.systemBrown, range: r)
-            case .syntax where activeRange.map { NSIntersectionRange($0, r).length == 0 && !keepVisible(r, spans) } == true:
+            case .syntax where activeRange.map { NSIntersectionRange($0, r).length == 0 && !keepVisible(r, kept) } == true:
                 // Markers away from the cursor are kept in the text but drawn at almost no width.
                 storage.addAttribute(.foregroundColor, value: NSColor.clear, range: r)
                 storage.addAttribute(.font, value: NSFont.systemFont(ofSize: 0.01), range: r)
@@ -663,7 +766,7 @@ struct MarkdownEditor: NSViewRepresentable {
             // While an input method is composing (accents, Chinese, Japanese), leave the text alone until it commits.
             guard let textView = notification.object as? InkwellTextView, !textView.hasMarkedText() else { return }
             isEditing = true
-            textView.restyle()
+            textView.textChanged()
             parent.text = textView.string
             isEditing = false
         }

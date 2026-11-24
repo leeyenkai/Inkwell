@@ -201,10 +201,28 @@ public enum MediaLibrary {
                 texts.append((relative, text))
             }
         }
+        // Each text is read once: every image-like path in it is indexed under each of its trailing parts
+        // ("/assets/a/b.jpg" under "assets/a/b.jpg", "a/b.jpg" and "b.jpg"), so a lookup by site path finds it.
+        var index: [String: [String]] = [:]
+        let pattern = #"[\p{L}\p{N}_./%~+-]+\.(?:jpe?g|png|gif|webp|svg|avif|heic)\b"#
+        let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+        for (file, text) in texts {
+            let ns = text as NSString
+            var seen = Set<String>()
+            for m in regex?.matches(in: text, range: NSRange(location: 0, length: ns.length)) ?? [] {
+                let token = ns.substring(with: m.range)
+                let path = token.removingPercentEncoding ?? token
+                var start = path.startIndex
+                while true {
+                    let suffix = String(path[start...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                    if !suffix.isEmpty, seen.insert(suffix).inserted { index[suffix, default: []].append(file) }
+                    guard let slash = path[start...].firstIndex(of: "/") else { break }
+                    start = path.index(after: slash)
+                }
+            }
+        }
         return images.sorted { $0.0 < $1.0 }.map { path, bytes in
-            let name = (path as NSString).lastPathComponent
-            let used = texts.filter { $0.1.contains(name) && ($0.1.contains(path) || $0.1.contains("/" + path)) }.map(\.0)
-            return Item(path: path, bytes: bytes, usedBy: used)
+            Item(path: path, bytes: bytes, usedBy: (index[path] ?? []).sorted())
         }
     }
 }

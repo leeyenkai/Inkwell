@@ -131,7 +131,7 @@ struct TableEditorSheet: View {
             Divider()
             Button("Delete Row", role: .destructive) { table.removeRow(at: r) }
         } label: {
-            Image(systemName: "ellipsis")
+            Image(systemName: "ellipsis").accessibilityLabel("Row \(r + 1)")
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
