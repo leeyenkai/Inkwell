@@ -1,0 +1,17 @@
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="{{ '/' | relative_url }}" class="site-title">{{ site.title }}</a>
+    {% if site.data.navigation %}
+    <nav class="site-nav" aria-label="Site">
+      {% for item in site.data.navigation %}
+      {% if item.url == '/' %}
+        {% assign is_active = false %}{% if page.url == '/' %}{% assign is_active = true %}{% endif %}
+      {% else %}
+        {% assign is_active = false %}{% if page.url contains item.url %}{% assign is_active = true %}{% endif %}
+      {% endif %}
+      <a href="{{ item.url | relative_url }}"{% if is_active %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </div>
+</header>

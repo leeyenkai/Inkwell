@@ -18,7 +18,7 @@ let package = Package(
     targets: [
         .target(
             name: "InkwellKit",
-            dependencies: ["InkwellCore", "InkwellMarkdown", "InkwellTemplate", "InkwellMedia", "InkwellPublish", "InkwellGitHub", "InkwellSync"],
+            dependencies: ["InkwellCore", "InkwellMarkdown", "InkwellTemplate", "InkwellMedia", "InkwellPublish", "InkwellGitHub", "InkwellSync", "InkwellDesign"],
             swiftSettings: settings
         ),
         .target(name: "InkwellCore", swiftSettings: settings),
@@ -28,9 +28,10 @@ let package = Package(
         .target(name: "InkwellPublish", dependencies: ["InkwellCore"], swiftSettings: settings),
         .target(name: "InkwellGitHub", swiftSettings: settings),
         .target(name: "InkwellSync", dependencies: ["InkwellGitHub"], swiftSettings: settings),
+        .target(name: "InkwellDesign", dependencies: ["InkwellCore"], resources: [.copy("Themes")], swiftSettings: settings),
         .testTarget(
             name: "InkwellKitTests",
-            dependencies: ["InkwellCore", "InkwellMarkdown", "InkwellTemplate", "InkwellMedia", "InkwellPublish", "InkwellGitHub", "InkwellSync"],
+            dependencies: ["InkwellCore", "InkwellMarkdown", "InkwellTemplate", "InkwellMedia", "InkwellPublish", "InkwellGitHub", "InkwellSync", "InkwellDesign"],
             resources: [.copy("Fixtures")],
             swiftSettings: settings
         ),

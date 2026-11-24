@@ -1,0 +1,148 @@
+{
+  "id": "essayist",
+  "name": "Essayist",
+  "summary": "Long-form writing in a calm serif column, on warm paper.",
+  "tokens": [
+    {
+      "name": "--bg",
+      "label": "Background",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#FBF8F3",
+      "dark": "#1B1916"
+    },
+    {
+      "name": "--surface",
+      "label": "Panels",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#F4EFE6",
+      "dark": "#24211D"
+    },
+    {
+      "name": "--text",
+      "label": "Text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#1F1D1A",
+      "dark": "#ECE6DC"
+    },
+    {
+      "name": "--muted",
+      "label": "Secondary text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#6B655C",
+      "dark": "#A39A8C"
+    },
+    {
+      "name": "--accent",
+      "label": "Accent",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#A3452B",
+      "dark": "#E58A63"
+    },
+    {
+      "name": "--border",
+      "label": "Lines",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#E7E0D4",
+      "dark": "#34302A"
+    },
+    {
+      "name": "--font-body",
+      "label": "Body font",
+      "kind": "font",
+      "group": "Type",
+      "light": "Charter, \"Iowan Old Style\", \"Palatino Linotype\", Georgia, serif"
+    },
+    {
+      "name": "--font-heading",
+      "label": "Heading font",
+      "kind": "font",
+      "group": "Type",
+      "light": "Charter, \"Iowan Old Style\", \"Palatino Linotype\", Georgia, serif"
+    },
+    {
+      "name": "--font-mono",
+      "label": "Code font",
+      "kind": "font",
+      "group": "Type",
+      "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    },
+    {
+      "name": "--font-size",
+      "label": "Text size",
+      "kind": "length",
+      "group": "Type",
+      "light": "20px"
+    },
+    {
+      "name": "--line-height",
+      "label": "Line spacing",
+      "kind": "number",
+      "group": "Type",
+      "light": "1.65"
+    },
+    {
+      "name": "--width",
+      "label": "Content width",
+      "kind": "length",
+      "group": "Layout",
+      "light": "40rem"
+    },
+    {
+      "name": "--radius",
+      "label": "Corner rounding",
+      "kind": "length",
+      "group": "Layout",
+      "light": "4px"
+    }
+  ],
+  "options": [
+    {
+      "key": "home_style",
+      "label": "Home page list",
+      "kind": "choice",
+      "values": [
+        "list",
+        "cards",
+        "chain"
+      ]
+    },
+    {
+      "key": "date_format",
+      "label": "Date format",
+      "kind": "choice",
+      "values": [
+        "%B %-d, %Y",
+        "%b %-d, %Y",
+        "%-d %B %Y",
+        "%Y-%m-%d"
+      ]
+    },
+    {
+      "key": "reading_time",
+      "label": "Show reading time",
+      "kind": "bool"
+    },
+    {
+      "key": "appearance",
+      "label": "Appearance",
+      "kind": "choice",
+      "values": [
+        "auto",
+        "light",
+        "dark"
+      ]
+    }
+  ],
+  "defaults": {
+    "home_style": "list",
+    "date_format": "%B %-d, %Y",
+    "reading_time": true,
+    "appearance": "auto"
+  }
+}

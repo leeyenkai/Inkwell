@@ -1,0 +1,148 @@
+{
+  "id": "minimal",
+  "name": "Minimal",
+  "summary": "Plain text and generous space, with monospaced headings.",
+  "tokens": [
+    {
+      "name": "--bg",
+      "label": "Background",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#FFFFFF",
+      "dark": "#0F1110"
+    },
+    {
+      "name": "--surface",
+      "label": "Panels",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#FFFFFF",
+      "dark": "#0F1110"
+    },
+    {
+      "name": "--text",
+      "label": "Text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#111111",
+      "dark": "#E8E8E8"
+    },
+    {
+      "name": "--muted",
+      "label": "Secondary text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#6B6B6B",
+      "dark": "#949494"
+    },
+    {
+      "name": "--accent",
+      "label": "Accent",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#0A7C66",
+      "dark": "#4CD6B5"
+    },
+    {
+      "name": "--border",
+      "label": "Lines",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#E6E6E6",
+      "dark": "#262826"
+    },
+    {
+      "name": "--font-body",
+      "label": "Body font",
+      "kind": "font",
+      "group": "Type",
+      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+    },
+    {
+      "name": "--font-heading",
+      "label": "Heading font",
+      "kind": "font",
+      "group": "Type",
+      "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    },
+    {
+      "name": "--font-mono",
+      "label": "Code font",
+      "kind": "font",
+      "group": "Type",
+      "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    },
+    {
+      "name": "--font-size",
+      "label": "Text size",
+      "kind": "length",
+      "group": "Type",
+      "light": "16px"
+    },
+    {
+      "name": "--line-height",
+      "label": "Line spacing",
+      "kind": "number",
+      "group": "Type",
+      "light": "1.7"
+    },
+    {
+      "name": "--width",
+      "label": "Content width",
+      "kind": "length",
+      "group": "Layout",
+      "light": "38rem"
+    },
+    {
+      "name": "--radius",
+      "label": "Corner rounding",
+      "kind": "length",
+      "group": "Layout",
+      "light": "0px"
+    }
+  ],
+  "options": [
+    {
+      "key": "home_style",
+      "label": "Home page list",
+      "kind": "choice",
+      "values": [
+        "list",
+        "cards",
+        "chain"
+      ]
+    },
+    {
+      "key": "date_format",
+      "label": "Date format",
+      "kind": "choice",
+      "values": [
+        "%B %-d, %Y",
+        "%b %-d, %Y",
+        "%-d %B %Y",
+        "%Y-%m-%d"
+      ]
+    },
+    {
+      "key": "reading_time",
+      "label": "Show reading time",
+      "kind": "bool"
+    },
+    {
+      "key": "appearance",
+      "label": "Appearance",
+      "kind": "choice",
+      "values": [
+        "auto",
+        "light",
+        "dark"
+      ]
+    }
+  ],
+  "defaults": {
+    "home_style": "list",
+    "date_format": "%Y-%m-%d",
+    "reading_time": false,
+    "appearance": "auto"
+  }
+}

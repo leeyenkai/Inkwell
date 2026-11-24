@@ -1,0 +1,9 @@
+---
+layout: default
+---
+<section class="home-intro">
+  {{ content }}
+</section>
+{% assign home_collection = page.list | default: site.inkwell.home_collection | default: 'posts' %}
+{% assign items = site[home_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% include inkwell-post-list.html items=items style=site.inkwell.home_style %}

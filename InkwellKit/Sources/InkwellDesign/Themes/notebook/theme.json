@@ -1,0 +1,148 @@
+{
+  "id": "notebook",
+  "name": "Notebook",
+  "summary": "Clean sans-serif notes and short posts, light and dark.",
+  "tokens": [
+    {
+      "name": "--bg",
+      "label": "Background",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#FFFFFF",
+      "dark": "#17181B"
+    },
+    {
+      "name": "--surface",
+      "label": "Panels",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#F6F7F9",
+      "dark": "#1F2125"
+    },
+    {
+      "name": "--text",
+      "label": "Text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#1D1F24",
+      "dark": "#E3E5E8"
+    },
+    {
+      "name": "--muted",
+      "label": "Secondary text",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#6A7079",
+      "dark": "#9AA0A8"
+    },
+    {
+      "name": "--accent",
+      "label": "Accent",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#3D6CF0",
+      "dark": "#7FA4FF"
+    },
+    {
+      "name": "--border",
+      "label": "Lines",
+      "kind": "color",
+      "group": "Colours",
+      "light": "#E5E7EB",
+      "dark": "#2C2F35"
+    },
+    {
+      "name": "--font-body",
+      "label": "Body font",
+      "kind": "font",
+      "group": "Type",
+      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+    },
+    {
+      "name": "--font-heading",
+      "label": "Heading font",
+      "kind": "font",
+      "group": "Type",
+      "light": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, sans-serif"
+    },
+    {
+      "name": "--font-mono",
+      "label": "Code font",
+      "kind": "font",
+      "group": "Type",
+      "light": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    },
+    {
+      "name": "--font-size",
+      "label": "Text size",
+      "kind": "length",
+      "group": "Type",
+      "light": "17px"
+    },
+    {
+      "name": "--line-height",
+      "label": "Line spacing",
+      "kind": "number",
+      "group": "Type",
+      "light": "1.7"
+    },
+    {
+      "name": "--width",
+      "label": "Content width",
+      "kind": "length",
+      "group": "Layout",
+      "light": "46rem"
+    },
+    {
+      "name": "--radius",
+      "label": "Corner rounding",
+      "kind": "length",
+      "group": "Layout",
+      "light": "8px"
+    }
+  ],
+  "options": [
+    {
+      "key": "home_style",
+      "label": "Home page list",
+      "kind": "choice",
+      "values": [
+        "list",
+        "cards",
+        "chain"
+      ]
+    },
+    {
+      "key": "date_format",
+      "label": "Date format",
+      "kind": "choice",
+      "values": [
+        "%B %-d, %Y",
+        "%b %-d, %Y",
+        "%-d %B %Y",
+        "%Y-%m-%d"
+      ]
+    },
+    {
+      "key": "reading_time",
+      "label": "Show reading time",
+      "kind": "bool"
+    },
+    {
+      "key": "appearance",
+      "label": "Appearance",
+      "kind": "choice",
+      "values": [
+        "auto",
+        "light",
+        "dark"
+      ]
+    }
+  ],
+  "defaults": {
+    "home_style": "list",
+    "date_format": "%b %-d, %Y",
+    "reading_time": false,
+    "appearance": "auto"
+  }
+}

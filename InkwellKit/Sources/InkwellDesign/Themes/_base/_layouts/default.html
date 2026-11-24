@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.title and page.url != '/' %}{{ page.title | strip_html }} · {% endif %}{{ site.title }}</title>
+  {% assign description = page.description | default: page.byline | default: site.description %}
+  <meta name="description" content="{{ description | strip_html | strip | escape }}">
+  <meta property="og:title" content="{{ page.title | default: site.title | escape }}">
+  <meta property="og:description" content="{{ description | strip_html | strip | escape }}">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  {% assign share = page.image | default: site.inkwell.social_image %}
+  {% if share %}<meta property="og:image" content="{{ share | absolute_url }}">{% endif %}
+  <link rel="stylesheet" href="{{ '/assets/css/inkwell.css' | relative_url }}">
+  {% if site.inkwell.appearance == 'dark' %}
+  <link rel="stylesheet" href="{{ '/assets/css/inkwell-dark.css' | relative_url }}">
+  {% elsif site.inkwell.appearance != 'light' %}
+  <link rel="stylesheet" href="{{ '/assets/css/inkwell-dark.css' | relative_url }}" media="(prefers-color-scheme: dark)">
+  {% endif %}
+  {% if site.inkwell.favicon %}<link rel="icon" href="{{ site.inkwell.favicon | relative_url }}">{% endif %}
+</head>
+<body class="theme-{{ site.inkwell.theme | default: 'inkwell' }}">
+  {% include inkwell-header.html %}
+  <main class="container">
+    {{ content }}
+  </main>
+  {% include inkwell-footer.html %}
+</body>
+</html>

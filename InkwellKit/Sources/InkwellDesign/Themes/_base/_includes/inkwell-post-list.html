@@ -1,0 +1,17 @@
+{% assign style = include.style | default: 'list' %}
+{% assign date_format = site.inkwell.date_format | default: "%B %-d, %Y" %}
+<ul class="post-list post-list--{{ style }}">
+  {% for post in include.items %}
+  <li class="post-list-item">
+    {% if style == 'cards' and post.image %}<a href="{{ post.url | relative_url }}" class="card-image"><img src="{{ post.image | relative_url }}" alt="" loading="lazy"></a>{% endif %}
+    {% if post.date %}<time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time>{% endif %}
+    {% if style == 'chain' %}
+      <div class="chain-content">{{ post.content }}</div>
+    {% else %}
+      <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
+      {% if post.byline %}<p class="post-list-byline">{{ post.byline }}</p>{% elsif style == 'cards' %}<p class="post-list-excerpt">{{ post.excerpt | strip_html | truncatewords: 28 }}</p>{% endif %}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if include.items.size == 0 %}<p class="empty">Nothing here yet.</p>{% endif %}

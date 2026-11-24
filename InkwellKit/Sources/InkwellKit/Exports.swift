@@ -1,5 +1,6 @@
 // One import for the app target.
 @_exported import InkwellCore
+@_exported import InkwellDesign
 @_exported import InkwellGitHub
 @_exported import InkwellMarkdown
 @_exported import InkwellMedia
