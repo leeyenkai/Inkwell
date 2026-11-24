@@ -15,7 +15,7 @@
 - **Health and polish.** Site health with one-click fixes and an on-request external link check; description, share image and link preview per post; a Settings window, Help with guides and shortcuts, a first-open site summary, and Copy Diagnostics.
 - **Design.** Four bundled themes with a reviewable switch; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
-Verified by 101 package tests (including performance bounds on a 600-post site) (including a fake GitHub server for sync) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+Verified by 101 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
