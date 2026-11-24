@@ -23,13 +23,13 @@ let package = Package(
             swiftSettings: settings
         ),
         .target(name: "InkwellCore", resources: [.process("Localizable.xcstrings")], swiftSettings: settings),
-        .target(name: "InkwellMarkdown", swiftSettings: settings),
+        .target(name: "InkwellMarkdown", resources: [.process("Localizable.xcstrings")], swiftSettings: settings),
         .target(name: "InkwellTemplate", dependencies: ["InkwellCore", "InkwellMarkdown"], swiftSettings: settings),
         .target(name: "InkwellMedia", dependencies: ["InkwellCore"], resources: [.process("Localizable.xcstrings")], swiftSettings: settings),
         .target(name: "InkwellPublish", dependencies: ["InkwellCore"], resources: [.process("Localizable.xcstrings")], swiftSettings: settings),
         .target(name: "InkwellGitHub", resources: [.process("Localizable.xcstrings")], swiftSettings: settings),
         .target(name: "InkwellSync", dependencies: ["InkwellGitHub"], resources: [.process("Localizable.xcstrings")], swiftSettings: settings),
-        .target(name: "InkwellDesign", dependencies: ["InkwellCore"], resources: [.copy("Themes"), .process("Localizable.xcstrings"), .process("Themes.xcstrings")], swiftSettings: settings),
+        .target(name: "InkwellDesign", dependencies: ["InkwellCore"], resources: [.copy("Themes"), .copy("ElementKit"), .process("Localizable.xcstrings"), .process("Themes.xcstrings")], swiftSettings: settings),
         .testTarget(
             name: "InkwellKitTests",
             dependencies: ["InkwellCore", "InkwellMarkdown", "InkwellTemplate", "InkwellMedia", "InkwellPublish", "InkwellGitHub", "InkwellSync", "InkwellDesign"],

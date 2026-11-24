@@ -21,6 +21,8 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
 
 ## Progress (24 Nov 2026)
 
+- **M6 Designer: in progress.** The site designer: six distinct themes with rendered previews (and a try-on with your own posts), palette and font presets, page elements, page templates, photo albums, and a fuller editor (formatting toolbar, link popover with post search, clickable checklists, moving lines, superscript and subscript). See SPEC §4.7a.
+
 - **M0 Icon: done.** The ink-roller Liquid Glass icon (four groups, the most Xcode allows), checked in every appearance with `ictool`.
 - **M1 Foundation: mostly done.**
   - Done: sign-in with a personal token, with device flow ready for an OAuth client ID; site picker; Pages-aware download into Application Support; one-commit publishing through the GitHub API; pull with conflicts (Keep mine / Use GitHub’s / Compare); "Unpublished changes" sheet; delete, unpublish and discard; build status through the signed-in account; "New site" (creates the repository, applies a theme, publishes, turns on Pages); local-folder mode hardened (timeouts, rebase abort, push again).
@@ -177,7 +179,7 @@ Grouped by area. ★ = in 1.0, ☆ = 1.x / later, ✗ = considered and rejected 
 - ★ Existing themes: detect CSS variables and expose them (as for leeyenkai.github.io); support `theme:`/`remote_theme:` by fetching theme files for preview; compile SCSS (bundled `dart-sass` binary, pinned + SHA-256 like MediaPull's engines)
 - ★ Light/dark: offer to add `prefers-color-scheme` to a dark-only site (adoption diff)
 - ☆ Comments (giscus), analytics (GoatCounter/Plausible snippet), newsletter (RSS-to-email link), search page (lunr)
-- ✗ Drag-and-drop page builder (breaks "plain files", huge scope — user agreed)
+- ✗ Drag-and-drop page builder (breaks "plain files", huge scope — user agreed). Replaced in M6 by page elements in Markdown with form editing (SPEC §4.7a).
 
 **Preview**
 - ★ Whole-site preview browser (navigate the site locally, drafts badged), device sizes, light/dark

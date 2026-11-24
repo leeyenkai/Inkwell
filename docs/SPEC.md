@@ -205,6 +205,36 @@ There are three layers, from safest to most powerful:
 
 **Site adoption ("Make this site Inkwell-friendly").** Some features need small structural changes, such as moving a hard-coded nav into `_data/navigation.yml` or turning a photo page into a data loop. Inkwell never makes these silently. It proposes each one as a separate change with a plain-English explanation and a before/after diff. You can accept or skip each change, and features degrade gracefully when you skip.
 
+### 4.7a Themes and page elements (v0.4)
+
+The user asked for Inkwell to work as a site designer, not only an editor. The earlier "no drag-and-drop page builder" decision stands in one sense: a page is still a plain Markdown file that GitHub Pages builds without Inkwell. What changes is that pages can now hold **elements**, and themes differ in structure, not only colour.
+
+**Themes.** Six bundled themes, each with its own layouts and stylesheet over a shared base, so they differ in structure: a centred essay column (Essayist), a sidebar notebook (Notebook), full-bleed photos (Photo journal), plain monospaced text (Minimal), an editorial front page with a lead story (Magazine), and a portfolio with a hero and project cards (Studio). The gallery shows a render of each theme, made from the theme's real files. Choosing one previews it with **your own posts** before anything is written. In the design panel, palettes and font pairings are one-click presets on top of the existing colour, font and layout controls.
+
+**Elements.** Each element is plain HTML with Markdown inside, using kramdown's `markdown="1"`, so the text stays readable and editable as Markdown. Where an element needs it, it uses a Liquid include. Every element works without JavaScript, and a small script adds the extras. The elements are:
+
+- Gallery (grid, masonry, or an album)
+- Slideshow
+- Map (places written as `geo:` links)
+- Timeline
+- Callout
+- Columns
+- Toggle (`<details>`)
+- Tabs
+- Button
+- Cards
+- Recent posts
+- Archive by year
+- Table of contents
+- Social links
+- Hero banner
+
+They come from the slash menu, the Insert menu and the toolbar. In the editor, an element's wrapper lines collapse to a labelled bar with **Edit…**, which opens a form for that element; the Markdown inside stays editable in place. Elements need a small set of site files, the **element kit**: `_includes/inkwell/*`, `assets/css/inkwell-blocks.css` and `assets/js/inkwell-blocks.js`. The kit is added the first time an element is used, and published with the post that uses it. On sites with their own theme, its stylesheet and script are added to the page head the same way Health adds tags.
+
+**Page templates.** A new page starts from a template: Blank, About, Now, Contact, Projects, Links, Timeline, Places (map), Archive, Album index, or Slides. The Slides template uses a `slides` layout in which each section break is a slide.
+
+**Albums.** Photos can belong to albums (`albums:` in each photo's front matter; titles, descriptions and covers in `_data/albums.yml`). Each album has its own page under `albums/`, using an `album` layout. The photos page shows the albums, then the stream. In the app, Photos has an album list, and photos can be added to and removed from albums, with a cover and title per album. A gallery element can show an album.
+
 ### 4.8 Preview
 
 Preview works on two tiers so it's fast *and* accurate:

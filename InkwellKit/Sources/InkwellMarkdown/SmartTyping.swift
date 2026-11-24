@@ -83,16 +83,16 @@ public enum SmartTyping {
 
         public var title: String {
             switch self {
-            case .heading1: "Heading 1"
-            case .heading2: "Heading 2"
-            case .heading3: "Heading 3"
-            case .quote: "Quote"
-            case .bullets: "Bulleted List"
-            case .numbers: "Numbered List"
-            case .checklist: "Checklist"
-            case .table: "Table"
-            case .code: "Code Block"
-            case .divider: "Section Break"
+            case .heading1: localized("Heading 1")
+            case .heading2: localized("Heading 2")
+            case .heading3: localized("Heading 3")
+            case .quote: localized("Quote")
+            case .bullets: localized("Bulleted List")
+            case .numbers: localized("Numbered List")
+            case .checklist: localized("Checklist")
+            case .table: localized("Table")
+            case .code: localized("Code Block")
+            case .divider: localized("Section Break")
             }
         }
 

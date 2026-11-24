@@ -85,13 +85,45 @@ public struct ThemeManifest: Decodable, Sendable, Identifiable, Equatable {
         return out + "}\n"
     }
 
+    var folder: URL { Self.themesFolder.appending(path: id, directoryHint: .isDirectory) }
+
     var stylesheet: String {
         let base = (try? String(contentsOf: Self.baseFolder.appending(path: "assets/css/inkwell-base.css"), encoding: .utf8)) ?? ""
-        return "/* \(name) theme tokens. */\n" + tokenBlock(.light) + "\n" + base
+        let own = (try? String(contentsOf: folder.appending(path: "theme.css"), encoding: .utf8)).map { "\n/* \(name) */\n" + $0 } ?? ""
+        return "/* \(name) theme tokens. */\n" + tokenBlock(.light) + "\n" + base + own
+    }
+
+    /// The theme's site files: the shared base, with any file the theme has of its own in its place.
+    /// The theme's manifest, stylesheet (merged into inkwell.css) and preview stay out.
+    public var siteFiles: [String: String] {
+        var files = BundledFiles.read(Self.baseFolder, skipping: ["assets/css/inkwell-base.css"])
+        files.merge(BundledFiles.read(folder, skipping: ["theme.json", "theme.css", "preview.png", "preview-dark.png"])) { $1 }
+        return files
+    }
+
+    /// A picture of the theme's home page, rendered from its real files (`--render-theme-previews`).
+    public var previewImage: URL? {
+        let url = folder.appending(path: "preview.png")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
     var darkStylesheet: String {
         "/* \(name) theme, dark palette. Loaded when the reader's system is in dark mode. */\n" + tokenBlock(.dark)
+    }
+}
+
+/// Text files in a bundled folder, by path relative to it.
+enum BundledFiles {
+    static func read(_ folder: URL, skipping: Set<String> = []) -> [String: String] {
+        let base = folder.standardizedFileURL.path
+        var files: [String: String] = [:]
+        guard let walker = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.isRegularFileKey]) else { return files }
+        for case let url as URL in walker where (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true {
+            let path = String(url.standardizedFileURL.path.dropFirst(base.count + 1))
+            guard !skipping.contains(path), !url.lastPathComponent.hasPrefix("."), let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            files[path] = text
+        }
+        return files
     }
 }
 
@@ -140,7 +172,6 @@ public enum ThemeApplier {
             guard old != text else { return }
             changes.append(FileChange(path: path, oldText: old, newText: text, reason: reason))
         }
-        let base = ThemeManifest.baseFolder
         let reasons = [
             "_layouts/default.html": localized("The page frame: header, navigation and footer."),
             "_layouts/post.html": localized("How a post looks: title, byline, date and text."),
@@ -150,8 +181,11 @@ public enum ThemeApplier {
             "_includes/inkwell-footer.html": localized("The footer line."),
             "_includes/inkwell-post-list.html": localized("The list of posts used on the home page."),
         ]
-        for (path, reason) in reasons.sorted(by: { $0.key < $1.key }) {
-            propose(path, try? String(contentsOf: base.appending(path: path), encoding: .utf8), reason)
+        for (path, text) in theme.siteFiles.sorted(by: { $0.key < $1.key }) {
+            propose(path, text, reasons[path] ?? localized("Part of the \(theme.name) theme."))
+        }
+        for change in ElementKit.changes(siteRoot: siteRoot) where !changes.contains(where: { $0.path == change.path }) {
+            changes.append(change)
         }
         propose("assets/css/inkwell.css", theme.stylesheet, "The \(theme.name) colours, fonts and styles.")
         propose("assets/css/inkwell-dark.css", theme.darkStylesheet, localized("The dark palette, used when the reader’s Mac or phone is in dark mode."))
