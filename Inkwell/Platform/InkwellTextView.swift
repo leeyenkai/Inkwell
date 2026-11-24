@@ -16,6 +16,17 @@ final class InkwellTextView: NSTextView {
     var onEditTable: ((NSRange?, MarkdownTable, Int) -> Void)?
     /// The picture file for an image target as written in the post, to show it under its line.
     var imageResolver: ((String) -> URL?)?
+    /// Called with the cursor location by the Insert button and menu item, to insert a page element there.
+    /// Without it, the insert menu of blocks shows at the cursor.
+    var onInsertElement: ((Int) -> Void)?
+    /// Opens a link that leads outside this post: a post of the site in the editor, anything else in the browser.
+    var onOpenLink: ((String) -> Void)?
+    /// The site's posts and pages, for the link popover.
+    var linkEntries: (() -> [LinkSearch.Entry])?
+    /// Updated after selection and text changes, for the formatting bar and the selection's word count.
+    var formatState: EditorFormatState?
+    var formatUpdatePending = false
+    var linkPopover: NSPopover?
     private var imageViews: [InlineImageView] = []
     private var placedImages: [(range: NSRange, size: NSSize, url: URL, alt: String)] = []
     private var imageWidth: CGFloat = 0
@@ -61,12 +72,13 @@ final class InkwellTextView: NSTextView {
         styleTables(in: storage)
         styleImages(in: storage)
         updateTableButton()
+        scheduleFormatUpdate()
     }
 
     /// Tables in a monospaced face, so the columns the grid editor lines up stay lined up here.
     private func styleTables(in storage: NSTextStorage, near window: NSRange? = nil) {
         guard !sourceMode else { return }
-        let font = NSFont.monospacedSystemFont(ofSize: MarkdownStyler.bodySize - 2, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: MarkdownStyler.bodySize - 2 * MarkdownStyler.zoom, weight: .regular)
         let tables = window.map { w in MarkdownTable.find(in: storage.string, at: w.location).map { [$0.range] } ?? [] }
             ?? MarkdownTable.ranges(in: storage.string)
         storage.beginEditing()
@@ -96,7 +108,6 @@ final class InkwellTextView: NSTextView {
         placedImages = []
         imageWidth = contentWidth
         if !sourceMode, showsInlineImages, let resolve = imageResolver {
-            let ns = storage.string as NSString
             storage.beginEditing()
             for line in ImageLines.find(in: storage.string) {
                 guard let url = resolve(line.target), let pixels = ImageSizes.shared.size(of: url), pixels.width > 0, pixels.height > 0 else { continue }
@@ -189,6 +200,7 @@ final class InkwellTextView: NSTextView {
             menu.insertItem(item, at: 0)
             menu.insertItem(.separator(), at: 1)
         }
+        addEditorItems(to: menu, at: index)
         return menu
     }
 
@@ -207,6 +219,7 @@ final class InkwellTextView: NSTextView {
 
     /// Markers show again on the line the cursor moves to, and hide on the line it left.
     func selectionMoved() {
+        scheduleFormatUpdate()
         // During an edit, textChanged restyles once the text is in.
         guard pendingEdit == nil else { return }
         updateTableButton()
@@ -284,6 +297,7 @@ final class InkwellTextView: NSTextView {
         typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
         positionImages()
         updateTableButton()
+        scheduleFormatUpdate()
     }
 
     private func applyImageSpacing(_ range: NSRange, height: CGFloat) {
@@ -298,7 +312,7 @@ final class InkwellTextView: NSTextView {
     // MARK: Smart typing
 
     override func insertNewline(_ sender: Any?) {
-        if !sourceMode, selectedRange().length == 0, let result = SmartTyping.newline(in: string, at: selectedRange().location) {
+        if !sourceMode, selectedRange().length == 0, let result = EditorCommands.newline(string, at: selectedRange().location) {
             apply(result)
             return
         }
@@ -306,7 +320,7 @@ final class InkwellTextView: NSTextView {
     }
 
     override func insertTab(_ sender: Any?) {
-        if !sourceMode, let result = SmartTyping.indent(in: string, selection: selectedRange(), outdent: false) {
+        if !sourceMode, let result = EditorCommands.indentList(string, selection: selectedRange(), outdent: false) {
             apply(result)
             return
         }
@@ -314,7 +328,7 @@ final class InkwellTextView: NSTextView {
     }
 
     override func insertBacktab(_ sender: Any?) {
-        if !sourceMode, let result = SmartTyping.indent(in: string, selection: selectedRange(), outdent: true) {
+        if !sourceMode, let result = EditorCommands.indentList(string, selection: selectedRange(), outdent: true) {
             apply(result)
             return
         }
@@ -336,36 +350,48 @@ final class InkwellTextView: NSTextView {
     }
 
     func showSlashMenu(slashAt location: Int) {
+        showInsertMenu(at: location, typedSlash: true)
+    }
+
+    /// The insert menu under the character at `location`: blocks, then actions. After a typed `/`, the choice replaces it.
+    func showInsertMenu(at location: Int, typedSlash: Bool = false) {
         let menu = NSMenu(title: String(localized: "Insert"))
         for block in SmartTyping.Block.allCases {
             let item = NSMenuItem(title: block.title, action: #selector(slashBlock(_:)), keyEquivalent: "")
-            item.representedObject = [block.rawValue, location] as [Any]
+            item.representedObject = InsertChoice(key: block.rawValue, location: location, typedSlash: typedSlash)
             item.target = self
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        let actions = [(String(localized: "Image…"), "image"), (String(localized: "Link to a Post…"), "link"),
+        let actions = [(String(localized: "Image…"), "image"), (String(localized: "Link…"), "link"),
                        (String(localized: "Embed a Video…"), "embed"), (String(localized: "Footnote"), "footnote")]
         for (title, key) in actions {
             let item = NSMenuItem(title: title, action: #selector(slashAction(_:)), keyEquivalent: "")
-            item.representedObject = [key, location] as [Any]
+            item.representedObject = InsertChoice(key: key, location: location, typedSlash: typedSlash)
             item.target = self
             menu.addItem(item)
         }
-        guard let layout = layoutManager, let container = textContainer else {
-            menu.popUp(positioning: nil, at: .zero, in: self)
-            return
+        let rect = rect(for: NSRange(location: location, length: typedSlash ? 1 : 0))
+        menu.popUp(positioning: nil, at: NSPoint(x: rect.minX, y: rect.maxY + 4), in: self)
+    }
+
+    final class InsertChoice: NSObject {
+        let key: String
+        let location: Int
+        let typedSlash: Bool
+
+        init(key: String, location: Int, typedSlash: Bool) {
+            self.key = key
+            self.location = location
+            self.typedSlash = typedSlash
         }
-        let glyph = layout.glyphIndexForCharacter(at: location)
-        var rect = layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
-        rect.origin.x += textContainerOrigin.x
-        rect.origin.y += textContainerOrigin.y + rect.height + 4
-        menu.popUp(positioning: nil, at: rect.origin, in: self)
     }
 
     @objc func slashBlock(_ sender: NSMenuItem) {
-        guard let info = sender.representedObject as? [Any], let raw = info.first as? String, let block = SmartTyping.Block(rawValue: raw),
-              let location = info.last as? Int, location < (string as NSString).length else { return }
+        guard let choice = sender.representedObject as? InsertChoice, let block = SmartTyping.Block(rawValue: choice.key) else { return }
+        let location = choice.location
+        guard choice.typedSlash else { return insertBlockFromMenu(block, at: location) }
+        guard location < (string as NSString).length else { return }
         if block == .table {
             apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: 1), "")], selection: NSRange(location: location, length: 0)))
             onEditTable?(nil, .blank(), location)
@@ -375,14 +401,19 @@ final class InkwellTextView: NSTextView {
     }
 
     @objc func slashAction(_ sender: NSMenuItem) {
-        guard let info = sender.representedObject as? [Any], let key = info.first as? String, let location = info.last as? Int,
-              location < (string as NSString).length else { return }
-        // Remove the typed slash first.
-        apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: 1), "")], selection: NSRange(location: location, length: 0)))
-        switch key {
+        guard let choice = sender.representedObject as? InsertChoice, choice.location <= (string as NSString).length else { return }
+        let location = choice.location
+        // Remove the typed slash first; the Insert button's menu has none.
+        if choice.typedSlash, location < (string as NSString).length, (string as NSString).character(at: location) == 47 {
+            apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: 1), "")],
+                                   selection: NSRange(location: location, length: 0)))
+        } else {
+            setSelectedRange(NSRange(location: location, length: 0))
+        }
+        switch choice.key {
         case "footnote": footnote()
-        case "link": onLinkPicker?(location)
-        default: onSlashAction?(key, location)
+        case "link": showLinkPopover()
+        default: onSlashAction?(choice.key, location)
         }
     }
 
@@ -417,7 +448,7 @@ final class InkwellTextView: NSTextView {
 
     // MARK: Formatting
 
-    func apply(_ result: FormattingResult) {
+    func apply(_ result: FormattingResult, scroll: Bool = true) {
         guard let storage = textStorage else { return }
         undoManager?.beginUndoGrouping()
         for edit in result.edits where super.shouldChangeText(in: edit.range, replacementString: edit.replacement) {
@@ -425,8 +456,9 @@ final class InkwellTextView: NSTextView {
             didChangeText()
         }
         undoManager?.endUndoGrouping()
-        setSelectedRange(result.selection)
-        scrollRangeToVisible(result.selection)
+        let length = storage.length
+        setSelectedRange(NSMaxRange(result.selection) <= length ? result.selection : NSRange(location: length, length: 0))
+        if scroll { scrollRangeToVisible(selectedRange()) }
     }
 
     func replaceAll(with text: String, selection: NSRange) {
@@ -448,16 +480,7 @@ final class InkwellTextView: NSTextView {
 
     func divider() { apply(Formatting.divider(string, at: selectedRange().location)) }
 
-    func link() {
-        let clipboard = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let url = Self.looksLikeURL(clipboard) ? clipboard : "https://"
-        var result = Formatting.link(string, selection: selectedRange(), url: url)
-        if url == "https://", let edit = result.edits.first {
-            let start = edit.range.location + (edit.replacement as NSString).length - 1 - (url as NSString).length
-            result.selection = NSRange(location: start, length: (url as NSString).length)
-        }
-        apply(result)
-    }
+    func link() { showLinkPopover() }
 
     func insertBlock(_ markdown: String, at location: Int) {
         let ns = string as NSString
@@ -475,7 +498,24 @@ final class InkwellTextView: NSTextView {
         return ["http", "https", "mailto"].contains(scheme) && (url.host != nil || scheme == "mailto")
     }
 
-    // MARK: Paste and drop
+    // MARK: Clicks, paste and drop
+
+    /// The window's undo manager outlives this text view (a post switch or the Source toggle makes a new one), so the
+    /// view's undo steps leave with it; undoing them later would message a view that is gone.
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow == nil, let undo = undoManager {
+            linkPopover?.close()
+            breakUndoCoalescing()
+            undo.removeAllActions(withTarget: self)
+            if let storage = textStorage { undo.removeAllActions(withTarget: storage) }
+        }
+        super.viewWillMove(toWindow: newWindow)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if handleClick(event) { return }
+        super.mouseDown(with: event)
+    }
 
     override func paste(_ sender: Any?) {
         let board = NSPasteboard.general
@@ -483,9 +523,10 @@ final class InkwellTextView: NSTextView {
             onImportImages?(images, selectedRange().location)
             return
         }
+        // An address pasted over selected words links them; pasted on its own it stays plain text.
         if let pasted = board.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines),
-           selectedRange().length > 0, Self.looksLikeURL(pasted) {
-            apply(Formatting.link(string, selection: selectedRange(), url: pasted))
+           selectedRange().length > 0, Self.looksLikeURL(pasted), !(string as NSString).substring(with: selectedRange()).contains("\n") {
+            apply(Formatting.setLink(string, selection: selectedRange(), url: pasted, title: ""))
             return
         }
         // Rich text from a web page or document comes in as Markdown with its structure (headings, lists, links) kept.
@@ -571,8 +612,10 @@ enum MarkdownStyler {
         .sorted { $0.location < $1.location }
     }
 
-    static var bodySize: CGFloat { Prefs.fontSize }
-    static let sourceSize: CGFloat = 13
+    /// The View menu's zoom, for this session only; the saved text size stays as set in Settings.
+    static var zoom: CGFloat = 1
+    static var bodySize: CGFloat { Prefs.fontSize * zoom }
+    static var sourceSize: CGFloat { 13 * zoom }
 
     static func paragraph(source: Bool) -> NSParagraphStyle {
         let p = NSMutableParagraphStyle()
@@ -603,13 +646,14 @@ enum MarkdownStyler {
         storage.beginEditing()
         storage.setAttributes(baseAttributes(source: source), range: full)
         let fm = NSFontManager.shared
+        var lastLink: NSRange?
         for span in spans where NSMaxRange(span.range) <= storage.length {
             let r = span.range
             switch span.style {
             case let .heading(level):
                 if !source {
                     let sizes: [CGFloat] = [27, 22, 19, 17, 16, 15]
-                    storage.addAttribute(.font, value: NSFont.systemFont(ofSize: sizes[min(level, 6) - 1], weight: .bold), range: r)
+                    storage.addAttribute(.font, value: NSFont.systemFont(ofSize: sizes[min(level, 6) - 1] * zoom, weight: .bold), range: r)
                     let p = NSMutableParagraphStyle()
                     p.paragraphSpacingBefore = 8
                     p.paragraphSpacing = 4
@@ -651,9 +695,16 @@ enum MarkdownStyler {
                 storage.addAttribute(.foregroundColor, value: NSColor.controlAccentColor, range: r)
             case .link:
                 storage.addAttribute(.foregroundColor, value: NSColor.linkColor, range: r)
+                lastLink = r
             case .url:
                 storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: r)
-                storage.addAttribute(.font, value: NSFont.systemFont(ofSize: bodySize - 3), range: r)
+                storage.addAttribute(.font, value: NSFont.systemFont(ofSize: bodySize - 3 * zoom), range: r)
+                // Hovering a link shows where it goes. The tail is `](address "title")`.
+                let address = (storage.string as NSString).substring(with: r).dropFirst(2).dropLast()
+                    .split(separator: " ", maxSplits: 1).first.map(String.init) ?? ""
+                let tip = address.hasPrefix("<") ? String(address.dropFirst().dropLast()) : address
+                let target = lastLink.map { NSMaxRange($0) == r.location ? NSUnionRange($0, r) : r } ?? r
+                storage.addAttribute(.toolTip, value: tip, range: target)
             case .image:
                 storage.addAttribute(.foregroundColor, value: NSColor.systemTeal, range: r)
                 storage.addAttribute(.font, value: NSFont.systemFont(ofSize: bodySize - 2, weight: .medium), range: r)
@@ -693,6 +744,7 @@ struct MarkdownEditor: NSViewRepresentable {
     var revision: Int
     var sourceMode: Bool
     var model: AppModel
+    var format: EditorFormatState?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -726,6 +778,9 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.hidesSyntax = model.hideSyntax
         textView.onEditTable = { [weak model] range, table, location in model?.tableEdit = AppModel.TableEdit(range: range, table: table, location: location) }
         textView.imageResolver = { [weak model] target in model?.fileURL(forSitePath: target) }
+        textView.onOpenLink = { [weak model] url in model?.openLink(url) }
+        textView.linkEntries = { [weak model] in model?.linkEntries ?? [] }
+        textView.formatState = format
         textView.restyle()
 
         let scroll = NSScrollView()
