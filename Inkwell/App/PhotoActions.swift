@@ -95,7 +95,7 @@ extension AppModel {
             let imported: [PendingPhoto] = await Task.detached {
                 urls.compactMap { url in
                     let date = ImageImport.dateTaken(url) ?? (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
-                    var importer = ImageImport()
+                    var importer = ImageImport.app
                     importer.folder = "assets/photos/\(Calendar.current.component(.year, from: date))"
                     let base = Slug.make(url.deletingPathExtension().lastPathComponent, maxWords: 5)
                     guard let image = try? importer.importImage(at: url, siteRoot: root, slug: base == "untitled" ? "photo" : base) else { return nil }
@@ -166,7 +166,7 @@ extension AppModel {
         let root = site.root
         Task {
             let images = await Task.detached {
-                urls.compactMap { try? ImageImport().importImage(at: $0, siteRoot: root, slug: slug == "untitled" ? "image" : slug) }
+                urls.compactMap { try? ImageImport.app.importImage(at: $0, siteRoot: root, slug: slug == "untitled" ? "image" : slug) }
             }.value
             guard !images.isEmpty else { return }
             pendingGallery = PendingGallery(images: images, alts: images.map { _ in "" }, insertAt: location)

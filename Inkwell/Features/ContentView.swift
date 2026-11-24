@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Group {
@@ -16,6 +18,18 @@ struct ContentView: View {
         }
         .overlay {
             if let opening = model.opening, model.site != nil || !model.account.isSignedIn { OpeningOverlay(message: opening) }
+        }
+        .onChange(of: model.helpRequested) {
+            if model.helpRequested {
+                model.helpRequested = false
+                openWindow(id: "help")
+            }
+        }
+        .onChange(of: model.settingsRequested) {
+            if model.settingsRequested {
+                model.settingsRequested = false
+                openSettings()
+            }
         }
         .alert("Inkwell", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil }
@@ -146,6 +160,7 @@ struct SiteWindow: View {
         .sheet(item: $model.pendingGallery) { _ in GallerySheet(model: model) }
         .sheet(item: $model.tableEdit) { edit in TableEditorSheet(model: model, edit: edit) }
         .sheet(isPresented: $model.showPhotoSetup) { PhotoSetupSheet(model: model) }
+        .sheet(isPresented: $model.showSiteSummary) { SiteSummarySheet(model: model) }
     }
 }
 
@@ -289,10 +304,7 @@ struct SiteMenu: View {
             Divider()
             Button("Switch Site…") { model.closeSite() }
             if model.account.isSignedIn {
-                Button("Sign Out of GitHub") {
-                    model.closeSite()
-                    model.account.signOut()
-                }
+                Button("Sign Out of GitHub") { model.signOut() }
             }
         } label: {
             Label(model.backend?.displayName ?? "Site", systemImage: "globe")

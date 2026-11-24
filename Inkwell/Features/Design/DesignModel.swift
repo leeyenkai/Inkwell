@@ -194,7 +194,7 @@ final class DesignModel {
     /// Copies an image into the site for use as the share image or favicon, cleaned like post images.
     func importImage(_ url: URL, slug: String) -> String? {
         do {
-            return try ImageImport().importImage(at: url, siteRoot: root, slug: slug).sitePath
+            return try ImageImport.app.importImage(at: url, siteRoot: root, slug: slug).sitePath
         } catch {
             model?.errorMessage = error.localizedDescription
             return nil

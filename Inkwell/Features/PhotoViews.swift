@@ -389,7 +389,7 @@ struct MediaDetail: View {
         panel.allowedContentTypes = [.image]
         guard panel.runModal() == .OK, let source = panel.url, let url else { return }
         do {
-            _ = try ImageImport().replace(url, with: source)
+            _ = try ImageImport.app.replace(url, with: source)
             Thumbnails.shared.forget(url)
             model.mediaRevision += 1
             model.refreshChanges()

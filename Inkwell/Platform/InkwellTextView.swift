@@ -73,13 +73,23 @@ final class InkwellTextView: NSTextView {
         storage.endEditing()
     }
 
+    func applyPreferences() {
+        isContinuousSpellCheckingEnabled = Prefs.bool(Prefs.spellCheck)
+        isAutomaticQuoteSubstitutionEnabled = Prefs.bool(Prefs.smartQuotes)
+        isAutomaticDashSubstitutionEnabled = Prefs.bool(Prefs.smartQuotes)
+        showsInlineImages = Prefs.bool(Prefs.inlineImages)
+        restyle()
+    }
+
+    var showsInlineImages = true
+
     // MARK: Inline images
 
     /// Pictures on lines of their own show under the line. The space is paragraph spacing, so the text is unchanged.
     private func styleImages(in storage: NSTextStorage) {
         placedImages = []
         imageWidth = contentWidth
-        if !sourceMode, let resolve = imageResolver {
+        if !sourceMode, showsInlineImages, let resolve = imageResolver {
             let ns = storage.string as NSString
             storage.beginEditing()
             for line in ImageLines.find(in: storage.string) {
@@ -461,7 +471,7 @@ enum MarkdownStyler {
         }
     }
 
-    static let bodySize: CGFloat = 15
+    static var bodySize: CGFloat { Prefs.fontSize }
     static let sourceSize: CGFloat = 13
 
     static func paragraph(source: Bool) -> NSParagraphStyle {
@@ -592,10 +602,11 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isRichText = false
         textView.importsGraphics = false
         textView.drawsBackground = false
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticQuoteSubstitutionEnabled = Prefs.bool(Prefs.smartQuotes)
+        textView.isAutomaticDashSubstitutionEnabled = Prefs.bool(Prefs.smartQuotes)
+        textView.showsInlineImages = Prefs.bool(Prefs.inlineImages)
         textView.isAutomaticTextReplacementEnabled = false
-        textView.isContinuousSpellCheckingEnabled = true
+        textView.isContinuousSpellCheckingEnabled = Prefs.bool(Prefs.spellCheck)
         textView.usesFindBar = true
         textView.isIncrementalSearchingEnabled = true
         textView.delegate = context.coordinator

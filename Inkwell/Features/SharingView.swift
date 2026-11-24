@@ -89,7 +89,7 @@ struct SharingView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let slug = Filename.parse(editor.document.filename).slug
         do {
-            let image = try ImageImport().importImage(at: url, siteRoot: site.root, slug: (slug == "untitled" ? "post" : slug) + "-share")
+            let image = try ImageImport.app.importImage(at: url, siteRoot: site.root, slug: (slug == "untitled" ? "post" : slug) + "-share")
             editor.setRaw("image", image.sitePath)
             model.refreshChanges()
         } catch {

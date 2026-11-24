@@ -207,7 +207,9 @@ final class PublishSession: Identifiable {
             items.append(CheckItem(level: .warning, text: "\(missingAlt) image\(missingAlt == 1 ? " is" : "s are") missing alt text"))
         }
         let address = SiteHealth.normalized(document.url)
-        if let twin = site.documents.first(where: { $0.relativePath != document.relativePath && $0.publishedFlag && SiteHealth.normalized($0.url) == address }) {
+        if let twin = site.documents.first(where: {
+            $0.relativePath != document.relativePath && $0.publishedFlag && SiteHealth.normalized($0.url) == address
+        }) {
             items.append(CheckItem(level: .error, text: "\(twin.relativePath) already uses the address \(document.url)."))
         }
         let title = doc.value("title")?.string ?? ""

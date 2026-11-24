@@ -6,6 +6,10 @@ import SwiftUI
 struct InkwellApp: App {
     @State private var model = AppModel()
 
+    init() {
+        Prefs.register()
+    }
+
     var body: some Scene {
         WindowGroup("Inkwell") {
             ContentView(model: model)
@@ -56,7 +60,43 @@ struct InkwellApp: App {
                 Divider()
             }
             FormatCommands(model: model)
+            CommandGroup(replacing: .help) {
+                HelpMenuItems(model: model)
+            }
         }
+        Settings {
+            SettingsWindow(model: model)
+        }
+        Window("Inkwell Help", id: "help") {
+            HelpWindow(topic: $model.helpTopic)
+        }
+        .defaultSize(width: 860, height: 600)
+    }
+}
+
+/// A view, so it can open the Help window.
+struct HelpMenuItems: View {
+    var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Inkwell Help") {
+            model.helpTopic = .start
+            openWindow(id: "help")
+        }
+        .keyboardShortcut("?")
+        Button("Keyboard Shortcuts") {
+            model.helpTopic = .shortcuts
+            openWindow(id: "help")
+        }
+        .keyboardShortcut("/", modifiers: [.command, .option])
+        Divider()
+        Button("Copy Diagnostics") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(Diagnostics.report(model), forType: .string)
+        }
+        Button("Show Log in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Diagnostics.logURL]) }
+            .disabled(!FileManager.default.fileExists(atPath: Diagnostics.logURL.path))
     }
 }
 
@@ -118,6 +158,7 @@ enum Launch {
         }
         if args.contains("--selftest-publish") { setvbuf(stdout, nil, _IONBF, 0) }
         if let path = value("--site") {
+            model.suppressSiteSummary = !args.contains("--summary")
             await model.account.restore()
             await model.openFolder(URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
         } else if args.contains("--fresh") {
@@ -181,6 +222,11 @@ enum Launch {
             model.refreshChanges()
             try? await Task.sleep(for: .milliseconds(600))
             model.beginPublish()
+        }
+        if args.contains("--settings") { model.settingsRequested = true }
+        if let topic = value("--help").flatMap(HelpTopic.init(rawValue:)) {
+            model.helpTopic = topic
+            model.helpRequested = true
         }
         if args.contains("--edit-table") || args.contains("--table-cursor") {
             try? await Task.sleep(for: .milliseconds(800))

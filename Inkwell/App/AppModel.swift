@@ -139,7 +139,15 @@ final class AppModel {
     var selectedMedia: String?
     var mediaItems: [MediaLibrary.Item] = []
     var mediaRevision = 0
-    var errorMessage: String?
+    var errorMessage: String? {
+        didSet { if let errorMessage { Diagnostics.record(errorMessage) } }
+    }
+    var showSiteSummary = false
+    var suppressSiteSummary = false
+    var helpTopic: HelpTopic = .start
+    /// Set to open the Help window from code (a launch flag); the window opens it and clears it.
+    var helpRequested = false
+    var settingsRequested = false
 
     private(set) var previewBuilder: PreviewBuilder?
     private(set) var siteResources: SiteResources?
@@ -173,7 +181,7 @@ final class AppModel {
 
     func start() async {
         await account.restore()
-        guard let saved = RecentSite.saved else { return }
+        guard Prefs.bool(Prefs.reopenLastSite), let saved = RecentSite.saved else { return }
         if saved["kind"] == "github", let owner = saved["owner"], let name = saved["name"], let branch = saved["branch"] {
             let ref = SiteRef(owner: owner, name: name, branch: branch, sitePath: saved["sitePath"] ?? "")
             let copy = WorkingCopy(ref: ref, container: GitHubBackend.container)
@@ -264,6 +272,12 @@ final class AppModel {
             refreshChanges()
             startSyncLoop()
             loadTheme(for: site)
+            var seen = UserDefaults.standard.stringArray(forKey: Prefs.seenSites) ?? []
+            if !seen.contains(backend.draftKey) {
+                seen.append(backend.draftKey)
+                UserDefaults.standard.set(seen, forKey: Prefs.seenSites)
+                if !suppressSiteSummary { showSiteSummary = true }
+            }
         } catch {
             loadError = error.localizedDescription
         }
@@ -369,12 +383,25 @@ final class AppModel {
         }
     }
 
+    func restartSyncLoop() {
+        if backend != nil { startSyncLoop() }
+    }
+
+    func editorPreferencesChanged() {
+        textView?.applyPreferences()
+    }
+
+    func signOut() {
+        closeSite()
+        account.signOut()
+    }
+
     private func startSyncLoop() {
         syncLoop?.cancel()
         syncLoop = Task {
             while !Task.isCancelled {
                 await sync()
-                try? await Task.sleep(for: .seconds(300))
+                try? await Task.sleep(for: .seconds(max(1, UserDefaults.standard.integer(forKey: Prefs.syncMinutes)) * 60))
             }
         }
     }
@@ -690,7 +717,7 @@ final class AppModel {
         Task {
             do {
                 let image = try await Task.detached {
-                    try ImageImport().importImage(at: url, siteRoot: root, slug: slug == "untitled" ? "image" : slug)
+                    try ImageImport.app.importImage(at: url, siteRoot: root, slug: slug == "untitled" ? "image" : slug)
                 }.value
                 pendingImage = PendingImage(image: image, insertAt: location)
             } catch {
