@@ -159,6 +159,19 @@ final class WorkingCopyTests: XCTestCase {
         XCTAssertEqual(changes, [:])
     }
 
+    func testStaleBranchHeadAfterPublishIsIgnored() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n", "index.md": "Home\n"])
+        let before = fake.head
+        try write(copy, "_notes/b.md", "B\n")
+        _ = try await copy.publish(paths: ["_notes/b.md"], message: "Publish B", client: client)
+        fake.staleHeadOnce = before
+        let outcome = try await copy.pull(client: client)
+        XCTAssertFalse(outcome.changedRemotely)
+        XCTAssertEqual(read(copy, "_notes/b.md"), "B\n", "a stale head must not look like GitHub deleted the new post")
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, [:])
+    }
+
     func testStateSurvivesRelaunch() async throws {
         let (fake, copy, _) = try await make(["a.md": "A\n"])
         let again = WorkingCopy(ref: copy.ref, container: container)

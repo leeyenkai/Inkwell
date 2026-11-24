@@ -11,7 +11,7 @@
 - **Publishing.** One commit per publish through the GitHub API, with exactly the post and its images. Update, delete, unpublish to drafts, discard changes, "publish all changes", automatic pulls with conflict resolution, and Pages build status.
 - **Design engine.** Token, `_config.yml` and navigation editors, and four bundled themes with a reviewable theme switch. The design UI comes next.
 
-Verified by 62 package tests (including a fake GitHub server for sync) and the publish self-test. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). Not yet checked by a person: publishing to a real GitHub repository, typing with input methods, drag and drop from Photos.
+Verified by 64 package tests (including a fake GitHub server for sync) and the publish self-test. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos.
 
 ---
 

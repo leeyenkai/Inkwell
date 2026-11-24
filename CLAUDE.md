@@ -48,7 +48,8 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 - Launch the built app with `open -n <app> --args …` (running the binary directly from a shell may show no window), and use
   `open -W --stdout <file>` to read self-test output.
 - Live GitHub check (read-only): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_REPO=owner/name swift test --filter LiveGitHubTests`.
-  Never publish to a real repository from tests; use a throwaway repository the user has agreed to.
+  Live publishing (writes!): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_WRITE_REPO=leeyenkai/inkwell-publish-test swift test --filter LivePublishTests`.
+  That private repository is a throwaway the user agreed to; never point the write test at a real site.
 - Launch flags for checking UI states: `--fresh` (do not reopen the last site), `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`.
 - README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
@@ -68,6 +69,8 @@ scripts/                 build.sh, make-sample-site.sh, readme/screenshots.sh
 
 ## Gotchas
 
+- GitHub API answers are marked cacheable for a minute: every request uses `reloadIgnoringLocalAndRemoteCacheData`, and
+  `WorkingCopy` ignores a branch head it has already moved past (`SyncState.passed`), since GitHub can also lag briefly.
 - `FrontMatterDocument.set` compares parsed values, so writing an equal value is a no-op. Keep it that way: it is what keeps diffs clean.
 - `MarkdownScanner.regex` caches compiled patterns behind a lock; `MarkdownRenderer.match` reuses it.
 - Collection URLs come from the filename slug (`permalink: /:collection/:title/`), not the title. A draft's filename follows its title; a published file is never renamed.

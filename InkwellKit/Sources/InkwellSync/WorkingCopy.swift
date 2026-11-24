@@ -32,6 +32,16 @@ public struct SyncState: Codable, Sendable {
     /// Paths changed both here and on GitHub, with the GitHub blob (nil when GitHub deleted it).
     public var conflicts: [String: String?]
     public var updated: Date
+    /// Commits this copy has already moved past. GitHub can briefly report an older branch head after a push;
+    /// a head in this list is stale, not a change.
+    public var passed: [String]?
+
+    mutating func pass(_ commit: String) {
+        var list = passed ?? []
+        list.removeAll { $0 == commit }
+        list.append(commit)
+        passed = Array(list.suffix(64))
+    }
 }
 
 public enum ChangeKind: String, Sendable, Codable {
@@ -254,6 +264,7 @@ public actor WorkingCopy {
         let tree = try await client.createTree(ref.owner, ref.name, base: state.baseTree, entries: entries)
         let commit = try await client.createCommit(ref.owner, ref.name, message: message, tree: tree, parents: [state.baseCommit])
         try await client.updateBranch(ref.owner, ref.name, branch: ref.branch, to: commit)
+        state.pass(state.baseCommit)
         state.baseCommit = commit
         state.baseTree = tree
         state.files = newFiles
@@ -272,7 +283,7 @@ public actor WorkingCopy {
     public func pull(client: GitHubClient) async throws -> PullOutcome {
         guard var state else { throw SyncError.notDownloaded }
         let head = try await client.branchHead(ref.owner, ref.name, branch: ref.branch)
-        guard head != state.baseCommit else { return PullOutcome() }
+        guard head != state.baseCommit, !(state.passed ?? []).contains(head) else { return PullOutcome() }
         let commit = try await client.commit(ref.owner, ref.name, sha: head)
         let tree = try await client.tree(ref.owner, ref.name, sha: commit.tree.sha)
         var remote: [String: String] = [:]
@@ -302,6 +313,7 @@ public actor WorkingCopy {
             outcome.updated.append(path)
         }
         state.modes = remoteModes
+        state.pass(state.baseCommit)
         state.baseCommit = head
         state.baseTree = commit.tree.sha
         state.updated = Date()

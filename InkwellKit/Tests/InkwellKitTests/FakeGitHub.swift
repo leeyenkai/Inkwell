@@ -13,6 +13,8 @@ final class FakeGitHub: @unchecked Sendable {
     var commits: [String: (tree: String, parents: [String], message: String)] = [:]
     var head: String = ""
     var requests: [String] = []
+    /// When set, the next branch-head read returns this (an older commit), like a lagging GitHub replica.
+    var staleHeadOnce: String?
     var devicePolls = 0
     let owner = "octo", repo = "octo.github.io"
 
@@ -101,6 +103,10 @@ final class FakeGitHub: @unchecked Sendable {
         let rest = Array(parts.dropFirst(3))
         switch (method, rest.first, rest.dropFirst().first) {
         case ("GET", "git", "ref"):
+            if let stale = staleHeadOnce {
+                staleHeadOnce = nil
+                return ok(["object": ["sha": stale]])
+            }
             return ok(["object": ["sha": head]])
         case ("GET", "git", "commits"):
             let sha = rest[2]

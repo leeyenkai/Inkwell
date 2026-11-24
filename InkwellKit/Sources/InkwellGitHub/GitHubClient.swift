@@ -43,6 +43,8 @@ public struct GitHubClient: Sendable {
         var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var request = URLRequest(url: components.url!)
+        // GitHub marks API answers cacheable for a minute; a cached branch head would hide a commit just made.
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         request.httpMethod = method
         request.setValue(accept, forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
