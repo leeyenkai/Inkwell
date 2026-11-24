@@ -275,11 +275,32 @@ public enum YAML {
                 } else if restNoComment.hasPrefix("|") || restNoComment.hasPrefix(">") {
                     value = .string(blockScalar(parentIndent: indent, folded: restNoComment.hasPrefix(">")))
                 } else {
-                    value = scalar(rest)
+                    value = scalar(continued(rest, parentIndent: indent))
                 }
                 entries.append(YAMLEntry(key: key, value: value))
             }
             return .map(entries)
+        }
+
+        /// A plain or quoted value that wraps onto more-indented lines is one value, folded with spaces.
+        mutating func continued(_ first: String, parentIndent: Int) -> String {
+            var text = first
+            let quote = first.first.flatMap { $0 == "\"" || $0 == "'" ? $0 : nil }
+            func closed() -> Bool {
+                guard let quote else { return false }
+                let body = text.dropFirst()
+                return quote == "\"" ? closingQuoteIndex(Array(body)) != nil : body.contains(quote)
+            }
+            while index < lines.count {
+                let line = lines[index]
+                let trimmed = line.content.trimmingCharacters(in: .whitespaces)
+                guard line.indent > parentIndent, !trimmed.isEmpty, !trimmed.hasPrefix("#") else { break }
+                if quote == nil, splitKey(trimmed) != nil || trimmed.hasPrefix("- ") { break }
+                if quote != nil, closed() { break }
+                text += " " + trimmed
+                index += 1
+            }
+            return text
         }
 
         mutating func blockScalar(parentIndent: Int, folded: Bool) -> String {

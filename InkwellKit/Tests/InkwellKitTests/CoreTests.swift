@@ -105,7 +105,9 @@ final class FrontMatterTests: XCTestCase {
 final class SiteTests: XCTestCase {
     func testLoadsSectionsInNavOrder() throws {
         let site = try SiteLoader.load(fixtureSite())
-        XCTAssertEqual(site.sections.map(\.label), ["About", "Notes", "Sidenotes", "Travel", "Photos"])
+        XCTAssertEqual(site.sections.map(\.label), ["About", "Notes", "Sidenotes", "Travel", "Photos", "Pages"])
+        XCTAssertEqual(Set(site.documents(in: "pages").map(\.relativePath)), ["notes.md", "sidenotes.md"])
+        XCTAssertEqual(site.documents(in: "pages").first { $0.relativePath == "notes.md" }?.url, "/notes.html")
         XCTAssertEqual(site.sections[0].kind, .page("index.md"))
         XCTAssertEqual(site.documents(in: "notes").map(\.title), ["A sample essay", "Second note"])
         XCTAssertEqual(site.documents(in: "notes").first?.url, "/notes/sample-essay/")
@@ -168,5 +170,48 @@ final class SiteTests: XCTestCase {
 final class ExcerptTests: XCTestCase {
     func testExcerptDropsNestedMarkers() {
         XCTAssertEqual(Excerpt.make("> #### *“Quote”*\n>*Line*"), "“Quote” Line")
+    }
+}
+
+final class AuditFixTests: XCTestCase {
+    func testCRLFAndBOMFrontMatterRoundTripAndEdit() {
+        let crlf = "\u{FEFF}---\r\ntitle: \"A\"\r\ndate: 2026-01-02\r\n---\r\nBody\r\n"
+        var doc = FrontMatterDocument(text: crlf)
+        XCTAssertTrue(doc.hasFrontMatter)
+        XCTAssertEqual(doc.text, crlf)
+        XCTAssertEqual(doc.value("title"), .string("A"))
+        doc.set("title", raw: YAMLFormat.quoted("B"))
+        XCTAssertEqual(doc.text, "\u{FEFF}---\r\ntitle: \"B\"\r\ndate: 2026-01-02\r\n---\r\nBody\r\n")
+    }
+
+    func testWrappedValuesDoNotHideLaterKeys() {
+        let yaml = YAML.parse("description: A long line\n  that wraps\ntitle: \"Two\n  lines\"\nauthor: Me\n")
+        XCTAssertEqual(yaml["description"], .string("A long line that wraps"))
+        XCTAssertEqual(yaml["title"], .string("Two lines"))
+        XCTAssertEqual(yaml["author"], .string("Me"))
+        let doc = FrontMatterDocument(text: "---\ntitle: \"Two\n  lines\"\n---\n")
+        XCTAssertEqual(Validation.frontMatter(doc, filename: "x.md", inCollection: false), [])
+    }
+
+    func testPermalinkStyles() {
+        var config = SiteConfig(yaml: YAML.parse("timezone: Asia/Singapore\n"))
+        let date = SiteDate.parse("2026-06-20", timeZone: config.timeZone)
+        XCTAssertEqual(Permalink.url(collection: "posts", filename: "2026-06-20-hello.md", date: date, config: config), "/2026/06/20/hello.html")
+        XCTAssertEqual(Permalink.url(collection: "posts", filename: "2026-06-20-hello.md", date: date, config: config, categories: ["Life"]),
+                       "/life/2026/06/20/hello.html")
+        config.permalink = "pretty"
+        XCTAssertEqual(Permalink.url(collection: "posts", filename: "2026-06-20-hello.md", date: date, config: config), "/2026/06/20/hello/")
+        XCTAssertEqual(Permalink.url(collection: "recipes", filename: "soup.md", date: nil, config: config), "/recipes/soup/")
+        XCTAssertEqual(Permalink.pageURL(relativePath: "about.md", config: config), "/about/")
+        config.permalink = nil
+        config.baseurl = "/blog"
+        XCTAssertEqual(Permalink.pageURL(relativePath: "about.md", config: config), "/blog/about.html")
+        XCTAssertEqual(Permalink.pageURL(relativePath: "index.md", config: config), "/blog/")
+    }
+
+    func testPagesOutsideNavigationAndBaseurlImages() throws {
+        let site = try SiteLoader.load(fixtureSite())
+        XCTAssertFalse(site.documents(in: "pages").contains { $0.relativePath == "index.md" || $0.relativePath == "photos.md" })
+        XCTAssertEqual(ContentChecks.plainPath("{{ site.baseurl }}/assets/a.jpg"), "/assets/a.jpg")
     }
 }

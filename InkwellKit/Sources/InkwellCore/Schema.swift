@@ -92,7 +92,8 @@ public enum Validation {
         var issues: [Issue] = []
         for span in doc.fieldSpans() {
             guard let raw = doc.rawValue(span.key) else { continue }
-            let value = YAML.stripComment(raw).trimmingCharacters(in: .whitespaces)
+            let continuation = doc.rawLines(span.key).dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
+            let value = ([YAML.stripComment(raw).trimmingCharacters(in: .whitespaces)] + continuation).joined(separator: " ")
             if let quote = value.first, quote == "\"" || quote == "'", !isClosed(value, quote: quote) {
                 issues.append(Issue(.error, field: span.key, "The \(span.key) has an opening \(quote) but no closing one."))
             }
@@ -161,7 +162,8 @@ public enum ContentChecks {
     }
 
     public static func plainPath(_ text: String) -> String {
-        let t = text.trimmingCharacters(in: .whitespaces)
+        var t = text.trimmingCharacters(in: .whitespaces)
+        t = t.replacingOccurrences(of: #"\{\{\s*site\.(url|baseurl)\s*\}\}"#, with: "", options: .regularExpression)
         if t.hasPrefix("{{"), let quoteStart = t.firstIndex(where: { $0 == "'" || $0 == "\"" }) {
             let quote = t[quoteStart]
             let rest = t[t.index(after: quoteStart)...]

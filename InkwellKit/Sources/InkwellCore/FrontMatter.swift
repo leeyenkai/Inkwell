@@ -9,15 +9,25 @@ public struct FrontMatterDocument: Sendable, Equatable {
     private var openingLine: String
     private var closingLine: String
     private var newlineAfterClosing: Bool
+    private var byteOrderMark = false
+    private var crlf = false
 
     public init(text: String) {
-        let all = text.components(separatedBy: "\n")
-        if let first = all.first, first.trimmingCharacters(in: .whitespaces) == "---" || first == "---\r",
-           let close = all.dropFirst().firstIndex(where: { ["---", "..."].contains($0.trimmingCharacters(in: .whitespaces)) }) {
+        var source = text
+        if source.hasPrefix("\u{FEFF}") {
+            byteOrderMark = true
+            source.removeFirst()
+        }
+        let all = source.components(separatedBy: "\n")
+        let isFence: (String) -> Bool = { ["---", "..."].contains($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        if let first = all.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == "---",
+           let close = all.dropFirst().firstIndex(where: isFence) {
+            crlf = first.hasSuffix("\r")
+            let clean: (String) -> String = { [crlf] line in crlf && line.hasSuffix("\r") ? String(line.dropLast()) : line }
             hasFrontMatter = true
-            openingLine = first
-            lines = Array(all[1 ..< close])
-            closingLine = all[close]
+            openingLine = clean(first)
+            lines = all[1 ..< close].map(clean)
+            closingLine = clean(all[close])
             newlineAfterClosing = close + 1 < all.count
             body = close + 1 < all.count ? all[(close + 1)...].joined(separator: "\n") : ""
         } else {
@@ -26,7 +36,7 @@ public struct FrontMatterDocument: Sendable, Equatable {
             closingLine = "---"
             newlineAfterClosing = true
             lines = []
-            body = text
+            body = source
         }
     }
 
@@ -40,11 +50,13 @@ public struct FrontMatterDocument: Sendable, Equatable {
     }
 
     public var text: String {
-        guard hasFrontMatter else { return body }
-        var out = openingLine + "\n"
-        for line in lines { out += line + "\n" }
+        let bom = byteOrderMark ? "\u{FEFF}" : ""
+        guard hasFrontMatter else { return bom + body }
+        let eol = crlf ? "\r\n" : "\n"
+        var out = bom + openingLine + eol
+        for line in lines { out += line + eol }
         out += closingLine
-        if newlineAfterClosing { out += "\n" }
+        if newlineAfterClosing { out += eol }
         return out + body
     }
 
@@ -55,6 +67,12 @@ public struct FrontMatterDocument: Sendable, Equatable {
     public func value(_ key: String) -> YAMLValue? { values[key] }
 
     public var keys: [String] { fieldSpans().map(\.key) }
+
+    /// Every line of a field, the key line first.
+    public func rawLines(_ key: String) -> [String] {
+        guard let span = fieldSpans().first(where: { $0.key == key }) else { return [] }
+        return Array(lines[span.range])
+    }
 
     /// The raw text after `key:` on the field's first line, comments included.
     public func rawValue(_ key: String) -> String? {

@@ -6,9 +6,15 @@ import Foundation
 public struct DraftStore: Sendable {
     public let root: URL
 
+    /// Drafts for a site in a local folder, keyed by the folder.
     public init(base: URL, siteRoot: URL) {
         let digest = SHA256.hash(data: Data(siteRoot.standardizedFileURL.path.utf8))
         let key = siteRoot.lastPathComponent + "-" + digest.prefix(4).map { String(format: "%02x", $0) }.joined()
+        root = base.appending(path: key, directoryHint: .isDirectory)
+    }
+
+    /// Drafts for a site on GitHub, keyed by the repository, so they survive a fresh download.
+    public init(base: URL, key: String) {
         root = base.appending(path: key, directoryHint: .isDirectory)
     }
 
