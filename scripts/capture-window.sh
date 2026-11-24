@@ -12,9 +12,14 @@ id=$(PID=$pid TITLE="$title" swift -e 'import CoreGraphics; import Foundation
 let env = ProcessInfo.processInfo.environment
 let pid = Int(env["PID"]!)!, title = env["TITLE"]!
 let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
+var best: (id: Int, area: Double)?
 for w in list where (w[kCGWindowOwnerPID as String] as? Int) == pid && (title.isEmpty || (w[kCGWindowName as String] as? String) == title) {
     let b = w[kCGWindowBounds as String] as! [String: Any]
-    if (b["Width"] as! Double) > 300 { print(w[kCGWindowNumber as String]!); break }
-}')
+    let area = (b["Width"] as! Double) * (b["Height"] as! Double)
+    // Untitled helper windows are not what anyone wants a picture of; the largest titled window is.
+    guard (w[kCGWindowName as String] as? String)?.isEmpty == false || !title.isEmpty, area > (best?.area ?? 0) else { continue }
+    best = (w[kCGWindowNumber as String] as! Int, area)
+}
+if let best { print(best.id) }')
 if [ -n "$id" ]; then screencapture -x -o -l"$id" "$out" && echo "$out"; else echo "no window '$title' for pid $pid" >&2; fi
 kill "$pid" 2>/dev/null

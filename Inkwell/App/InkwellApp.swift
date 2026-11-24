@@ -136,6 +136,11 @@ struct FormatCommands: Commands {
             Button("Add Image…") { addImage() }.keyboardShortcut("i", modifiers: [.command, .shift])
             Button("Table…") { model.textView?.editTable() }.keyboardShortcut("t", modifiers: [.command, .shift])
                 .help("Edit the table the cursor is in as a grid, or insert a new one")
+            Divider()
+            Button("Insert Element…") { model.showElementPicker = true }.keyboardShortcut("e", modifiers: [.command, .option])
+                .disabled(model.editor == nil)
+            Button("Edit Element…") { model.editElement() }.keyboardShortcut("e", modifiers: [.command, .option, .shift])
+                .disabled(model.editor == nil)
         }
     }
 
@@ -234,6 +239,17 @@ enum Launch {
             model.refreshChanges()
             try? await Task.sleep(for: .milliseconds(600))
             model.beginPublish()
+        }
+        if let name = value("--new-page"), let template = PageTemplate(rawValue: name) {
+            model.createPage(title: template.suggestedTitle.isEmpty ? template.title : template.suggestedTitle, template: template, addToMenu: false)
+        }
+        if args.contains("--element-picker") { model.showElementPicker = true }
+        if args.contains("--edit-element") {
+            try? await Task.sleep(for: .milliseconds(800))
+            if let span = model.textView.flatMap({ PageElements.find(in: $0.string).first(where: { $0.innerRange != nil }) }) {
+                model.textView?.setSelectedRange(NSRange(location: span.openRange.location, length: 0))
+                model.editElement()
+            }
         }
         if args.contains("--settings") { model.settingsRequested = true }
         if let feed = value("--update-feed") { model.updates.feedOverride = URL(string: feed) }

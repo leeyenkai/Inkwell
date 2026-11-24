@@ -13,8 +13,10 @@ public struct MarkdownRenderer: Sendable {
         var lines = markdown.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\t", with: "    ")
             .components(separatedBy: "\n")
         lines = extractDefinitions(lines, state: &state)
+        lines = Self.markTableOfContents(lines)
         let blocks = parseBlocks(lines[...])
         var out = render(blocks, state: &state, tight: false)
+        if out.contains(Self.tocMarker) { out = out.replacingOccurrences(of: Self.tocMarker, with: Self.tableOfContents(state.headings)) }
         if !state.footnoteOrder.isEmpty {
             out += "<div class=\"footnotes\" role=\"doc-endnotes\">\n  <ol>\n"
             for name in state.footnoteOrder {
@@ -44,6 +46,8 @@ public struct MarkdownRenderer: Sendable {
         case code(String, String)
         case rule
         case html(String)
+        /// An HTML element whose content is Markdown (kramdown's `markdown="1"`), as page elements use.
+        case element(open: String, inner: [Block], close: String)
         case table([String], [String], [[String]])
         case math(String)
     }
@@ -53,6 +57,7 @@ public struct MarkdownRenderer: Sendable {
         var footnoteDefinitions: [String: String] = [:]
         var footnoteOrder: [String] = []
         var usedIDs: [String: Int] = [:]
+        var headings: [(level: Int, id: String, html: String)] = []
     }
 
     func extractDefinitions(_ lines: [String], state: inout RenderState) -> [String] {
@@ -223,6 +228,20 @@ public struct MarkdownRenderer: Sendable {
                 blocks.append(.table(header, aligns, rows))
                 continue
             }
+            if paragraph.isEmpty, let tag = Self.htmlBlockTag(trimmed), tag != "!--",
+               let open = Self.match("^\\s*(<\(tag)\\b[^>]*?)\\s+markdown\\s*=\\s*[\"']?(?:1|block)[\"']?([^>]*>)\\s*$", line) {
+                var depth = 1, inner: [String] = []
+                i += 1
+                while i < lines.endIndex {
+                    let l = lines[i]
+                    depth += Self.count("<\(tag)(\\s|>|$)", in: l) - Self.count("</\(tag)\\s*>", in: l)
+                    i += 1
+                    if depth <= 0 { break }
+                    inner.append(l)
+                }
+                blocks.append(.element(open: open[1] + open[2], inner: parseBlocks(Self.outdented(inner)[...]), close: "</\(tag)>"))
+                continue
+            }
             if paragraph.isEmpty, let tag = Self.htmlBlockTag(trimmed) {
                 var html: [String] = []
                 if tag == "!--" {
@@ -321,6 +340,57 @@ public struct MarkdownRenderer: Sendable {
         return (.list(ordered: first.ordered, start: first.start, items: parsed, loose: loose), i)
     }
 
+    /// Lines inside an element keep their own indentation relative to the least indented one.
+    static func outdented(_ lines: [String]) -> [String] {
+        let indent = lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.map { $0.prefix { $0 == " " }.count }.min() ?? 0
+        return lines.map { $0.count >= indent && $0.prefix(indent).allSatisfy { $0 == " " } ? String($0.dropFirst(indent)) : $0 }
+    }
+
+    static let tocMarker = "<!--inkwell:toc-->"
+
+    /// kramdown's `* TOC` + `{:toc}` becomes a marker, filled in once every heading has its id.
+    static func markTableOfContents(_ lines: [String]) -> [String] {
+        var out: [String] = []
+        for line in lines {
+            if line.trimmingCharacters(in: .whitespaces) == "{:toc}", let last = out.last,
+               last.range(of: #"^\s*[*+-]\s+\S"#, options: .regularExpression) != nil || last.range(of: #"^\s*1\.\s+\S"#, options: .regularExpression) != nil {
+                out[out.count - 1] = tocMarker
+            } else {
+                out.append(line)
+            }
+        }
+        return out
+    }
+
+    static func tableOfContents(_ headings: [(level: Int, id: String, html: String)]) -> String {
+        guard !headings.isEmpty else { return "" }
+        var out = "<ul id=\"markdown-toc\">\n"
+        var stack: [Int] = []
+        for h in headings {
+            if let last = stack.last {
+                if h.level > last {
+                    out += "\n<ul>\n"
+                    stack.append(h.level)
+                } else {
+                    out += "</li>\n"
+                    while stack.count > 1, let top = stack.last, h.level < top {
+                        stack.removeLast()
+                        out += "</ul>\n</li>\n"
+                    }
+                }
+            } else {
+                stack = [h.level]
+            }
+            out += "<li><a href=\"#\(h.id)\" id=\"markdown-toc-\(h.id)\">\(stripTags(h.html))</a>"
+        }
+        out += "</li>\n"
+        while stack.count > 1 {
+            stack.removeLast()
+            out += "</ul>\n</li>\n"
+        }
+        return out + "</ul>\n"
+    }
+
     static func htmlBlockTag(_ trimmed: String) -> String? {
         if trimmed.hasPrefix("<!--") { return "!--" }
         guard let m = match(#"^<([a-zA-Z][a-zA-Z0-9]*)[\s>/]"#, trimmed + " ") else { return nil }
@@ -348,6 +418,7 @@ public struct MarkdownRenderer: Sendable {
                 let inner = inline(text, state: &state)
                 if autoIDs {
                     let id = uniqueID(Self.headingID(Self.stripTags(inner)), state: &state)
+                    state.headings.append((level, id, inner))
                     out += "<h\(level) id=\"\(id)\">\(inner)</h\(level)>\n"
                 } else {
                     out += "<h\(level)>\(inner)</h\(level)>\n"
@@ -379,6 +450,8 @@ public struct MarkdownRenderer: Sendable {
                 out += "<hr />\n"
             case let .html(html):
                 out += html + "\n"
+            case let .element(open, inner, close):
+                out += open + "\n" + render(inner, state: &state, tight: false) + close + "\n"
             case let .math(text):
                 out += "<div class=\"kdmath\">$$\n\(Self.escape(text))\n$$</div>\n"
             case let .table(header, aligns, rows):

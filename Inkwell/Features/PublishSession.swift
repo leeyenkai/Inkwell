@@ -176,6 +176,13 @@ final class PublishSession: Identifiable {
         if let share = doc.value("image")?.string, !share.isEmpty {
             refs.append(ImageReference(alt: "share image", path: ContentChecks.plainPath(share), range: doc.body.startIndex ..< doc.body.startIndex))
         }
+        // A banner's picture is in its settings, not a Markdown image.
+        let elements = PageElements.find(in: doc.body)
+        for element in elements {
+            if let image = element.attributes["image"], !image.isEmpty {
+                refs.append(ImageReference(alt: "banner", path: image, range: doc.body.startIndex ..< doc.body.startIndex))
+            }
+        }
         for ref in refs {
             if ref.alt.trimmingCharacters(in: .whitespaces).isEmpty { missingAlt += 1 }
             if ref.path.hasPrefix("http://") || ref.path.hasPrefix("https://") || ref.path.hasPrefix("//") { continue }
@@ -252,8 +259,26 @@ final class PublishSession: Identifiable {
             let note = String(localized: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site.")
             items.append(CheckItem(level: .info, text: note))
         }
+        let kitPaths = elementKitPaths(uses: !elements.isEmpty || ["slides", "album"].contains(doc.value("layout")?.string ?? ""),
+                                       changes: changes, site: site)
+        if !kitPaths.isEmpty {
+            items.append(CheckItem(level: .info, text: String(localized: "Adds the files that page elements need (\(kitPaths.count)).")))
+        }
         checks = items
-        paths = [document.relativePath] + imagePaths
+        paths = [document.relativePath] + imagePaths + kitPaths
+    }
+
+    /// Element kit files not yet on GitHub, and head files changed to load the kit, when the post uses elements.
+    private func elementKitPaths(uses: Bool, changes: [String: ChangeKind], site: Site) -> [String] {
+        guard uses else { return [] }
+        let kit = Set(ElementKit.files.keys)
+        return changes.filter { path, kind in
+            guard kind != .deleted else { return false }
+            if kit.contains(path) { return true }
+            guard path.hasPrefix("_includes/") || path.hasPrefix("_layouts/") else { return false }
+            return (try? String(contentsOf: site.root.appending(path: path), encoding: .utf8))?.contains("inkwell-blocks") == true
+        }
+        .keys.sorted()
     }
 
     private func brokenInternalLinks(_ body: String, site: Site) -> [String] {

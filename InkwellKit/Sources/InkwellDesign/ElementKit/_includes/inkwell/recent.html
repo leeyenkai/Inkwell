@@ -1,0 +1,14 @@
+{% comment %} Added by Inkwell. The latest posts of a section: collection="posts" limit=5 style="list|cards". {% endcomment %}
+{% assign ik_collection = include.collection | default: 'posts' %}
+{% assign ik_limit = include.limit | default: 5 %}
+{% assign ik_format = site.inkwell.date_format | default: "%B %-d, %Y" %}
+{% assign ik_items = site[ik_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+<ul class="ik-recent{% if include.style == 'cards' %} ik-recent--cards{% endif %}">
+{% for item in ik_items limit: ik_limit %}
+  <li>
+    {% if include.style == 'cards' and item.image %}<img src="{{ item.image | relative_url }}" alt="" loading="lazy">{% endif %}
+    <a href="{{ item.url | relative_url }}">{% if item.title %}{{ item.title }}{% else %}{{ item.excerpt | strip_html | truncatewords: 10 }}{% endif %}</a>
+    {% if item.date %}<time datetime="{{ item.date | date_to_xmlschema }}">{{ item.date | date: ik_format }}</time>{% endif %}
+  </li>
+{% endfor %}
+</ul>

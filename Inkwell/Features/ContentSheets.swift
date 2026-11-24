@@ -72,11 +72,39 @@ struct NewPageSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var addToMenu = true
+    @State private var template = PageTemplate.blank
+
+    let columns = [GridItem(.adaptive(minimum: 150), spacing: 8)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("New page").font(.title2.weight(.semibold))
-            Text("A standalone page, such as About, Now or Contact.").foregroundStyle(.secondary)
+            Text("A standalone page, such as About, Now or Contact. Start from a template; everything in it can be changed.")
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(PageTemplate.allCases) { item in
+                    Button {
+                        if title.isEmpty || PageTemplate.allCases.contains(where: { $0.suggestedTitle == title }) { title = item.suggestedTitle }
+                        template = item
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Image(systemName: item.symbol).font(.title3).foregroundStyle(Color.accentColor)
+                            Text(item.title).font(.headline)
+                            Text(item.summary).font(.caption).foregroundStyle(.secondary).lineLimit(2, reservesSpace: true)
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(template == item ? Color.accentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor),
+                                    in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(template == item ? Color.accentColor : Color(nsColor: .separatorColor),
+                                                                                lineWidth: template == item ? 2 : 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("\(item.title). \(item.summary)"))
+                    .accessibilityAddTraits(template == item ? .isSelected : [])
+                }
+            }
             Form {
                 TextField("Title", text: $title, prompt: Text("Now"))
                 Toggle("Add to the menu", isOn: $addToMenu)
@@ -87,9 +115,9 @@ struct NewPageSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Create Page") {
-                    let (t, menu) = (title, addToMenu)
+                    let (t, menu, kind) = (title, addToMenu, template)
                     dismiss()
-                    DispatchQueue.main.async { model.createPage(title: t, addToMenu: menu) }
+                    DispatchQueue.main.async { model.createPage(title: t, template: kind, addToMenu: menu) }
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
@@ -97,7 +125,7 @@ struct NewPageSheet: View {
             }
         }
         .padding(24)
-        .frame(width: 440)
+        .frame(width: 680)
     }
 }
 

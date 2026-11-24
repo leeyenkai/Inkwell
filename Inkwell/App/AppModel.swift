@@ -130,6 +130,8 @@ final class AppModel {
     var pendingImage: PendingImage?
     var pendingPhotos: [PendingPhoto]?
     var tableEdit: TableEdit?
+    var elementEdit: ElementEdit?
+    var showElementPicker = false
     var health: SiteHealth.Report?
     var externalLinkIssues: [SiteHealth.Issue] = []
     var externalCheck: ExternalCheck = .never

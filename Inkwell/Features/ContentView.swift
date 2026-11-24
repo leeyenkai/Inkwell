@@ -165,6 +165,8 @@ struct SiteWindow: View {
         }
         .sheet(item: $model.pendingGallery) { _ in GallerySheet(model: model) }
         .sheet(item: $model.tableEdit) { edit in TableEditorSheet(model: model, edit: edit) }
+        .sheet(item: $model.elementEdit) { edit in ElementEditorSheet(model: model, edit: edit) }
+        .sheet(isPresented: $model.showElementPicker) { ElementPicker(model: model) }
         .sheet(isPresented: $model.showPhotoSetup) { PhotoSetupSheet(model: model) }
         .sheet(isPresented: $model.showSiteSummary) { SiteSummarySheet(model: model) }
     }

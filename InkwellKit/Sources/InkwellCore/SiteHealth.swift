@@ -325,6 +325,18 @@ public enum SiteHealth {
 
     """
 
+    /// `tag` added before `</head>` in the site's own head file. A site on a gem theme has none; its theme's head hook
+    /// (`head-custom.html` in GitHub's themes, `custom-head.html` in minima) gets the tag instead.
+    public static func headInsertion(root: URL, tag: String) -> [ContentEdit] {
+        let head = HeadFiles(root: root)
+        if head.text.contains(tag) { return [] }
+        if let edit = head.inserting(tag) { return [edit] }
+        return ["_includes/head-custom.html", "_includes/custom-head.html"].map { path in
+            let old = (try? String(contentsOf: root.appending(path: path), encoding: .utf8)) ?? ""
+            return ContentEdit(path: path, newText: old + (old.isEmpty || old.hasSuffix("\n") ? "" : "\n") + tag + "\n")
+        }
+    }
+
     /// The local file that holds `</head>`, if the site has its own layouts.
     struct HeadFiles {
         var file: String?

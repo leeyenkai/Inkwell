@@ -1,0 +1,18 @@
+{% comment %} Added by Inkwell. Every post of a section, by year: collection="posts". {% endcomment %}
+{% assign ik_collection = include.collection | default: 'posts' %}
+{% assign ik_items = site[ik_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% assign ik_year = "" %}
+<div class="ik-archive">
+{% for item in ik_items %}
+  {% assign ik_item_year = item.date | date: "%Y" %}
+  {% if ik_item_year != ik_year %}
+    {% unless forloop.first %}</ul>{% endunless %}
+    <h3>{{ ik_item_year }}</h3>
+    <ul>
+    {% assign ik_year = ik_item_year %}
+  {% endif %}
+    <li><a href="{{ item.url | relative_url }}">{% if item.title %}{{ item.title }}{% else %}{{ item.excerpt | strip_html | truncatewords: 10 }}{% endif %}</a>
+      <time datetime="{{ item.date | date_to_xmlschema }}">{{ item.date | date: "%b %-d" }}</time></li>
+  {% if forloop.last %}</ul>{% endif %}
+{% endfor %}
+</div>

@@ -99,7 +99,7 @@ extension AppModel {
     }
 
     /// A new standalone page (About, Now, Contact) in the site, unpublished until you publish it.
-    func createPage(title: String, body: String = "\n", addToMenu: Bool) {
+    func createPage(title: String, body: String = "\n", addToMenu: Bool, layout: String? = nil, fields: [(String, String)] = []) {
         guard let site else { return }
         var name = Slug.make(title)
         var n = 2
@@ -109,7 +109,8 @@ extension AppModel {
         }
         let hasPageLayout = [site.root, themeRoot].compactMap { $0 }
             .contains { FileManager.default.fileExists(atPath: $0.appending(path: "_layouts/page.html").path) }
-        let text = FrontMatterDocument(fields: [("layout", hasPageLayout ? "page" : "default"), ("title", YAMLFormat.quoted(title))], body: body).text
+        let fields = [("layout", layout ?? (hasPageLayout ? "page" : "default")), ("title", YAMLFormat.quoted(title))] + fields
+        let text = FrontMatterDocument(fields: fields, body: body).text
         let path = "\(name).md"
         do {
             try ContentEdit(path: path, newText: text).apply(to: site.root)

@@ -1,0 +1,10 @@
+---
+layout: default
+---
+{% comment %} Added by Inkwell. A presentation: each section break (***) starts a slide. Arrow keys move between slides. {% endcomment %}
+<article class="ik-slides-page">
+  {% unless page.hide_title %}<h1>{{ page.title }}</h1>{% endunless %}
+  <div class="ik-slides">
+{{ content }}
+  </div>
+</article>
