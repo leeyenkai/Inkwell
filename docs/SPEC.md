@@ -9,9 +9,12 @@
 - **Accounts and sites.** Sign in with GitHub (personal token now; device flow once an OAuth App client ID is set in `Info.plist` as `InkwellGitHubClientID`). Pick a repository; Inkwell downloads it into Application Support, building from the Pages source folder and branch. Create a new site from one of four themes. Advanced: open a local git clone.
 - **Writing.** Sections from the navigation, collections, `_posts` and other pages; the live-styled Markdown editor and formatting commands; Properties with validation; images with metadata removed; the instant preview through the site's own layouts.
 - **Publishing.** One commit per publish through the GitHub API, with exactly the post and its images. Update, delete, unpublish to drafts, discard changes, "publish all changes", automatic pulls with conflict resolution, and Pages build status.
+- **Content.** Rename or move with redirects and link rewriting, duplicate, new pages, tags (rename, merge, remove), version history with restore, and scheduled posts (with an optional hourly rebuild workflow).
+- **Editor.** Markers hidden off the current line, smart lists, a slash menu, `[[` post links, rich-text paste as Markdown, embeds.
+- **Photos and media.** A photo stream with one file per photo and a caption screen for batch imports; galleries in posts; a media library with where-used, unused, replace and delete.
 - **Design.** Four bundled themes with a reviewable switch; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
-Verified by 64 package tests (including a fake GitHub server for sync) and the publish self-test. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos.
+Verified by 87 package tests (including a fake GitHub server for sync) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
