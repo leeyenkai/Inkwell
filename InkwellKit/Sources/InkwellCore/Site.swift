@@ -170,10 +170,8 @@ public enum SiteLoader {
             guard !seenCollections.contains(name) else { return }
             seenCollections.insert(name)
             sections.append(SiteSection(id: name, label: label, kind: .collection(name), symbol: symbol(for: name)))
-            let folder = root.appending(path: "_\(name)")
-            let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
-            for file in files where ["md", "markdown", "html"].contains(file.pathExtension.lowercased()) {
-                if let doc = document(at: file, relativePath: "_\(name)/\(file.lastPathComponent)", sectionID: name, config: config) {
+            for (file, path) in collectionFiles(in: root.appending(path: "_\(name)"), prefix: "_\(name)/") {
+                if let doc = document(at: file, relativePath: path, sectionID: name, config: config) {
                     documents.append(doc)
                 }
             }
@@ -234,6 +232,23 @@ public enum SiteLoader {
         return Site(root: root, config: config, navigation: navigation, sections: sections, documents: documents, generator: "Jekyll")
     }
 
+    /// The Markdown and HTML files of a collection, in its subfolders too, as Jekyll reads them. Names Jekyll
+    /// ignores (starting with `.`, `_` or `#`, or ending in `~`) are skipped, folders included.
+    static func collectionFiles(in folder: URL, prefix: String) -> [(URL, String)] {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .contentModificationDateKey]
+        var result: [(URL, String)] = []
+        for item in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys)) ?? [] {
+            let name = item.lastPathComponent
+            guard let first = name.first, !".#_".contains(first), !name.hasSuffix("~") else { continue }
+            if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                result += collectionFiles(in: item, prefix: prefix + name + "/")
+            } else if ["md", "markdown", "html"].contains(item.pathExtension.lowercased()) {
+                result.append((item, prefix + name))
+            }
+        }
+        return result
+    }
+
     /// A `_config.yml`, or a home page GitHub Pages can build on its own.
     public static func looksLikeSite(_ root: URL) -> Bool {
         ["_config.yml", "index.md", "index.markdown", "index.html", "README.md"].contains {
@@ -262,20 +277,36 @@ public enum SiteLoader {
         let doc = FrontMatterDocument(text: text)
         let values = doc.values
         let filename = (relativePath as NSString).lastPathComponent
-        let parsedName = Filename.parse(filename)
+        let parsedName = Filename.parse(filename, timeZone: config.timeZone)
         let title = values["title"]?.string ?? parsedName.slug.replacingOccurrences(of: "-", with: " ").capitalized
-        let date = values["date"]?.string.flatMap { SiteDate.parse($0, timeZone: config.timeZone) } ?? parsedName.date
+        let date = self.date(values: values, filename: filename, config: config)
         let published = values["published"]?.bool ?? true
-        let collection = relativePath.hasPrefix("_") ? String(relativePath.dropFirst().prefix { $0 != "/" }) : nil
-        let categories = Permalink.categories(values)
-        let resolvedURL = url ?? values["permalink"]?.string.map { config.baseurl + $0 }
-            ?? collection.map { Permalink.url(collection: $0, filename: filename, date: date, config: config, categories: categories) }
-            ?? Permalink.pageURL(relativePath: relativePath, config: config)
+        let resolvedURL = url ?? self.url(relativePath: relativePath, values: values, date: date, config: config)
         return SiteDocument(
             id: origin == .repository ? "repo:\(relativePath)" : "draft:\(fileURL.path)",
             sectionID: sectionID, origin: origin, fileURL: fileURL, relativePath: relativePath, title: title, date: date,
             publishedFlag: published, url: resolvedURL, modified: modified, excerpt: Excerpt.make(doc.body)
         )
+    }
+
+    /// The front matter's `date`, else the filename's, in the site's time zone.
+    public static func date(values: YAMLValue, filename: String, config: SiteConfig) -> Date? {
+        values["date"]?.string.flatMap { SiteDate.parse($0, timeZone: config.timeZone) }
+            ?? Filename.parse(filename, timeZone: config.timeZone).date
+    }
+
+    /// The address Jekyll gives a file at `relativePath`: its front matter `permalink` wins, then its collection's
+    /// pattern (categories and `slug` included), then the rule for standalone pages.
+    public static func url(relativePath: String, values: YAMLValue, date: Date?, config: SiteConfig) -> String {
+        let filename = (relativePath as NSString).lastPathComponent
+        let collection = relativePath.hasPrefix("_") ? String(relativePath.dropFirst().prefix { $0 != "/" }) : nil
+        let permalink = values["permalink"]?.string.flatMap { $0.isEmpty ? nil : $0 }
+        guard let collection else {
+            return permalink.map { config.baseurl + $0 } ?? Permalink.pageURL(relativePath: relativePath, config: config)
+        }
+        let inner = (String(relativePath.dropFirst(collection.count + 2)) as NSString).deletingPathExtension
+        return Permalink.url(collection: collection, filename: filename, date: date, config: config,
+                             categories: Permalink.categories(values), slug: values["slug"]?.string, path: inner, pattern: permalink)
     }
 
     static func symbol(for name: String) -> String {
@@ -314,7 +345,8 @@ public enum Filename {
         public var isZeroPadded: Bool
     }
 
-    public static func parse(_ filename: String) -> Parts {
+    /// The filename's date is midnight in `timeZone`, the site's `timezone:`, as Jekyll reads it.
+    public static func parse(_ filename: String, timeZone: TimeZone = .current) -> Parts {
         let ext = (filename as NSString).pathExtension
         let base = (filename as NSString).deletingPathExtension
         let pattern = #"^(\d{4})-(\d{1,2})-(\d{1,2})-(.+)$"#
@@ -322,7 +354,8 @@ public enum Filename {
             let pieces = base.split(separator: "-", maxSplits: 3).map(String.init)
             let dateText = "\(pieces[0])-\(pieces[1])-\(pieces[2])"
             let padded = pieces[1].count == 2 && pieces[2].count == 2
-            return Parts(date: SiteDate.parse(dateText), dateText: dateText, slug: pieces[3], ext: ext, isZeroPadded: padded)
+            return Parts(date: SiteDate.parse(dateText, timeZone: timeZone), dateText: dateText, slug: pieces[3], ext: ext,
+                         isZeroPadded: padded)
         }
         return Parts(date: nil, dateText: nil, slug: base, ext: ext, isZeroPadded: true)
     }
@@ -364,44 +397,97 @@ public enum Permalink {
         if let own = config.collections.first(where: { $0.name == collection })?.permalink { return expand(own) }
         let site = expand(config.permalink ?? "date")
         if collection == "posts" { return site }
-        return site.hasSuffix("/") ? "/:collection/:path/" : "/:collection/:path:output_ext"
+        return "/:collection/:path" + suffix(config)
     }
 
-    public static func url(collection: String, filename: String, date: Date?, config: SiteConfig, categories: [String] = []) -> String {
-        let pattern = pattern(collection: collection, config: config)
+    /// What Jekyll's `add_permalink_suffix` adds for the site's style: `/` for `pretty` or a style ending in `/`,
+    /// `.html` for the other built-in styles or one ending in `:output_ext`, otherwise nothing.
+    static func suffix(_ config: SiteConfig) -> String {
+        let style = config.permalink ?? "date"
+        switch style {
+        case "pretty": return "/"
+        case "date", "ordinal", "none": return ":output_ext"
+        default: return style.hasSuffix("/") ? "/" : style.hasSuffix(":output_ext") ? ":output_ext" : ""
+        }
+    }
+
+    /// A document's address. `slug` is the front matter's, `path` the file's place in the collection without the
+    /// extension (`2023/notes`), and `pattern` a front matter `permalink` that replaces the collection's.
+    public static func url(collection: String, filename: String, date: Date?, config: SiteConfig, categories: [String] = [],
+                           slug: String? = nil, path: String? = nil, pattern: String? = nil) -> String {
         let parts = Filename.parse(filename)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = config.timeZone
         let c = date.map { calendar.dateComponents([.year, .month, .day, .dayOfYear], from: $0) }
         let name = (filename as NSString).deletingPathExtension
-        let replacements: [(String, String)] = [
-            (":collection", collection),
-            (":categories", categories.map { $0.lowercased().replacingOccurrences(of: " ", with: "-") }.joined(separator: "/")),
-            (":title", parts.slug),
-            (":slug", parts.slug),
-            (":name", name),
-            (":path", name),
-            (":year", c?.year.map { String(format: "%04d", $0) } ?? ""),
-            (":short_year", c?.year.map { String(format: "%02d", $0 % 100) } ?? ""),
-            (":month", c?.month.map { String(format: "%02d", $0) } ?? ""),
-            (":i_month", c?.month.map(String.init) ?? ""),
-            (":day", c?.day.map { String(format: "%02d", $0) } ?? ""),
-            (":i_day", c?.day.map(String.init) ?? ""),
-            (":y_day", c?.dayOfYear.map { String(format: "%03d", $0) } ?? ""),
-            (":output_ext", ".html"),
+        let base = slug.flatMap { $0.isEmpty ? nil : $0 } ?? parts.slug
+        let values: [String: String] = [
+            "collection": collection,
+            "categories": categories.map { $0.lowercased().replacingOccurrences(of: " ", with: "-") }.joined(separator: "/"),
+            "title": slugify(base, pretty: true, cased: true),
+            "slug": slugify(base, pretty: false, cased: false),
+            "name": slugify(name, pretty: false, cased: false),
+            "path": path ?? name,
+            "year": c?.year.map { String(format: "%04d", $0) } ?? "",
+            "short_year": c?.year.map { String(format: "%02d", $0 % 100) } ?? "",
+            "month": c?.month.map { String(format: "%02d", $0) } ?? "",
+            "i_month": c?.month.map(String.init) ?? "",
+            "day": c?.day.map { String(format: "%02d", $0) } ?? "",
+            "i_day": c?.day.map(String.init) ?? "",
+            "y_day": c?.dayOfYear.map { String(format: "%03d", $0) } ?? "",
+            "output_ext": ".html",
         ]
-        var url = pattern
-        for (key, value) in replacements { url = url.replacingOccurrences(of: key, with: value) }
+        var url = fill(pattern ?? self.pattern(collection: collection, config: config), values)
         while url.contains("//") { url = url.replacingOccurrences(of: "//", with: "/") }
         return config.baseurl + url
     }
 
-    /// A standalone page's address: `/` for the home page, `/about/` with pretty permalinks, `/about.html` otherwise.
+    /// Replaces each `:placeholder` in one pass, as Jekyll does, so a value is never read as another placeholder.
+    static func fill(_ pattern: String, _ values: [String: String]) -> String {
+        var out = ""
+        var rest = Substring(pattern)
+        while let colon = rest.firstIndex(of: ":") {
+            out += rest[..<colon]
+            let after = rest[rest.index(after: colon)...]
+            let key = after.prefix { ("a" ... "z").contains($0) || $0 == "_" }
+            var name = String(key)
+            while values[name] == nil, name.hasSuffix("_") { name.removeLast() }
+            if !key.isEmpty, let value = values[name] {
+                out += value + key.dropFirst(name.count)
+                rest = after.dropFirst(key.count)
+            } else {
+                out += ":"
+                rest = after
+            }
+        }
+        return out + rest
+    }
+
+    /// Jekyll's `slugify`: `pretty` keeps `._~!$&'()+,;=@`; the default keeps letters and digits only.
+    static func slugify(_ text: String, pretty: Bool, cased: Bool) -> String {
+        let kept = Set("._~!$&'()+,;=@")
+        var out = ""
+        var hyphen = false
+        // Each run of other characters becomes one hyphen; none at either end.
+        for ch in text {
+            if ch.isLetter || ch.isNumber || pretty && kept.contains(ch) {
+                if hyphen, !out.isEmpty { out += "-" }
+                hyphen = false
+                out.append(ch)
+            } else {
+                hyphen = true
+            }
+        }
+        return cased ? out : out.lowercased()
+    }
+
+    /// A standalone page's address: `/` for the home page, then `/about` with the site style's ending (`/about/` for
+    /// `pretty` or a style ending in `/`, `/about.html` for the other built-in styles).
     public static func pageURL(relativePath: String, config: SiteConfig) -> String {
         let base = (relativePath as NSString).deletingPathExtension
         if base == "index" { return config.baseurl + "/" }
         if base.hasSuffix("/index") { return config.baseurl + "/" + base.dropLast(5) }
-        return config.baseurl + "/" + base + (config.permalink == "pretty" ? "/" : ".html")
+        return config.baseurl + "/" + base + suffix(config).replacingOccurrences(of: ":output_ext", with: ".html")
     }
 
     static func categories(_ values: YAMLValue) -> [String] {

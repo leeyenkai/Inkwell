@@ -341,6 +341,7 @@ public final class LiquidContext: @unchecked Sendable {
     public var includeLoader: (@Sendable (String) -> String?)?
     var includeDepth = 0
     var templateCache: [String: LiquidTemplate] = [:]
+    static let rangeLimit = 10000
 
     public init(_ variables: [String: LiquidValue] = [:]) {
         scopes = [variables]
@@ -382,8 +383,11 @@ public final class LiquidContext: @unchecked Sendable {
                 }
             case let .loop(variable, collection, reversed, limit, offset, body, empty):
                 var items = evaluate(collection).asArray
-                if let offset, let n = evaluate(offset).number { items = Array(items.dropFirst(Int(n))) }
-                if let limit, let n = evaluate(limit).number { items = Array(items.prefix(Int(n))) }
+                // As Liquid does: items from `offset` up to `offset + limit`; a negative offset counts as the start.
+                let from = offset.flatMap { evaluate($0).number }.map(LiquidValue.integer) ?? 0
+                let to = limit.flatMap { evaluate($0).number }.map { from + LiquidValue.integer($0) } ?? items.count
+                let lower = max(0, from), upper = min(items.count, to)
+                items = lower < upper ? Array(items[lower ..< upper]) : []
                 if reversed { items.reverse() }
                 if items.isEmpty {
                     _ = render(empty, into: &out)
@@ -488,9 +492,10 @@ public final class LiquidContext: @unchecked Sendable {
         default: break
         }
         if s.hasPrefix("("), s.hasSuffix(")"), let dots = s.range(of: "..") {
-            let lo = value(of: String(s[s.index(after: s.startIndex) ..< dots.lowerBound])).number ?? 0
-            let hi = value(of: String(s[dots.upperBound ..< s.index(before: s.endIndex)])).number ?? 0
-            return lo <= hi ? .array((Int(lo) ... Int(hi)).map { .int($0) }) : .array([])
+            let lo = LiquidValue.integer(value(of: String(s[s.index(after: s.startIndex) ..< dots.lowerBound])).number ?? 0)
+            let hi = LiquidValue.integer(value(of: String(s[dots.upperBound ..< s.index(before: s.endIndex)])).number ?? 0)
+            // A preview never needs more; a huge range would otherwise build every number before the loop starts.
+            return lo <= hi ? .array((lo ... min(hi, lo + Self.rangeLimit - 1)).map { .int($0) }) : .array([])
         }
         return lookup(path: s)
     }

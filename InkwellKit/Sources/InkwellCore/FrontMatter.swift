@@ -145,13 +145,32 @@ public struct FrontMatterDocument: Sendable, Equatable {
 
 /// Formats values the way hand-written front matter looks on these sites: text in double quotes, bare dates and booleans.
 public enum YAMLFormat {
+    /// A double-quoted scalar on one line: line breaks and other control characters are escaped, so pasted text
+    /// can never start a new key or a `---` that ends the front matter.
     public static func quoted(_ text: String) -> String {
-        let escaped = text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        return "\"\(escaped)\""
+        var out = "\""
+        for scalar in text.unicodeScalars {
+            switch scalar {
+            case "\\": out += "\\\\"
+            case "\"": out += "\\\""
+            case "\n": out += "\\n"
+            case "\t": out += "\\t"
+            case "\r": out += "\\r"
+            case "\u{85}", "\u{2028}", "\u{2029}", "\u{FEFF}":
+                out += String(format: "\\u%04X", scalar.value)
+            default:
+                if scalar.value < 0x20 || scalar.value == 0x7F {
+                    out += String(format: "\\x%02X", scalar.value)
+                } else {
+                    out.unicodeScalars.append(scalar)
+                }
+            }
+        }
+        return out + "\""
     }
 
     public static func plainOrQuoted(_ text: String) -> String {
-        let special = CharacterSet(charactersIn: ":#{}[],&*!|>'\"%@`")
+        let special = CharacterSet(charactersIn: ":#{}[],&*!|>'\"%@`").union(.controlCharacters).union(.newlines)
         let looksTyped = YAML.scalar(text) != .string(text)
         if text.isEmpty || looksTyped || text.rangeOfCharacter(from: special) != nil || text.hasPrefix(" ") || text.hasSuffix(" ") {
             return quoted(text)
@@ -184,30 +203,79 @@ public enum YAMLFormat {
 }
 
 public enum SiteDate {
-    /// Reads `2026-06-20`, `2026-06-20 10:00`, `2026-06-20 10:00:00 +0800` and ISO 8601 forms.
+    /// Reads `2026-06-20`, `2026-06-20 10:00`, `2026-06-20 10:00:00 +0800`, `+08:00`, `Z` and ISO 8601 forms.
+    /// A date with an offset is that moment; one without is read in `timeZone` (the site's), as Jekyll does.
     public static func parse(_ text: String, timeZone: TimeZone = .current) -> Date? {
-        let s = text.trimmingCharacters(in: .whitespaces)
-        let parts = s.split(whereSeparator: { $0 == " " || $0 == "T" }).map(String.init)
-        guard let datePart = parts.first else { return nil }
-        let ymd = datePart.split(separator: "-").compactMap { Int($0) }
-        guard ymd.count == 3, (1 ... 12).contains(ymd[1]), (1 ... 31).contains(ymd[2]) else { return nil }
-        var c = DateComponents(year: ymd[0], month: ymd[1], day: ymd[2])
+        var scanner = Scanner(text.trimmingCharacters(in: .whitespaces))
+        guard let year = scanner.number(4 ... 4), scanner.take("-"), let month = scanner.number(1 ... 2), scanner.take("-"),
+              let day = scanner.number(1 ... 2), (1 ... 12).contains(month), (1 ... 31).contains(day) else { return nil }
+        guard scanner.atEnd || scanner.peek == " " || scanner.peek == "T" || scanner.peek == "t" || scanner.peek == "\t" else { return nil }
+        var c = DateComponents(year: year, month: month, day: day)
         var zone = timeZone
-        if parts.count > 1 {
-            let hms = parts[1].prefix { $0.isNumber || $0 == ":" }.split(separator: ":").compactMap { Int($0) }
-            if hms.count >= 2 {
-                c.hour = hms[0]
-                c.minute = hms[1]
-                c.second = hms.count > 2 ? hms[2] : 0
-            }
-            if let offset = parts.last, parts.count > 2, offset.count == 5, let sign = offset.first, sign == "+" || sign == "-",
-               let h = Int(offset.dropFirst().prefix(2)), let m = Int(offset.suffix(2)) {
-                zone = TimeZone(secondsFromGMT: (sign == "-" ? -1 : 1) * (h * 3600 + m * 60)) ?? zone
-            }
+        scanner.skip { $0 == " " || $0 == "\t" || $0 == "T" || $0 == "t" }
+        let timeStart = scanner.index
+        if let hour = scanner.number(1 ... 2), scanner.take(":"), let minute = scanner.number(1 ... 2) {
+            c.hour = hour
+            c.minute = minute
+            c.second = scanner.take(":") ? scanner.number(1 ... 2) ?? 0 : 0
+            if scanner.take(".") || scanner.take(",") { scanner.skip { $0.isASCII && $0.isNumber } }
+            scanner.skip { $0 == " " || $0 == "\t" }
+            if let offset = scanner.offset() { zone = TimeZone(secondsFromGMT: offset) ?? zone }
+        } else {
+            scanner.index = timeStart
         }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = zone
-        guard let date = calendar.date(from: c), calendar.component(.day, from: date) == ymd[2] else { return nil }
+        guard let date = calendar.date(from: c), calendar.component(.day, from: date) == day else { return nil }
         return date
+    }
+
+    private struct Scanner {
+        let chars: [Character]
+        var index = 0
+
+        init(_ text: String) { chars = Array(text) }
+
+        var atEnd: Bool { index >= chars.count }
+        var peek: Character? { atEnd ? nil : chars[index] }
+
+        mutating func take(_ ch: Character) -> Bool {
+            guard peek == ch else { return false }
+            index += 1
+            return true
+        }
+
+        mutating func skip(while matches: (Character) -> Bool) {
+            while let ch = peek, matches(ch) { index += 1 }
+        }
+
+        mutating func number(_ digits: ClosedRange<Int>) -> Int? {
+            var value = 0, count = 0
+            while count < digits.upperBound, let ch = peek, ch.isASCII, let d = ch.wholeNumberValue {
+                value = value * 10 + d
+                count += 1
+                index += 1
+            }
+            return count >= digits.lowerBound ? value : nil
+        }
+
+        /// `Z`, `UTC`, `GMT`, `+08`, `+0800` or `+08:00`, in seconds east of Greenwich.
+        mutating func offset() -> Int? {
+            let start = index
+            if take("Z") || take("z") { return 0 }
+            for name in ["UTC", "GMT"] where chars[index...].starts(with: name) {
+                index += name.count
+                return 0
+            }
+            guard let sign = peek, sign == "+" || sign == "-" else { return nil }
+            index += 1
+            guard let hours = number(1 ... 2) else {
+                index = start
+                return nil
+            }
+            _ = take(":")
+            let minutes = number(2 ... 2) ?? 0
+            return (sign == "-" ? -1 : 1) * (hours * 3600 + minutes * 60)
+        }
     }
 }

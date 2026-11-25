@@ -112,7 +112,7 @@ public final class PreviewBuilder: @unchecked Sendable {
         for entry in defaults { page[entry.key] = LiquidValue(entry.value) }
         if case let .object(values) = LiquidValue(doc.values) { page.merge(values) { $1 } }
         let filename = (relativePath as NSString).lastPathComponent
-        let parts = Filename.parse(filename)
+        let parts = Filename.parse(filename, timeZone: timeZone)
         if let raw = doc.value("date")?.string, let date = SiteDate.parse(raw, timeZone: timeZone) {
             page["date"] = .date(date)
         } else if let date = parts.date {

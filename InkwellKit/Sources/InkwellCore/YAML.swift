@@ -117,15 +117,32 @@ public enum YAML {
             let ch = chars[i]
             if ch == "\\", i + 1 < chars.count {
                 let next = chars[i + 1]
+                i += 2
                 switch next {
                 case "n": out.append("\n")
                 case "t": out.append("\t")
-                case "\"": out.append("\"")
-                case "\\": out.append("\\")
-                case "/": out.append("/")
+                case "r": out.append("\r")
+                case "0": out.append("\0")
+                case "a": out.append("\u{07}")
+                case "b": out.append("\u{08}")
+                case "e": out.append("\u{1B}")
+                case "f": out.append("\u{0C}")
+                case "v": out.append("\u{0B}")
+                case "N": out.append("\u{85}")
+                case "_": out.append("\u{A0}")
+                case "L": out.append("\u{2028}")
+                case "P": out.append("\u{2029}")
+                case "x", "u", "U":
+                    let digits = next == "x" ? 2 : next == "u" ? 4 : 8
+                    if i + digits <= chars.count, let value = UInt32(String(chars[i ..< i + digits]), radix: 16),
+                       let scalar = Unicode.Scalar(value) {
+                        out.unicodeScalars.append(scalar)
+                        i += digits
+                    } else {
+                        out.append(next)
+                    }
                 default: out.append(next)
                 }
-                i += 2
             } else {
                 out.append(ch)
                 i += 1
