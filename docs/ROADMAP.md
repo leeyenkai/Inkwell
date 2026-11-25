@@ -21,10 +21,12 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
 
 ## Progress (24 Nov 2026)
 
-- **M7 Websites: W1 and W2 done, W3 and W4 planned.** Support for Pages sites that are not blogs, such as hand-built HTML sites.
+- **M7 Websites: W1 to W4 done, with a few parts left.** Support for Pages sites that are not blogs, such as hand-built HTML sites.
   - W1 covers the kinds of site, HTML pages, the plain preview, `docs/` folders, and HTML health and publishing.
   - W2 adds page properties, dropped pictures and new pages that match the site.
-  - See SPEC §4.12.
+  - W3 is editing text and pictures on the preview.
+  - W4 applies a shared header, menu or footer change to the other pages.
+  - SPEC §4.12 lists what is left.
 - **M6 Designer: done.** See SPEC §4.7a.
   - Themes: Essayist, Notebook (sidebar), Photo journal (picture grid), Minimal (monospaced), Magazine (lead story and cards) and Studio (portfolio), each with its own layouts and stylesheet over a shared base. The gallery shows renders made from the themes' real files (`--render-theme-previews`), and choosing one previews it on a temporary copy of your own site (home, a post, a page; desktop or phone; light or dark). Palettes (contrast-checked in tests) and font pairings are one-click presets.
   - Elements: fifteen, in Markdown with `markdown="1"` or includes, from the slash menu, the Insert button and Format › Insert Element…; each has an Edit button and form (Apple Maps search for places). The preview renders `markdown="1"` and `{:toc}`. The element kit (stylesheet, script, includes, slides and album layouts) is installed on first use, loaded into other themes' heads, and published with the first post that uses it. Checked in a browser: lightbox, slideshow, tabs, Leaflet maps.

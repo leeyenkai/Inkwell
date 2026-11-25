@@ -358,6 +358,13 @@ public enum SiteLoader {
     public static func document(text: String, fileURL: URL, relativePath: String, sectionID: String, config: SiteConfig,
                                 url: String? = nil, origin: SiteDocument.Origin, modified: Date) -> SiteDocument {
         let doc = FrontMatterDocument(text: text)
+        // HTML without front matter is served as it is, however it was found (a reload of one saved page included).
+        if !doc.hasFrontMatter, ["html", "htm"].contains((relativePath as NSString).pathExtension.lowercased()), origin == .repository {
+            var page = staticPage(at: fileURL, relativePath: relativePath, text: text, config: config)
+            page.sectionID = sectionID
+            page.modified = modified
+            return page
+        }
         let values = doc.values
         let filename = (relativePath as NSString).lastPathComponent
         let parsedName = Filename.parse(filename, timeZone: config.timeZone)

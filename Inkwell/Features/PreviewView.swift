@@ -66,8 +66,13 @@ struct SitePreview: NSViewRepresentable {
     var reloadToken = 0
     var appearance: AppModel.PreviewAppearance = .system
     var onNavigate: ((String) -> Void)?
+    /// Edits made on the page itself (SPEC §4.12, W3), for pages marked by `PageEditing`.
+    var onPageEdit: (([String: Any]) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
+
+    /// The newest preview, for the self-tests to act in.
+    @MainActor static weak var latest: WKWebView?
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -77,7 +82,12 @@ struct SitePreview: NSViewRepresentable {
         handler.resources = resources
         config.setURLSchemeHandler(handler, forURLScheme: SiteSchemeHandler.scheme)
         context.coordinator.handler = handler
+        // The editing script acts only on elements the page was marked with, so other previews are unaffected.
+        config.userContentController.addUserScript(WKUserScript(source: PageEditingScript.source, injectionTime: .atDocumentEnd,
+                                                                forMainFrameOnly: true))
+        config.userContentController.add(WeakMessageHandler(context.coordinator), name: PageEditingScript.handlerName)
         let web = WKWebView(frame: .zero, configuration: config)
+        Self.latest = web
         web.navigationDelegate = context.coordinator
         web.setValue(false, forKey: "drawsBackground")
         web.setAccessibilityLabel(String(localized: "Preview"))
@@ -90,6 +100,7 @@ struct SitePreview: NSViewRepresentable {
         c.handler?.baseurl = baseurl
         c.handler?.resources = resources
         c.onNavigate = onNavigate
+        c.onPageEdit = onPageEdit
         c.browsing = address != nil
         switch appearance {
         case .system: web.appearance = nil
@@ -135,8 +146,15 @@ struct SitePreview: NSViewRepresentable {
         return String(html[..<close.lowerBound])
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var handler: SiteSchemeHandler?
+        var onPageEdit: (([String: Any]) -> Void)?
+
+        func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any] else { return }
+            onPageEdit?(body)
+        }
+
         var html: String?
         var loadedURL: String?
         var isLoaded = false
@@ -213,7 +231,8 @@ struct PreviewPane: View {
                     Spacer(minLength: 0)
                     if let page, let root = model.site?.root {
                         SitePreview(html: page.html, pageURL: editor.currentURL, root: root, baseurl: model.site?.config.baseurl ?? "",
-                                    resources: model.siteResources, appearance: model.previewAppearance)
+                                    resources: model.siteResources, appearance: model.previewAppearance,
+                                    onPageEdit: editsOnPage ? { model.applyPageEdit($0) } : nil)
                             .frame(width: model.previewWidth == .phone ? min(390, geo.size.width) : geo.size.width)
                             .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .phone ? 18 : 0))
                             .overlay {
@@ -233,6 +252,11 @@ struct PreviewPane: View {
         .onChange(of: editor.document.id) { render() }
         // A theme that finishes downloading brings a new builder with its layouts.
         .onChange(of: model.previewBuilder.map(ObjectIdentifier.init)) { render() }
+        .onChange(of: model.editOnPage) { render() }
+    }
+
+    var editsOnPage: Bool {
+        model.editOnPage && model.site?.kind != .generated && (editor.document.isStatic || model.site?.kind.servesFilesAsIs == true)
     }
 
     func scheduleRender() {
@@ -246,11 +270,96 @@ struct PreviewPane: View {
 
     func render() {
         guard let builder = model.previewBuilder else { return }
-        // A page GitHub serves as it is shows as it is, with no layout or Liquid.
+        // A page GitHub serves as it is shows as it is, with no layout or Liquid; marked for editing on the page.
         if editor.document.isStatic || builder.site.kind.servesFilesAsIs {
-            page = PreviewPage(html: editor.fullText, unsupportedTags: [])
+            let html = editsOnPage ? PageEditing.regions(in: editor.fullText).annotated : editor.fullText
+            page = PreviewPage(html: html, unsupportedTags: [])
             return
         }
         page = builder.render(text: editor.fullText, relativePath: editor.document.relativePath, url: editor.currentURL)
+    }
+}
+
+/// Lets the web view hold its message handler without keeping the coordinator alive.
+final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var target: (any WKScriptMessageHandler)?
+
+    init(_ target: any WKScriptMessageHandler) {
+        self.target = target
+    }
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(controller, didReceive: message)
+    }
+}
+
+/// The preview's side of editing on the page: a click makes a marked element editable, leaving it (or Return) sends
+/// the new text, Escape puts the old text back, and a click on a marked picture asks for a new one.
+enum PageEditingScript {
+    static let handlerName = "inkwell"
+
+    static var source: String {
+        let note = String(localized: "Edit this in the source beside the preview: it has other tags inside, or a script makes it.")
+        let json = (try? String(data: JSONEncoder().encode(note), encoding: .utf8)) ?? "\"\""
+        return """
+        (() => {
+          if (window.__inkwellEditing) return;
+          window.__inkwellEditing = true;
+          const note = \(json);
+          const post = (m) => window.webkit?.messageHandlers?.inkwell?.postMessage(m);
+          const marked = () => document.querySelector('[data-ik-text],[data-ik-img]') !== null;
+          const style = document.createElement('style');
+          style.textContent = `
+            [data-ik-text]:hover, [data-ik-img]:hover { outline: 2px dashed rgba(10,132,255,.75); outline-offset: 3px; cursor: text; }
+            [data-ik-img]:hover { cursor: pointer; }
+            [data-ik-text][contenteditable] { outline: 2px solid rgba(10,132,255,.95); outline-offset: 3px; }
+            .inkwell-note { position: fixed; z-index: 2147483647; max-width: 300px; padding: 8px 10px; border-radius: 8px;
+              font: 13px -apple-system, sans-serif; color: #fff; background: rgba(30,30,30,.92); pointer-events: none; }`;
+          document.documentElement.appendChild(style);
+          let shown = null;
+          const showNote = (x, y) => {
+            shown?.remove();
+            shown = document.createElement('div');
+            shown.className = 'inkwell-note';
+            shown.textContent = note;
+            shown.style.left = Math.min(x + 12, innerWidth - 320) + 'px';
+            shown.style.top = (y + 12) + 'px';
+            document.documentElement.appendChild(shown);
+            const mine = shown;
+            setTimeout(() => mine.remove(), 2600);
+          };
+          document.addEventListener('click', (e) => {
+            if (!marked()) return;
+            const img = e.target.closest?.('[data-ik-img]');
+            const text = e.target.closest?.('[data-ik-text]');
+            if (img || text || e.target.closest?.('a')) { e.preventDefault(); }
+            if (img) { e.stopPropagation(); post({ kind: 'image', index: Number(img.dataset.ikImg) }); return; }
+            if (text) {
+              e.stopPropagation();
+              if (text.isContentEditable) return;
+              text.dataset.ikBefore = text.textContent;
+              text.contentEditable = 'plaintext-only';
+              text.focus();
+              return;
+            }
+            const own = [...(e.target.childNodes || [])].some((n) => n.nodeType === 3 && n.textContent.trim());
+            if (own && e.target !== document.body) showNote(e.clientX, e.clientY);
+          }, true);
+          document.addEventListener('keydown', (e) => {
+            const el = e.target.closest?.('[data-ik-text]');
+            if (!el || !el.isContentEditable) return;
+            if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+            if (e.key === 'Escape') { el.textContent = el.dataset.ikBefore ?? el.textContent; el.blur(); }
+          }, true);
+          document.addEventListener('focusout', (e) => {
+            const el = e.target.closest?.('[data-ik-text]');
+            if (!el || !el.isContentEditable) return;
+            el.removeAttribute('contenteditable');
+            const before = el.dataset.ikBefore ?? '';
+            delete el.dataset.ikBefore;
+            if (el.textContent !== before) post({ kind: 'text', index: Number(el.dataset.ikText), before, after: el.textContent });
+          }, true);
+        })();
+        """
     }
 }

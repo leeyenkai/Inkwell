@@ -20,9 +20,12 @@
 - **Design.** Six bundled themes that differ in layout, shown as real renders and tried on your own posts before a reviewable switch; palette and font presets; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
 - **Websites (§4.12), phase W1.** Inkwell tells blogs, Jekyll websites, hand-built sites and generated output apart. It lists HTML pages that have no front matter and opens them as source beside a live preview. The preview serves files as they are. A site in `docs/` opens from its repository. The sidebar suits a website. Health checks relative links and pictures, alt text and page titles, and publishing a page takes its new pictures along.
-- **Websites (§4.12), phase W2.** An HTML page's title, description and share image are edited in a Properties form that rewrites only those values. Pictures dropped on a page are imported and inserted as `<img>` with alt text. New pages copy an existing page's head, header and footer. W3 and W4 are planned.
+- **Websites (§4.12), phase W2.** An HTML page's title, description and share image are edited in a Properties form that rewrites only those values. Pictures dropped on a page are imported and inserted as `<img>` with alt text. New pages copy an existing page's head, header and footer.
+- **Websites (§4.12), phases W3 and W4.**
+  - Edit on Page makes the preview editable: click text to change it in place, or click a picture to replace it. Only those characters change in the file.
+  - When a page's header, menu or footer changes, the editor offers to make the same change on every page with an identical copy.
 
-Verified by 219 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content, design and website self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+Verified by 223 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content, design and website self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
@@ -318,6 +321,12 @@ Inkwell decides the kind of site when it opens it, and shows the kind in the sit
 
 HTML files without front matter on a Jekyll site are listed too. Jekyll copies them unchanged, so they are pages a person edits like any other. Markdown files without front matter, such as a README, are not listed, because GitHub serves them as plain text.
 
+**What is left after W1 to W4.**
+- **Link addresses.** They are edited in the source; on the page, only link text is editable.
+- **Navigation.** The navigation editor does not yet work on a hand-built site's shared menu. A menu change on one page is offered to the other pages instead.
+- **Moving to Jekyll.** The optional adoption step is not built.
+- **Generated sites.** Detecting them from a GitHub Actions workflow is not built.
+
 **How W1 was built.**
 - **Detection.** It uses files only: `.nojekyll`, a `generator` tag, hashed script names, or the `_next`, `_astro` or `static/js` folders. A Pages build from a GitHub Actions workflow is not used yet.
 - **Editing.** HTML pages open in the code editor beside a live preview, which is the first step of W2.
@@ -354,13 +363,13 @@ HTML files without front matter on a Jekyll site are listed too. Jekyll copies t
 4. **New pages.** A new page starts from an HTML template that links the site's own stylesheet. The template takes the page's shared header and footer from an existing page, so it matches the rest of the site.
 5. **Publishing.** Publishing works as it does now, through review of all changes.
 
-**W3: Edit on the page** (the "feels like Notes" step for websites)
+**W3: Edit on the page** (done 25 Nov 2026, except link addresses; the "feels like Notes" step for websites)
 1. **Editing text in place.** Clicking text in the preview lets the person type there. Only the text of that element changes in the file.
 2. **How the preview finds the source.** The preview marks each editable element with its source position. These marks exist only in the preview and are never written to the file.
 3. **Pictures and links.** Pictures are replaced by dropping one onto them. Links are edited in the existing link popover.
 4. **Content made by scripts.** Text that a script builds (a games list loaded by JavaScript, for example) is not editable in place, and the page says why.
 
-**W4: Parts shared by every page**
+**W4: Parts shared by every page** (step 1 done 25 Nov 2026; steps 2 and 3 not started)
 1. **Editing a shared part once.** The same header, menu and footer are usually copied into every HTML page. They can be edited once and applied to every page that has an identical copy, shown as one reviewable change.
 2. **Navigation.** The navigation editor works on that shared menu when the site has no `_data/navigation.yml`.
 3. **Switching to Jekyll.** Turning a hand-built site into a Jekyll site, with includes for the shared parts and `.nojekyll` removed, is an optional adoption step only. It changes how GitHub builds the site, so it is never automatic.
@@ -370,10 +379,10 @@ HTML files without front matter on a Jekyll site are listed too. Jekyll copies t
 - **Fixtures.** Two fixture sites in `InkwellKit/Tests`: a hand-built `.nojekyll` site in `docs/`, and a generated site with hashed assets and a `generator` tag.
 - **What the tests cover.** Detection, page listing, the preview's directory index, and byte-preserving edits to text, attributes and `<img>` insertion. They also check that no front matter or Liquid is written to a `.nojekyll` site.
 - **Real sites, read only.** A read-only check runs against a local copy of a real hand-built site, such as the example above. It is never published.
-- **What exists for W1 and W2.**
+- **What exists for W1 to W4.**
   - `WebsiteTests` covers detection, listing, the preview and health.
   - `scripts/make-plain-site.sh` builds the fixture site in `InkwellKit/Tests/Fixtures/plain-site`.
-  - `--selftest-website` edits a page on that site and publishes it. It also adds a description, drops in a picture and makes a new page.
+  - `--selftest-website` edits a page on that site and publishes it. It also adds a description, drops in a picture and makes a new page. Then it edits a paragraph on the preview through its script and applies a header change to the page that shares it.
   - The example site was checked read only, with preview snapshots.
 
 ---

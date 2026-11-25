@@ -111,6 +111,8 @@ final class AppModel {
     var showPreview = false
     var showSource = false
     var showProperties = true
+    /// Clicking text or a picture in a hand-built page's preview edits it there (SPEC §4.12, W3).
+    var editOnPage = false
     var showSharing = UserDefaults.standard.bool(forKey: "ShowSharing") {
         didSet { UserDefaults.standard.set(showSharing, forKey: "ShowSharing") }
     }
@@ -926,6 +928,52 @@ final class AppModel {
         while shared < folder.count, shared < parts.count - 1, folder[folder.startIndex + shared] == parts[shared] { shared += 1 }
         let up = Array(repeating: "..", count: folder.count - shared)
         return (up + parts[shared...].map(String.init)).joined(separator: "/")
+    }
+
+    /// An edit made on a hand-built page's preview: new text for a marked element, or a request to replace a picture.
+    func applyPageEdit(_ message: [String: Any]) {
+        guard let editor, let site, let index = message["index"] as? Int else { return }
+        switch message["kind"] as? String {
+        case "text":
+            guard let before = message["before"] as? String, let after = message["after"] as? String else { return }
+            if let updated = PageEditing.replacingText(index, with: after, expecting: before, in: editor.fullText) {
+                if updated != editor.fullText { editor.setFullText(updated) }
+            } else {
+                errorMessage = String(localized: "That text changed in the source while you were editing it, so your edit was not kept.")
+            }
+        case "image":
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.image]
+            panel.message = String(localized: "Choose a picture to show here instead.")
+            panel.prompt = String(localized: "Replace")
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            let root = site.root, page = editor.document.relativePath, id = ObjectIdentifier(editor)
+            let folder = ["media", "images", "img", "assets/images", "assets/img"]
+                .first { FileManager.default.fileExists(atPath: root.appending(path: $0).path) } ?? "images"
+            let slug = (editor.document.filename as NSString).deletingPathExtension
+            Task {
+                do {
+                    var importer = ImageImport.app
+                    importer.folder = folder
+                    let image = try await Task.detached {
+                        try importer.importImage(at: url, siteRoot: root, slug: slug == "index" ? "picture" : slug)
+                    }.value
+                    let source = Self.relativePath(to: String(image.sitePath.drop { $0 == "/" }), from: page)
+                    guard let current = self.editor, ObjectIdentifier(current) == id,
+                          let updated = PageEditing.replacingImage(index, with: source, in: current.fullText) else {
+                        try? FileManager.default.removeItem(at: image.fileURL)
+                        errorMessage = Self.pictureNotAdded
+                        return
+                    }
+                    current.setFullText(updated)
+                    refreshChanges()
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        default:
+            break
+        }
     }
 
     func insertPendingImage() {

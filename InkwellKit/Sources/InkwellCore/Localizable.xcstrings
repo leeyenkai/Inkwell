@@ -422,6 +422,15 @@
     "Without one, build output and system files can end up in the repository." : {
 
     },
+    "footer" : {
+
+    },
+    "header" : {
+
+    },
+    "menu" : {
+
+    },
     "“%@” has placeholder text" : {
 
     },

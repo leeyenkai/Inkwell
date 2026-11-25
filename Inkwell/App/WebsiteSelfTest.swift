@@ -129,6 +129,31 @@ extension SelfTest {
             ok = check(false, "dropped picture imported") && ok
         }
 
+        // W3: a paragraph edited on the preview itself.
+        if let home = model.site?.documents.first(where: { $0.relativePath == "index.html" }) {
+            model.editOnPage = true
+            model.showPreview = true
+            model.select(home.id)
+            try? await Task.sleep(for: .seconds(3))
+            let script = """
+            (() => {
+              const el = [...document.querySelectorAll('p[data-ik-text]')].find((p) => p.textContent.includes('plain HTML'));
+              if (!el) return 'none';
+              el.click();
+              el.textContent = 'Edited on the page & saved';
+              el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+              return el.dataset.ikText;
+            })()
+            """
+            let answer = try? await SitePreview.latest?.evaluateJavaScript(script)
+            try? await Task.sleep(for: .seconds(1))
+            model.editor?.saveNow()
+            let text = (try? String(contentsOf: home.fileURL, encoding: .utf8)) ?? ""
+            ok = check(text.contains("<p>Edited on the page &amp; saved</p>") && !text.contains("data-ik"),
+                       "paragraph edited on the page, no marks in the file (\(answer.map { "\($0)" } ?? "no preview"))") && ok
+            model.editOnPage = false
+        }
+
         // A new page from the home page.
         model.createHTMLPage(title: "Pricing", basedOn: nil)
         try? await Task.sleep(for: .seconds(1))
@@ -136,6 +161,21 @@ extension SelfTest {
         let listed = model.site?.documents.first { $0.relativePath == "pricing.html" }
         ok = check(page.contains("<h1>Pricing</h1>") && page.contains("assets/site.css") && !page.hasPrefix("---")
             && listed?.isStatic == true, "new page copies the site's look and is listed (\(HTMLHead(page).title ?? "no title"))") && ok
+
+        // W4: the home page's header changed, and the same change made on the new page that copied it.
+        if let home = model.site?.documents.first(where: { $0.relativePath == "index.html" }), let pricing = listed {
+            model.select(home.id)
+            if let editor = model.editor {
+                let before = editor.fullText
+                editor.setFullText(before.replacingOccurrences(of: "<h1>Plain Product</h1>", with: "<h1>Plain Product Co</h1>"))
+                editor.saveNow()
+                let change = SharedParts.changes(from: before, to: editor.fullText).first
+                let changed = change.map { model.applySharedPart(old: $0.old, new: $0.new, to: [pricing]) } ?? 0
+                let text = (try? String(contentsOf: pricing.fileURL, encoding: .utf8)) ?? ""
+                ok = check(change?.part == .header && changed == 1 && text.contains("<h1>Plain Product Co</h1>")
+                    && text.contains("<h1>Pricing</h1>"), "header change applied to the page sharing it") && ok
+            }
+        }
         return ok
     }
 }

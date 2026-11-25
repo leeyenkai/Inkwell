@@ -164,6 +164,26 @@ extension AppModel {
         didPublish(selecting: path)
     }
 
+    /// Makes the same change to a header, menu or footer on other pages that have an identical copy of it
+    /// (SPEC §4.12, W4). Returns how many pages changed; each becomes an unpublished change to review.
+    @discardableResult
+    func applySharedPart(old: String, new: String, to pages: [SiteDocument]) -> Int {
+        guard let site else { return 0 }
+        var changed = 0
+        for page in pages {
+            guard let text = try? String(contentsOf: page.fileURL, encoding: .utf8),
+                  let updated = SharedParts.applying(old, new, to: text) else { continue }
+            do {
+                try ContentEdit(path: page.relativePath, newText: updated).apply(to: site.root)
+                changed += 1
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+        refreshChanges()
+        return changed
+    }
+
     // MARK: Editor actions
 
     // MARK: Tables

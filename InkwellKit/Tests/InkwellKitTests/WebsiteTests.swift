@@ -62,6 +62,15 @@ final class WebsiteTests: XCTestCase {
         XCTAssertEqual(pricing.excerpt, "Free & open.", "no header, menu, footer or the heading that repeats the title")
     }
 
+    func testASavedHTMLPageStaysAPageServedAsItIs() throws {
+        try makeHandBuilt()
+        let config = try SiteLoader.load(root).config
+        let reloaded = SiteLoader.document(text: Self.home, fileURL: root.appending(path: "index.html"), relativePath: "index.html",
+                                           sectionID: "pages", config: config, origin: .repository, modified: Date())
+        XCTAssertTrue(reloaded.isStatic)
+        XCTAssertEqual(reloaded.title, "Launcher")
+    }
+
     func testFrontMatterOnANoJekyllSiteIsStillServedAsItIs() throws {
         try makeHandBuilt()
         try write("about.html", "---\ntitle: About\n---\n<p>Hi</p>\n")
@@ -220,5 +229,68 @@ final class WebsiteTests: XCTestCase {
                                           title: "Pricing", sourceIsHome: false)
         XCTAssertEqual(HTMLHead(other).title, "Pricing — Launcher")
         XCTAssertEqual(HTMLPageTemplate.fileName(for: "Pricing & Plans", existing: ["pricing-plans.html"]), "pricing-plans-2.html")
+    }
+
+    // MARK: W3: editing on the page
+
+    static let editable = """
+    <html><head><title>T</title><script>const s = "<p>not this</p>";</script></head>
+    <body>
+    <h1 class="big">Hello &amp; welcome</h1>
+    <p>
+      Plain words here.
+    </p>
+    <p>Has <em>formatting</em> inside</p>
+    <img src="media/a.png" alt="A"><img alt="B" src='media/b.png'>
+    <!-- <p>commented</p> -->
+    <script>document.write("<p>made by script</p>")</script>
+    </body></html>
+    """
+
+    func testRegionsMarkOnlyPlainTextElementsInTheBody() {
+        let regions = PageEditing.regions(in: Self.editable)
+        let ns = Self.editable as NSString
+        XCTAssertEqual(regions.texts.map { ns.substring(with: $0).trimmingCharacters(in: .whitespacesAndNewlines) },
+                       ["Hello &amp; welcome", "Plain words here.", "formatting"], "no head, script, comment or mixed content")
+        XCTAssertEqual(regions.images.map { ns.substring(with: $0) }, ["media/a.png", "media/b.png"])
+        XCTAssertTrue(regions.annotated.contains("<h1 data-ik-text=\"0\" class=\"big\">"))
+        XCTAssertTrue(regions.annotated.contains("<img data-ik-img=\"1\" alt=\"B\""))
+        XCTAssertEqual(regions.annotated.replacingOccurrences(of: #" data-ik-(text|img)="\d+""#, with: "", options: .regularExpression),
+                       Self.editable, "the marks are the only difference")
+    }
+
+    func testTextEditsChangeOnlyThatText() throws {
+        let page = Self.editable
+        let edited = try XCTUnwrap(PageEditing.replacingText(1, with: "New words < old", expecting: "Plain words here.", in: page))
+        XCTAssertEqual(edited, page.replacingOccurrences(of: "Plain words here.", with: "New words &lt; old"), "spacing around it kept")
+        XCTAssertEqual(PageEditing.replacingText(0, with: "Hello & welcome", expecting: "Hello & welcome", in: page), page)
+        XCTAssertNil(PageEditing.replacingText(0, with: "x", expecting: "Something else", in: page), "the source changed meanwhile")
+        XCTAssertNil(PageEditing.replacingText(9, with: "x", expecting: "x", in: page))
+        let pictured = try XCTUnwrap(PageEditing.replacingImage(1, with: "media/new one.png", in: page))
+        XCTAssertEqual(pictured, page.replacingOccurrences(of: "src='media/b.png'", with: "src='media/new one.png'"))
+    }
+
+    // MARK: W4: parts every page shares
+
+    func testSharedPartsAreFoundAndChangedOnlyWhereIdentical() {
+        let page = """
+        <body><header><a href="./">Site</a><nav><a href="a.html">A</a></nav></header>
+        <nav class="side"><a href="b.html">B</a></nav>
+        <main><footer>not this one</footer></main>
+        <footer>© Us</footer></body>
+        """
+        let blocks = SharedParts.blocks(in: page)
+        XCTAssertEqual(blocks[.header], #"<header><a href="./">Site</a><nav><a href="a.html">A</a></nav></header>"#)
+        XCTAssertEqual(blocks[.nav], #"<nav class="side"><a href="b.html">B</a></nav>"#, "the first menu outside the header")
+        XCTAssertEqual(blocks[.footer], "<footer>© Us</footer>", "the last footer")
+
+        let changed = page.replacingOccurrences(of: "© Us", with: "© Us, 2026")
+        let changes = SharedParts.changes(from: page, to: changed)
+        XCTAssertEqual(changes.map(\.part), [.footer])
+        let other = "<html><body><p>Other</p><footer>© Us</footer></body></html>"
+        XCTAssertEqual(SharedParts.applying(changes[0].old, changes[0].new, to: other),
+                       "<html><body><p>Other</p><footer>© Us, 2026</footer></body></html>")
+        XCTAssertNil(SharedParts.applying(changes[0].old, changes[0].new, to: "<footer>© Them</footer>"), "different copies stay")
+        XCTAssertNil(SharedParts.applying("<p>x</p>", "<p>y</p>", to: "<p>x</p><p>x</p>"), "two copies would be a guess")
     }
 }

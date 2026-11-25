@@ -492,6 +492,28 @@
         }
       }
     },
+    "%lld other pages have the same %@." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld other page has the same %2$@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld other pages have the same %2$@."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld pages" : {
       "localizations" : {
         "en" : {
@@ -1176,6 +1198,9 @@
     "Change Share Image…" : {
 
     },
+    "Change Them Too" : {
+
+    },
     "Change Theme…" : {
 
     },
@@ -1312,6 +1337,9 @@
     "Choose a picture of you or your work. A square picture works best." : {
 
     },
+    "Choose a picture to show here instead." : {
+
+    },
     "Choose a post, or press ⌘N to write a new one." : {
 
     },
@@ -1361,6 +1389,9 @@
 
     },
     "Clear Formatting" : {
+
+    },
+    "Click text in the preview to change it, or a picture to replace it" : {
 
     },
     "Close" : {
@@ -1666,6 +1697,9 @@
     "Edit its caption, alt text, place and date." : {
 
     },
+    "Edit on Page" : {
+
+    },
     "Edit table" : {
 
     },
@@ -1673,6 +1707,9 @@
 
     },
     "Edit the table the cursor is in as a grid, or insert a new one" : {
+
+    },
+    "Edit this in the source beside the preview: it has other tags inside, or a script makes it." : {
 
     },
     "Edit this table in a grid" : {
@@ -2942,6 +2979,9 @@
     "Rename, merge or remove a tag across every post." : {
 
     },
+    "Replace" : {
+
+    },
     "Replace…" : {
 
     },
@@ -3272,6 +3312,9 @@
 
     },
     "That is not a YouTube or Vimeo address Inkwell can embed." : {
+
+    },
+    "That text changed in the source while you were editing it, so your edit was not kept." : {
 
     },
     "The %@ theme could not be downloaded, so the preview is unstyled: %@" : {

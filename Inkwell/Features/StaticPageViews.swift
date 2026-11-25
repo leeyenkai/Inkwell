@@ -17,6 +17,12 @@ struct StaticPageEditor: View {
                 Spacer()
                 if readOnly {
                     Label("Read only", systemImage: "lock").font(.callout).foregroundStyle(.secondary)
+                } else {
+                    Toggle(isOn: $model.editOnPage) {
+                        Label("Edit on Page", systemImage: "cursorarrow.and.square.on.square.dashed")
+                    }
+                    .toggleStyle(.button)
+                    .help("Click text in the preview to change it, or a picture to replace it")
                 }
             }
             .padding(.horizontal, 14)
@@ -24,6 +30,9 @@ struct StaticPageEditor: View {
             StaticPageProperties(model: model, editor: editor, readOnly: readOnly)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)
+            if !readOnly {
+                SharedPartsBanner(model: model, editor: editor)
+            }
             Divider()
             HSplitView {
                 CodeEditor(text: Binding(get: { editor.fullText }, set: { editor.setFullText($0) }), fileExtension: "html",
@@ -144,5 +153,67 @@ struct NewHTMLPageSheet: View {
         .padding(24)
         .frame(width: 460)
         .onAppear { sourceID = (pages.first { $0.relativePath == "index.html" } ?? pages.first)?.id }
+    }
+}
+
+/// When this page's header, menu or footer is changed and other pages have an identical copy of the old one, offers to
+/// change those copies too (SPEC §4.12, W4).
+struct SharedPartsBanner: View {
+    var model: AppModel
+    @Bindable var editor: EditorDocument
+    /// The page as it was opened, and the other pages' text then.
+    @State private var opened = ""
+    @State private var others: [(SiteDocument, String)] = []
+    @State private var dismissed: Set<String> = []
+
+    struct Offer: Identifiable {
+        var part: SharedParts.Part
+        var old: String
+        var new: String
+        var pages: [SiteDocument]
+        var id: String { part.rawValue + String(old.hashValue) + String(new.hashValue) }
+    }
+
+    var offers: [Offer] {
+        SharedParts.changes(from: opened, to: editor.fullText).compactMap { change in
+            let pages = others.filter { SharedParts.applying(change.old, change.new, to: $0.1) != nil }.map(\.0)
+            let offer = Offer(part: change.part, old: change.old, new: change.new, pages: pages)
+            return pages.isEmpty || dismissed.contains(offer.id) ? nil : offer
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ForEach(offers) { offer in
+                HStack(spacing: 10) {
+                    Image(systemName: "square.on.square").foregroundStyle(Color.accentColor)
+                    Text("\(offer.pages.count) other pages have the same \(offer.part.title).")
+                        .help(offer.pages.map(\.relativePath).joined(separator: ", "))
+                    Spacer()
+                    Button("Not Now") { dismissed.insert(offer.id) }
+                    Button("Change Them Too") {
+                        editor.saveNow()
+                        model.applySharedPart(old: offer.old, new: offer.new, to: offer.pages)
+                        load()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .font(.callout)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Color.accentColor.opacity(0.08))
+            }
+        }
+        .onAppear(perform: load)
+        .onChange(of: editor.document.id) { load() }
+    }
+
+    func load() {
+        opened = editor.fullText
+        dismissed = []
+        let mine = editor.document.relativePath
+        others = (model.site?.documents ?? []).filter { $0.isStatic && $0.relativePath != mine }.compactMap { doc in
+            (try? String(contentsOf: doc.fileURL, encoding: .utf8)).map { (doc, $0) }
+        }
     }
 }
