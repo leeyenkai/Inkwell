@@ -117,14 +117,18 @@ public final class SiteResources: @unchecked Sendable {
             return Response(status: 200, data: Data(page.html.utf8), mimeType: "text/html")
         }
         let relative = String(path.drop { $0 == "/" })
-        if !relative.hasPrefix("_"), !relative.split(separator: "/").contains(where: { $0.hasPrefix(".") }) {
-            if let file = locate(relative) { return serve(file, relative: relative) }
-            if relative.hasSuffix(".css"), let css = compiledCSS(for: String(relative.dropLast(4))) {
+        let asIs = builder.site.kind.servesFilesAsIs
+        if asIs || !relative.hasPrefix("_"), !relative.split(separator: "/").contains(where: { $0.hasPrefix(".") }) {
+            if let file = locate(relative) ?? locateIndex(relative) { return serve(file, relative: relative) }
+            if !asIs, relative.hasSuffix(".css"), let css = compiledCSS(for: String(relative.dropLast(4))) {
                 return Response(status: 200, data: css, mimeType: "text/css")
             }
         }
         if let notFound = builder.page(at: "/404.html") {
             return Response(status: 404, data: Data(notFound.html.utf8), mimeType: "text/html")
+        }
+        if let file = locate("404.html") {
+            return Response(status: 404, data: serve(file, relative: "404.html").data, mimeType: "text/html")
         }
         return Response(status: 404, data: Data("Not found: \(path)".utf8), mimeType: "text/plain")
     }
@@ -142,12 +146,19 @@ public final class SiteResources: @unchecked Sendable {
         return nil
     }
 
+    /// A folder address as GitHub Pages answers it: `index.html` inside it, or `name.html` beside it.
+    func locateIndex(_ relative: String) -> URL? {
+        let folder = relative.hasSuffix("/") ? String(relative.dropLast()) : relative
+        if folder.isEmpty { return locate("index.html") }
+        return locate(folder + "/index.html") ?? (relative.hasSuffix("/") ? nil : locate(folder + ".html"))
+    }
+
     func serve(_ file: URL, relative: String) -> Response {
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         guard let data = try? Data(contentsOf: file) else { return Response(status: 404, data: Data(), mimeType: "text/plain") }
         // Text files with front matter (feeds, CSS with Liquid) are run through Liquid, as Jekyll does.
-        if data.starts(with: Data("---".utf8)), let text = String(data: data, encoding: .utf8), FrontMatterDocument(text: text).hasFrontMatter,
-           ["xml", "css", "txt", "json", "js", "html", "htm"].contains(file.pathExtension.lowercased()) {
+        if !builder.site.kind.servesFilesAsIs, data.starts(with: Data("---".utf8)), let text = String(data: data, encoding: .utf8),
+           FrontMatterDocument(text: text).hasFrontMatter, ["xml", "css", "txt", "json", "js", "html", "htm"].contains(file.pathExtension.lowercased()) {
             let rendered = builder.render(text: text, relativePath: relative, url: "/" + relative)
             return Response(status: 200, data: Data(rendered.html.utf8), mimeType: mime)
         }

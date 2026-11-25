@@ -270,8 +270,15 @@ struct SiteSummarySheet: View {
                 Text("\(site.name) is ready").font(.title.weight(.semibold))
                 Text(summary(site, sections: sections, posts: posts)).fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 12) {
-                    step("square.and.pencil", "Write a post", "Press ⌘N. It stays a draft on this Mac until you publish.")
-                    step("paintpalette", "Make it yours", "Theme & Style changes colours, fonts and layout, with a preview.")
+                    if site.kind == .blog {
+                        step("square.and.pencil", "Write a post", "Press ⌘N. It stays a draft on this Mac until you publish.")
+                        step("paintpalette", "Make it yours", "Theme & Style changes colours, fonts and layout, with a preview.")
+                    } else if site.kind == .generated {
+                        step("lock", "Read only", "Its pages come from another program. Change them in that program’s source.")
+                    } else {
+                        step("doc.richtext", "Edit a page", "Pages lists every page. Each opens beside a live preview.")
+                        step("paintpalette", "Adjust its style", "Style shows the colours and sizes your stylesheet defines.")
+                    }
                     step("stethoscope", "Check its health", model.healthProblems == 0
                         ? "Health watches for broken links, missing pictures and more."
                         : "Health found \(model.healthProblems) things worth a look.")
@@ -282,13 +289,22 @@ struct SiteSummarySheet: View {
                         dismiss()
                     }
                     Spacer()
-                    Button("Look Around") { dismiss() }.keyboardShortcut(.cancelAction)
-                    Button("Write a Post") {
-                        dismiss()
-                        model.newPost()
+                    if site.kind == .blog {
+                        Button("Look Around") { dismiss() }.keyboardShortcut(.cancelAction)
+                        Button("Write a Post") {
+                            dismiss()
+                            model.newPost()
+                        }
+                        .keyboardShortcut(.defaultAction)
+                        .buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Look Around") {
+                            if site.section("pages") != nil { model.sidebarSelection = .section("pages") }
+                            dismiss()
+                        }
+                        .keyboardShortcut(.defaultAction)
+                        .buttonStyle(.borderedProminent)
                     }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
                 }
             }
             .padding(28)
@@ -301,6 +317,17 @@ struct SiteSummarySheet: View {
     }
 
     func summary(_ site: Site, sections: [SiteSection], posts: Int) -> String {
+        let pages = site.documents.filter(\.isPage).count
+        switch site.kind {
+        case .handBuilt:
+            return String(localized: "Inkwell found a hand-built website: \(pages) HTML pages that GitHub Pages serves as they are.")
+        case .generated:
+            return String(localized: "Inkwell found a site built by another program, so it opens read only. Edit its source instead.")
+        case .website:
+            return String(localized: "Inkwell found a Jekyll website with \(pages) pages and no posts. Start a blog from the sidebar if you want one.")
+        case .blog:
+            break
+        }
         let names = sections.map(\.label)
         let list = names.formatted(.list(type: .and))
         let found = names.isEmpty

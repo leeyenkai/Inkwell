@@ -171,6 +171,8 @@ struct SiteWindow: View {
 struct SidebarView: View {
     @Bindable var model: AppModel
 
+    var kind: SiteKind { model.site?.kind ?? .blog }
+
     var body: some View {
         List(selection: $model.sidebarSelection) {
             Section("Site") {
@@ -190,19 +192,32 @@ struct SidebarView: View {
                     }
                     .tag(SidebarSelection.section(section.id))
                 }
-            }
-            Section("Writing") {
-                Label {
-                    HStack {
-                        Text("Drafts")
-                        Spacer()
-                        Text(model.documents(for: .drafts).count, format: .number).foregroundStyle(.secondary).monospacedDigit()
+                if kind == .website {
+                    Button {
+                        model.newPost()
+                    } label: {
+                        Label("Start a Blog…", systemImage: "plus.circle")
                     }
-                } icon: {
-                    Image(systemName: "circle.lefthalf.filled")
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("Write a first post; publishing it adds a _posts folder")
                 }
-                .tag(SidebarSelection.drafts)
-                Label("Tags", systemImage: "tag").tag(SidebarSelection.tags)
+            }
+            Section(kind == .blog ? "Writing" : "Site Files") {
+                // Websites have no drafts or tags until they have posts.
+                if kind == .blog || !model.drafts.isEmpty {
+                    Label {
+                        HStack {
+                            Text("Drafts")
+                            Spacer()
+                            Text(model.documents(for: .drafts).count, format: .number).foregroundStyle(.secondary).monospacedDigit()
+                        }
+                    } icon: {
+                        Image(systemName: "circle.lefthalf.filled")
+                    }
+                    .tag(SidebarSelection.drafts)
+                }
+                if kind == .blog { Label("Tags", systemImage: "tag").tag(SidebarSelection.tags) }
                 Label("Media", systemImage: "photo.stack").tag(SidebarSelection.media)
                 Label {
                     HStack {
@@ -218,14 +233,23 @@ struct SidebarView: View {
                 }
                 .tag(SidebarSelection.health)
             }
-            Section("Design") {
-                Label("Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
-                Label("Navigation", systemImage: "menubar.rectangle").tag(SidebarSelection.navigation)
-                Label("Settings", systemImage: "gearshape").tag(SidebarSelection.settings)
-                Label("Code", systemImage: "chevron.left.forwardslash.chevron.right").tag(SidebarSelection.code)
+            // A generated site is changed through its own source, so it has no design tools here.
+            if kind != .generated {
+                Section("Design") {
+                    Label(kind.servesFilesAsIs ? "Style" : "Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
+                    // The menu and settings are Jekyll files (_data/navigation.yml, _config.yml).
+                    if !kind.servesFilesAsIs {
+                        Label("Navigation", systemImage: "menubar.rectangle").tag(SidebarSelection.navigation)
+                        Label("Settings", systemImage: "gearshape").tag(SidebarSelection.settings)
+                    }
+                    Label("Code", systemImage: "chevron.left.forwardslash.chevron.right").tag(SidebarSelection.code)
+                }
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .top) {
+            if kind == .generated { GeneratedSiteNotice() }
+        }
         .safeAreaInset(edge: .bottom) {
             SyncFooter(model: model)
         }
@@ -391,8 +415,13 @@ struct DocumentMenu: View {
     var doc: SiteDocument
 
     var body: some View {
-        Button("Rename or Move…") { model.moveRequest = doc }
-        Button("Duplicate") { model.duplicate(doc) }
+        let kind = model.site?.kind ?? .blog
+        // Renaming adds redirects and duplicating rewrites the title, both in front matter, which a page served as it
+        // is must not get.
+        if !doc.isStatic, !kind.servesFilesAsIs {
+            Button("Rename or Move…") { model.moveRequest = doc }
+            Button("Duplicate") { model.duplicate(doc) }
+        }
         if doc.origin == .repository, model.status(of: doc) != .notPublished {
             Button("Version History…") { model.historyRequest = doc }
         }
@@ -406,11 +435,13 @@ struct DocumentMenu: View {
             if model.changes[doc.relativePath] != nil {
                 Button("Discard Unpublished Changes…") { model.discardChanges(doc) }
             }
-            Divider()
-            if doc.relativePath.hasPrefix("_"), model.status(of: doc) != .notPublished {
-                Button("Unpublish to Drafts…") { model.unpublish(doc) }
+            if kind != .generated {
+                Divider()
+                if doc.relativePath.hasPrefix("_"), model.status(of: doc) != .notPublished {
+                    Button("Unpublish to Drafts…") { model.unpublish(doc) }
+                }
+                Button("Delete from Site…", role: .destructive) { model.deleteFromSite(doc) }
             }
-            Button("Delete from Site…", role: .destructive) { model.deleteFromSite(doc) }
         }
         Divider()
         Button("Show in Finder") { model.revealInFinder(doc) }
@@ -467,7 +498,9 @@ struct DetailView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        if let editor = model.editor {
+        if let editor = model.editor, editor.document.isStatic || model.site?.kind.servesFilesAsIs == true {
+            StaticPageEditor(model: model, editor: editor)
+        } else if let editor = model.editor {
             // The editor keeps its place whether or not the preview is beside it, so its text view (cursor, scroll,
             // undo) survives the toggle.
             HSplitView {
@@ -480,7 +513,9 @@ struct DetailView: View {
             }
         } else if model.sidebarSelection == .section("pages") {
             ContentUnavailableView("No Page Selected", systemImage: "doc.richtext",
-                                   description: Text("Choose a page, or press ⇧⌘N to make a new one."))
+                                   description: Text(model.site?.kind.servesFilesAsIs == true
+                                       ? "Choose a page to edit its HTML."
+                                       : "Choose a page, or press ⇧⌘N to make a new one."))
         } else {
             ContentUnavailableView("No Post Selected", systemImage: "square.and.pencil",
                                    description: Text("Choose a post, or press ⌘N to write a new one."))

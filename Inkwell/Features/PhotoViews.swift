@@ -801,7 +801,10 @@ struct MediaGrid: View {
                 Toggle("Unused only", isOn: $unusedOnly).toggleStyle(.checkbox)
                 Spacer()
                 let unused = items.filter(\.usedBy.isEmpty)
-                Button("Delete \(unused.count) Unused…") { deleteUnused(unused) }.disabled(unused.isEmpty)
+                // On a hand-built site, scripts can name pictures in ways Inkwell cannot follow, so "unused" is a guess.
+                if model.site?.kind.servesFilesAsIs != true {
+                    Button("Delete \(unused.count) Unused…") { deleteUnused(unused) }.disabled(unused.isEmpty)
+                }
             }
             .padding(10)
             .background(.bar)

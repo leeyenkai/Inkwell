@@ -110,9 +110,27 @@ public struct SiteDocument: Identifiable, Sendable, Hashable {
     public var url: String
     public var modified: Date
     public var excerpt: String
+    /// A file without front matter, which GitHub Pages serves as it is: no layout, no Liquid, no Markdown.
+    public var isStatic = false
 
     public var filename: String { (relativePath as NSString).lastPathComponent }
     public var isPage: Bool { !relativePath.hasPrefix("_") }
+}
+
+/// What sort of site a repository holds, which decides what Inkwell shows and what it may write (SPEC §4.12).
+public enum SiteKind: String, Sendable, CaseIterable {
+    /// Posts in `_posts` or other collections.
+    case blog
+    /// A Jekyll site of pages, without posts.
+    case website
+    /// HTML written by hand and served as it is: `.nojekyll`, or pages without front matter and no Jekyll setup.
+    case handBuilt
+    /// The output of another site generator, with its source elsewhere. Inkwell does not edit it.
+    case generated
+
+    /// Jekyll does not process the files, so front matter and Liquid would reach readers as text.
+    public var servesFilesAsIs: Bool { self == .handBuilt || self == .generated }
+    public var isWebsite: Bool { self != .blog }
 }
 
 public struct Site: Sendable {
@@ -122,9 +140,12 @@ public struct Site: Sendable {
     public var sections: [SiteSection]
     public var documents: [SiteDocument]
     public var generator: String
+    public var kind: SiteKind = .blog
 
     public var name: String {
         if let host = URL(string: config.url)?.host { return host }
+        // A site in a repository's docs/ folder is known by the repository's name.
+        if root.lastPathComponent == "docs" { return root.deletingLastPathComponent().lastPathComponent }
         return root.lastPathComponent
     }
 
@@ -154,6 +175,7 @@ public enum SiteLoader {
             throw SiteError.notASite(root)
         }
         let config = SiteConfig(yaml: YAML.parse(configText))
+        let noJekyll = fm.fileExists(atPath: root.appending(path: ".nojekyll").path)
         var navigation: [NavItem] = []
         if let text = try? String(contentsOf: root.appending(path: "_data/navigation.yml"), encoding: .utf8) {
             for item in YAML.parse(text).list ?? [] {
@@ -195,10 +217,7 @@ public enum SiteLoader {
         for collection in config.collections {
             addCollection(collection.name, label: collection.name.capitalized)
         }
-        // Every Jekyll site has posts; without a folder or another collection, offer a Posts section to start one.
-        if !sections.contains(where: { $0.collectionName != nil }) {
-            addCollection("posts", label: localized("Posts"))
-        }
+        let hasCollections = sections.contains { $0.collectionName != nil }
         let claimed = Set(documents.map(\.relativePath))
         let excluded = Set(config.exclude)
         var pages: [SiteDocument] = []
@@ -221,15 +240,68 @@ public enum SiteLoader {
         for (file, relativePath) in pageFiles.sorted(by: { $0.1 < $1.1 }) where ["md", "markdown", "html"].contains(file.pathExtension.lowercased()) {
             let name = relativePath
             guard !claimed.contains(name), !excluded.contains(name), !name.hasPrefix("_"), !name.hasPrefix("."),
-                  let text = try? String(contentsOf: file, encoding: .utf8), FrontMatterDocument(text: text).hasFrontMatter,
-                  let doc = document(at: file, relativePath: name, sectionID: "pages", config: config) else { continue }
-            pages.append(doc)
+                  let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            if FrontMatterDocument(text: text).hasFrontMatter, !noJekyll {
+                if let doc = document(at: file, relativePath: name, sectionID: "pages", config: config) { pages.append(doc) }
+            } else if ["html", "htm"].contains(file.pathExtension.lowercased()) {
+                // HTML without front matter, or any HTML on a site Jekyll does not build: served as it is.
+                pages.append(staticPage(at: file, relativePath: name, text: text, config: config))
+            }
+        }
+        let kind = siteKind(root: root, noJekyll: noJekyll, hasConfig: fm.fileExists(atPath: configURL.path), hasCollections: hasCollections,
+                            documents: documents + pages)
+        // Every Jekyll blog has posts; without a folder or another collection, offer a Posts section to start one.
+        if !hasCollections, kind == .blog {
+            addCollection("posts", label: localized("Posts"))
         }
         if !pages.isEmpty {
             sections.append(SiteSection(id: "pages", label: localized("Pages"), kind: .pages, symbol: "doc.richtext"))
             documents += pages
         }
-        return Site(root: root, config: config, navigation: navigation, sections: sections, documents: documents, generator: "Jekyll")
+        var site = Site(root: root, config: config, navigation: navigation, sections: sections, documents: documents, generator: "Jekyll")
+        site.kind = kind
+        return site
+    }
+
+    /// The kind of site (SPEC §4.12): files Jekyll leaves alone, Jekyll pages without posts, or a blog.
+    static func siteKind(root: URL, noJekyll: Bool, hasConfig: Bool, hasCollections: Bool, documents: [SiteDocument]) -> SiteKind {
+        if noJekyll { return looksGenerated(root) ? .generated : .handBuilt }
+        if hasCollections { return .blog }
+        let staticPages = documents.filter(\.isStatic).count
+        if !hasConfig, staticPages > 0, staticPages == documents.count { return .handBuilt }
+        // A Jekyll site with no posts and no pages yet is a new blog.
+        return documents.isEmpty ? .blog : .website
+    }
+
+    /// Signs that the HTML was written by a program: a `generator` tag, or scripts and stylesheets with hashes in their names.
+    static func looksGenerated(_ root: URL) -> Bool {
+        let fm = FileManager.default
+        if ["_next", "_astro", "_app", "static/js"].contains(where: { fm.fileExists(atPath: root.appending(path: $0).path) }) { return true }
+        for page in ["index.html", "404.html"] {
+            guard let text = try? String(contentsOf: root.appending(path: page), encoding: .utf8) else { continue }
+            if text.range(of: #"<meta[^>]+name=["']generator["']"#, options: [.regularExpression, .caseInsensitive]) != nil { return true }
+            let hashed = #"(?:src|href)=["'][^"']*[.-](?=[A-Za-z0-9_]*\d)(?=[A-Za-z0-9_]*[A-Za-z])[A-Za-z0-9_]{8,}\.(?:js|css)["']"#
+            if text.range(of: hashed, options: .regularExpression) != nil { return true }
+        }
+        return false
+    }
+
+    /// A page served as it is. Its title and summary come from `<title>` and `<meta name="description">`.
+    static func staticPage(at file: URL, relativePath: String, text: String, config: SiteConfig) -> SiteDocument {
+        let modified = (try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        let head = HTMLHead(text)
+        let name = ((relativePath as NSString).lastPathComponent as NSString).deletingPathExtension
+        var title = head.title.map(HTMLHead.shortTitle) ?? ""
+        if title.isEmpty { title = name == "index" ? localized("Home") : name.replacingOccurrences(of: "-", with: " ").capitalized }
+        var url = "/" + relativePath
+        if url.hasSuffix("/index.html") { url = String(url.dropLast(10)) }
+        var doc = SiteDocument(
+            id: "repo:\(relativePath)", sectionID: "pages", origin: .repository, fileURL: file, relativePath: relativePath, title: title,
+            date: nil, publishedFlag: true, url: config.baseurl + url, modified: modified,
+            excerpt: head.description ?? Excerpt.make(HTMLHead.visibleText(text), title: title)
+        )
+        doc.isStatic = true
+        return doc
     }
 
     /// The Markdown and HTML files of a collection, in its subfolders too, as Jekyll reads them. Names Jekyll
@@ -247,6 +319,17 @@ public enum SiteLoader {
             }
         }
         return result
+    }
+
+    /// The folder GitHub Pages serves in a repository: the root, or `docs/` when the root has no site of its own
+    /// (a code repository with its website in `docs/`, as Pages allows).
+    public static func pagesFolder(in root: URL) -> URL {
+        let fm = FileManager.default
+        func hasSite(_ folder: URL) -> Bool {
+            ["_config.yml", "index.html", "index.md", "index.markdown"].contains { fm.fileExists(atPath: folder.appending(path: $0).path) }
+        }
+        let docs = root.appending(path: "docs", directoryHint: .isDirectory)
+        return !hasSite(root) && hasSite(docs) ? docs : root
     }
 
     /// A `_config.yml`, or a home page GitHub Pages can build on its own.

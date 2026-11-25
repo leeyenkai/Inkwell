@@ -1,0 +1,3 @@
+:root { --bg: #fdf6e3; --ink: #073642; --accent: #cb4b16; }
+body { background: var(--bg); color: var(--ink); font: 18px/1.5 Georgia, serif; margin: 3em; }
+h1 { color: var(--accent); }

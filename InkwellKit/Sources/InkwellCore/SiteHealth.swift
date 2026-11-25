@@ -65,7 +65,9 @@ public enum SiteHealth {
         issues += content(site, texts: texts)
         issues += links(site, texts: texts, files: files)
         issues += media(site, texts: texts, files: files)
-        issues += sharing(site, files: files)
+        issues += staticPages(site, texts: texts, files: files)
+        // Its fixes add Jekyll plugins and tags, which a site served as it is would show as text.
+        if !site.kind.servesFilesAsIs { issues += sharing(site, files: files) }
         issues += repository(site, files: files)
         let order = Dictionary(uniqueKeysWithValues: Category.allCases.enumerated().map { ($1, $0) })
         issues.sort { a, b in
@@ -85,7 +87,7 @@ public enum SiteHealth {
         for doc in site.documents {
             guard let text = texts[doc.relativePath] else { continue }
             let front = FrontMatterDocument(text: text)
-            let found = Validation.frontMatter(front, filename: doc.filename, inCollection: !doc.isPage)
+            let found = doc.isStatic ? [] : Validation.frontMatter(front, filename: doc.filename, inCollection: !doc.isPage)
             if !found.isEmpty {
                 issues.append(Issue(id: "fm:\(doc.relativePath)", category: .content,
                                     severity: found.contains { $0.severity == .error } ? .error : .warning,
@@ -130,7 +132,7 @@ public enum SiteHealth {
     static func links(_ site: Site, texts: [String: String], files: FileIndex) -> [Issue] {
         let known = Set(site.documents.map { normalized(localPath($0.url, site: site)) })
         var issues: [Issue] = []
-        for doc in site.documents {
+        for doc in site.documents where !doc.isStatic {
             guard let text = texts[doc.relativePath] else { continue }
             let body = FrontMatterDocument(text: text).body
             var broken: [String] = []
@@ -206,7 +208,7 @@ public enum SiteHealth {
 
     static func media(_ site: Site, texts: [String: String], files: FileIndex) -> [Issue] {
         var issues: [Issue] = []
-        for doc in site.documents where doc.publishedFlag {
+        for doc in site.documents where doc.publishedFlag && !doc.isStatic {
             guard let text = texts[doc.relativePath] else { continue }
             let missing = ContentChecks.images(in: FrontMatterDocument(text: text).body).filter { $0.alt.trimmingCharacters(in: .whitespaces).isEmpty }
             if !missing.isEmpty {
@@ -410,7 +412,8 @@ public enum SiteHealth {
                                 paths: [], fix: .edits(finder.map { ContentEdit(path: $0, newText: nil) } + [withIgnores([".DS_Store"])].compactMap { $0 },
                                                        summary: localized("Removes \(finder.count) .DS_Store files and ignores them"))))
         }
-        if gitignore == nil {
+        // The suggested lines are for Jekyll's build files, which a site served as it is does not make.
+        if gitignore == nil, !site.kind.servesFilesAsIs {
             issues.append(Issue(id: "gitignore", category: .repository, severity: .info, title: localized("No .gitignore"),
                                 detail: localized("Without one, build output and system files can end up in the repository."),
                                 paths: [], fix: withIgnores(gitignoreLines).map { .edits([$0], summary: localized("Adds a .gitignore for Jekyll sites")) }))

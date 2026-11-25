@@ -61,6 +61,10 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
 - Live GitHub check (read-only): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_REPO=owner/name swift test --filter LiveGitHubTests`.
   Live publishing (writes!): `INKWELL_LIVE_TOKEN=$(gh auth token) INKWELL_LIVE_WRITE_REPO=leeyenkai/inkwell-publish-test swift test --filter LivePublishTests`.
   That private repository is a throwaway the user agreed to; never point the write test at a real site.
+- Websites (SPEC §4.12): `scripts/make-plain-site.sh` makes a code repository with a hand-built site in `docs/` and a local
+  bare remote. `--site <plain-site> --selftest-website` edits and publishes a page and checks the commit (page and new
+  picture only, no front matter; refuses GitHub remotes).
+- Preview pictures: window captures leave web views blank, so `--snapshot-preview <file.png>` saves what the preview shows.
 - Design self-test: `--site <sample-site> --selftest-design` (applies a theme, edits colours, options and the menu, checks files,
   preview and the change list; refuses GitHub remotes).
 - Typing cost: `--site <sample-site> --measure-typing` prints milliseconds per keystroke at 15k, 60k and 150k characters.
@@ -94,6 +98,8 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
 - **Drafts stay out of the repo** until publish (`DraftStore`, Application Support). Images are written into the site when added; they are committed only with the post that uses them.
 - **Image import strips location and camera metadata** and never keeps the original file in the site.
 - Text views: formatting commands go through `Formatting` (pure, tested) and `InkwellTextView.apply`, so each is one undo step.
+- Sites GitHub serves as they are (`SiteKind.servesFilesAsIs`: `.nojekyll`, or hand-written HTML) never get front matter or
+  Liquid written into them, and pages without front matter (`SiteDocument.isStatic`) are edited as HTML source, byte for byte.
 - Page elements are plain Markdown/HTML that GitHub Pages builds without Inkwell (`PageElements`, `ElementKit`). New element
   styles go in `ElementKit/assets/css/inkwell-blocks.css` using theme tokens with fallbacks, so they work on any theme.
 - User-facing copy: plain and short, no exclamation marks, no emoji.

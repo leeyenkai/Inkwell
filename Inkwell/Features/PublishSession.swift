@@ -153,6 +153,9 @@ final class PublishSession: Identifiable {
     // MARK: Checklist
 
     private func buildChecklist(document: SiteDocument, text: String, site: Site, changes: [String: ChangeKind]) {
+        if document.isStatic || site.kind.servesFilesAsIs {
+            return buildStaticChecklist(document: document, text: text, site: site, changes: changes)
+        }
         let doc = FrontMatterDocument(text: text)
         var items: [CheckItem] = []
         let issues = Validation.frontMatter(doc, filename: document.filename, inCollection: !document.isPage)
@@ -279,6 +282,59 @@ final class PublishSession: Identifiable {
         }
         checks = items
         paths = [document.relativePath] + imagePaths + kitPaths + (holdsFuturePosts ? [Self.configPath] : [])
+    }
+
+    /// A page served as it is: its links and pictures are checked relative to its folder, and new or changed pictures
+    /// and other new files it uses go with it. Changes to shared files (a stylesheet used by every page) do not.
+    private func buildStaticChecklist(document: SiteDocument, text: String, site: Site, changes: [String: ChangeKind]) {
+        var items: [CheckItem] = []
+        let fm = FileManager.default
+        if (HTMLHead(text).title ?? "").isEmpty {
+            items.append(CheckItem(level: .warning, text: String(localized: "The page has no title, so browsers show its address.")))
+        }
+        let mediaExtensions: Set = ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif", "mp4", "webm", "mov", "mp3", "m4a", "pdf"]
+        var files: [String] = [], missing: [String] = [], broken: [String] = [], shared: [String] = []
+        for reference in SiteHealth.htmlReferences(in: text) {
+            guard let path = SiteHealth.resolve(reference.target, from: document.relativePath, baseurl: site.config.baseurl) else { continue }
+            let trimmed = path.hasSuffix("/") ? String(path.dropLast()) : path
+            var isFolder: ObjCBool = false
+            let found = trimmed.isEmpty || fm.fileExists(atPath: site.root.appending(path: trimmed).path, isDirectory: &isFolder)
+                || fm.fileExists(atPath: site.root.appending(path: trimmed + ".html").path)
+            guard found else {
+                if case .image = reference { missing.append(reference.target) } else { broken.append(reference.target) }
+                continue
+            }
+            guard !trimmed.isEmpty, !isFolder.boolValue, trimmed != document.relativePath, let change = changes[trimmed],
+                  change == .added || change == .modified, !files.contains(trimmed), !shared.contains(trimmed) else { continue }
+            let ext = (trimmed as NSString).pathExtension.lowercased()
+            if mediaExtensions.contains(ext) || (change == .added && !["html", "htm"].contains(ext)) {
+                files.append(trimmed)
+            } else if !["html", "htm"].contains(ext) {
+                shared.append(trimmed)
+            }
+        }
+        for target in missing { items.append(CheckItem(level: .error, text: String(localized: "Image not found: \(target)"))) }
+        if broken.isEmpty {
+            items.append(CheckItem(level: .ok, text: String(localized: "No broken links")))
+        } else {
+            for link in broken { items.append(CheckItem(level: .warning, text: String(localized: "Link goes nowhere on the site: \(link)"))) }
+        }
+        let noAlt = SiteHealth.imagesWithoutAlt(in: text).count
+        if noAlt > 0 { items.append(CheckItem(level: .warning, text: String(localized: "\(noAlt) images are missing alt text"))) }
+        if !files.isEmpty {
+            items.append(CheckItem(level: .ok, text: String(localized: "\(files.count) new or changed files go with the page")))
+        }
+        if !shared.isEmpty {
+            let names = shared.joined(separator: ", ")
+            let note = String(localized: "Not included, as other pages use them too: \(names). Publish them from Review Changes.")
+            items.append(CheckItem(level: .info, text: note))
+        }
+        if let repo = backend.repository {
+            let note = String(localized: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site.")
+            items.append(CheckItem(level: .info, text: note))
+        }
+        checks = items
+        paths = [document.relativePath] + files
     }
 
     /// GitHub Pages builds posts dated in the future straight away unless `_config.yml` says `future: false`, so a

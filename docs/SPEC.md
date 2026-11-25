@@ -19,9 +19,9 @@
 - **Release.** Version 0.9.0 as an ad-hoc signed disk image (`scripts/make-dmg.sh`), an update check against GitHub releases, and a privacy note.
 - **Design.** Six bundled themes that differ in layout, shown as real renders and tried on your own posts before a reviewable switch; palette and font presets; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
-**Planned:** websites that are not blogs, including hand-built HTML sites (§4.12).
+- **Websites (§4.12), phase W1.** Inkwell tells blogs, Jekyll websites, hand-built sites and generated output apart. It lists HTML pages that have no front matter and opens them as source beside a live preview. The preview serves files as they are. A site in `docs/` opens from its repository. The sidebar suits a website. Health checks relative links and pictures, alt text and page titles, and publishing a page takes its new pictures along. W2 to W4 are planned.
 
-Verified by 205 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+Verified by 217 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content, design and website self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
@@ -315,7 +315,17 @@ Inkwell decides the kind of site when it opens it, and shows the kind in the sit
 | **Hand-built website** | Has `.nojekyll`, or has HTML pages and no front matter anywhere | Nothing; every file is served as it is | Pages, Media, Health, Design (colours only), Code |
 | **Built by another tool** | `.nojekyll` together with signs of generated output: a `generator` meta tag, hashed asset names such as `app.3f9c1a.js`, or a GitHub Actions workflow that builds the site with another generator | Nothing; the files are another program's output | Read only, with a note to edit the source instead |
 
-Files without front matter on a Jekyll site are listed too. Jekyll copies them unchanged, so they are pages a person edits like any other.
+HTML files without front matter on a Jekyll site are listed too. Jekyll copies them unchanged, so they are pages a person edits like any other. Markdown files without front matter, such as a README, are not listed, because GitHub serves them as plain text.
+
+**How W1 was built.**
+- **Detection.** It uses files only: `.nojekyll`, a `generator` tag, hashed script names, or the `_next`, `_astro` or `static/js` folders. A Pages build from a GitHub Actions workflow is not used yet.
+- **Editing.** HTML pages open in the code editor beside a live preview, which is the first step of W2.
+- **What is turned off on plain HTML sites:**
+  - New Page, because its templates are Markdown.
+  - Rename and Duplicate, because both write front matter.
+  - "Delete Unused" in Media, because scripts can use pictures Inkwell cannot see.
+  - Health's Jekyll suggestions.
+- **Starting a blog.** "Start a Blog…" writes the first post as a draft. Publishing it creates `_posts/`.
 
 #### Rules that keep a hand-built site safe
 
@@ -328,7 +338,7 @@ Files without front matter on a Jekyll site are listed too. Jekyll copies them u
 
 #### Phases
 
-**W1: Recognise and show** (makes the example site usable for reading and small changes)
+**W1: Recognise and show** (done 25 Nov 2026; makes the example site usable for reading and small changes)
 1. **Site kind.** Detect the kind of site (table above) in `SiteLoader`, from the file tree and, in GitHub mode, the Pages build type.
 2. **Local folder mode.** If the root has no site and a `docs/` folder does, use `docs/` and say so. A folder picker covers other layouts.
 3. **Listing pages.** List HTML and Markdown pages that have no front matter. Each page's title comes from its `<title>`, and its description from `<meta name="description">`.
@@ -359,6 +369,11 @@ Files without front matter on a Jekyll site are listed too. Jekyll copies them u
 - **Fixtures.** Two fixture sites in `InkwellKit/Tests`: a hand-built `.nojekyll` site in `docs/`, and a generated site with hashed assets and a `generator` tag.
 - **What the tests cover.** Detection, page listing, the preview's directory index, and byte-preserving edits to text, attributes and `<img>` insertion. They also check that no front matter or Liquid is written to a `.nojekyll` site.
 - **Real sites, read only.** A read-only check runs against a local copy of a real hand-built site, such as the example above. It is never published.
+- **What exists for W1.**
+  - `WebsiteTests` covers detection, listing, the preview and health.
+  - `scripts/make-plain-site.sh` builds the fixture site in `InkwellKit/Tests/Fixtures/plain-site`.
+  - `--selftest-website` edits a page on that site and publishes it.
+  - The example site was checked read only, with preview snapshots.
 
 ---
 

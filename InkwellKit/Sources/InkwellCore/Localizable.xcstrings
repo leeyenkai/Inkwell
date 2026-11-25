@@ -114,6 +114,50 @@
         }
       }
     },
+    "%lld pages have no description" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld page has no description"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pages have no description"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pages have no title" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld page has no title"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pages have no title"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "A photos page that shows the newest photos first." : {
 
     },
@@ -147,6 +191,9 @@
     "Adds jekyll-sitemap to _config.yml" : {
 
     },
+    "Browsers and search results show the address instead." : {
+
+    },
     "Browsers show a blank icon in tabs and bookmarks." : {
 
     },
@@ -176,6 +223,9 @@
 
     },
     "GitHub warns above 50 MB and refuses files over 100 MB." : {
+
+    },
+    "Home" : {
 
     },
     "Images and size" : {
@@ -297,10 +347,16 @@
     "Repository" : {
 
     },
+    "Screen readers say nothing useful for them. Decorative pictures can have an empty alt." : {
+
+    },
     "Search and sharing" : {
 
     },
     "Search engines and link previews read these. The jekyll-seo-tag plugin writes them from each post’s title, description and image." : {
+
+    },
+    "Search results and shared links show a summary from it." : {
 
     },
     "Shows the photos from _photos/ instead of hand-written HTML." : {

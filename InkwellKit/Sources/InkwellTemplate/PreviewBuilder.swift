@@ -3,6 +3,11 @@ import InkwellCore
 import InkwellMarkdown
 
 public struct PreviewPage: Sendable {
+    public init(html: String, unsupportedTags: [String]) {
+        self.html = html
+        self.unsupportedTags = unsupportedTags
+    }
+
     public var html: String
     /// Liquid tags the instant preview does not run; the exact build may show more than the preview.
     public var unsupportedTags: [String]
@@ -32,7 +37,9 @@ public final class PreviewBuilder: @unchecked Sendable {
         let base = site.config.baseurl
         func local(_ u: String) -> String { !base.isEmpty && u.hasPrefix(base) ? String(u.dropFirst(base.count)) : u }
         let wanted = Self.normalize(local(url))
-        guard let doc = site.documents.first(where: { Self.normalize(local($0.url)) == wanted }),
+        // Files without front matter, and every file on a site Jekyll does not build, are served as they are.
+        guard !site.kind.servesFilesAsIs,
+              let doc = site.documents.first(where: { !$0.isStatic && Self.normalize(local($0.url)) == wanted }),
               let text = try? String(contentsOf: doc.fileURL, encoding: .utf8) else { return nil }
         return render(text: text, relativePath: doc.relativePath, url: doc.url)
     }

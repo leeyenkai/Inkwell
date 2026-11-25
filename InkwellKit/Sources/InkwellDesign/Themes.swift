@@ -283,10 +283,8 @@ public struct DesignTokens: Sendable {
             }
             return DesignTokens(entries: entries, lightFile: "assets/css/inkwell.css", darkFile: "assets/css/inkwell-dark.css", theme: theme)
         }
-        let folder = siteRoot.appending(path: "assets/css")
-        let files = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
-            .filter { $0.pathExtension == "css" || $0.pathExtension == "scss" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
-        for file in files {
+        for path in stylesheetCandidates(siteRoot: siteRoot) {
+            let file = siteRoot.appending(path: path)
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let doc = CSSTokenDocument(text: text)
             let tokens = doc.tokens
@@ -299,10 +297,36 @@ public struct DesignTokens: Sendable {
                 return Entry(name: name, label: label(for: name), kind: kind, group: group(for: kind), light: light, dark: doc.value(name, scheme: .dark),
                              lightMode: doc.value(name, scheme: .lightMode))
             }
-            let path = "assets/css/\(file.lastPathComponent)"
             return DesignTokens(entries: entries, lightFile: path, darkFile: path, theme: nil)
         }
         return themeRoot.flatMap { sassTokens(siteRoot: siteRoot, themeRoot: $0) }
+    }
+
+    /// Stylesheets that may hold the site's variables: those in `assets/css`, then those the home page links to (a
+    /// hand-built site keeps its stylesheet anywhere), then any in `css/` or `assets/`.
+    static func stylesheetCandidates(siteRoot: URL) -> [String] {
+        let fm = FileManager.default
+        func list(_ folder: String) -> [String] {
+            let url = folder.isEmpty ? siteRoot : siteRoot.appending(path: folder)
+            return ((try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? [])
+                .filter { $0.pathExtension == "css" || $0.pathExtension == "scss" }
+                .map { folder.isEmpty ? $0.lastPathComponent : "\(folder)/\($0.lastPathComponent)" }.sorted()
+        }
+        var linked: [String] = []
+        if let home = try? String(contentsOf: siteRoot.appending(path: "index.html"), encoding: .utf8),
+           let regex = try? NSRegularExpression(pattern: #"<link\s[^>]*rel=["']?stylesheet["']?[^>]*>"#, options: .caseInsensitive),
+           let href = try? NSRegularExpression(pattern: #"href\s*=\s*["']([^"'{}]+)["']"#, options: .caseInsensitive) {
+            let ns = home as NSString
+            for tag in regex.matches(in: home, range: NSRange(location: 0, length: ns.length)) {
+                guard let m = href.firstMatch(in: home, range: tag.range) else { continue }
+                var path = ns.substring(with: m.range(at: 1)).components(separatedBy: "?")[0]
+                guard !path.contains("://"), !path.hasPrefix("//") else { continue }
+                while path.hasPrefix("./") || path.hasPrefix("/") { path.removeFirst(path.hasPrefix("./") ? 2 : 1) }
+                if !path.isEmpty, fm.fileExists(atPath: siteRoot.appending(path: path).path) { linked.append(path) }
+            }
+        }
+        var seen = Set<String>()
+        return (list("assets/css") + linked + list("css") + list("assets") + list("")).filter { seen.insert($0).inserted }
     }
 
     /// A Sass theme's `!default` variables, with the site's overrides from `assets/main.scss`.

@@ -280,12 +280,13 @@ final class AppModel {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.message = String(localized: "Choose a folder with a Jekyll site that you already publish with git.")
+        panel.message = String(localized: "Choose a folder with a GitHub Pages site that you already publish with git.")
         panel.prompt = String(localized: "Open Site")
         if panel.runModal() == .OK, let url = panel.url { Task { await openFolder(url) } }
     }
 
-    func openFolder(_ url: URL) async {
+    func openFolder(_ chosen: URL) async {
+        let url = SiteLoader.pagesFolder(in: chosen)
         guard let local = LocalGitBackend(siteRoot: url, client: account.client) else {
             loadError = String(localized: """
                 Using a local folder needs git. Install the command line tools (xcode-select --install), or sign in with GitHub instead.
@@ -574,11 +575,21 @@ final class AppModel {
         if case let .section(id)? = sidebarSelection, site.section(id)?.collectionName != nil { sectionID = id }
         let section = site.section(sectionID ?? "") ?? site.sections.first { $0.collectionName == "posts" }
             ?? site.sections.first { $0.collectionName == "notes" } ?? site.sections.first { $0.collectionName != nil }
-        guard let section, let collection = section.collectionName else {
-            errorMessage = String(localized: "This site has no section for posts yet.")
+        let collection: String
+        if let name = section?.collectionName {
+            collection = name
+        } else if site.kind == .website, confirmStartingBlog() {
+            // The first post published creates `_posts/`, and the site becomes a blog.
+            collection = "posts"
+        } else {
+            if site.kind.servesFilesAsIs {
+                errorMessage = String(localized: "Posts need Jekyll, which this site does not use. Edit its pages instead.")
+            } else if site.kind != .website {
+                errorMessage = String(localized: "This site has no section for posts yet.")
+            }
             return
         }
-        let fields = schema(for: section.id)
+        let fields = section.map { schema(for: $0.id) } ?? []
         var lines: [(String, String)] = [("title", YAMLFormat.quoted(""))]
         let today = Date()
         for field in fields where field.isUniversal && field.key != "title" {
@@ -594,7 +605,7 @@ final class AppModel {
             let url = try draftStore.create(collection: collection, title: "", date: today, text: text, siteRoot: site.root,
                                                timeZone: site.config.timeZone)
             reloadDrafts()
-            sidebarSelection = .section(section.id)
+            sidebarSelection = section.map { .section($0.id) } ?? .drafts
             if let doc = drafts.first(where: { $0.fileURL.standardizedFileURL == url.standardizedFileURL }) {
                 select(doc.id)
                 editor?.focusTitle = true
@@ -602,6 +613,19 @@ final class AppModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// A website without posts gets a blog only when the person asks for one.
+    func confirmStartingBlog() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Start a blog on this site?")
+        alert.informativeText = String(localized: """
+            This site has pages but no posts. A new post stays a draft on this Mac. When you publish it, it goes into a _posts folder, \
+            and your site's layouts decide how posts look.
+            """)
+        alert.addButton(withTitle: String(localized: "Write a Post"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     private var schemaCache: [String: [FieldSpec]] = [:]

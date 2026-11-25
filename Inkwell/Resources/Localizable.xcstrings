@@ -394,6 +394,28 @@
         }
       }
     },
+    "%lld new or changed files go with the page" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new or changed file goes with the page"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new or changed files go with the page"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld not pushed · Push" : {
       "localizations" : {
         "en" : {
@@ -993,6 +1015,9 @@
         }
       }
     },
+    "Adjust its style" : {
+
+    },
     "Album %@, %lld photos" : {
       "localizations" : {
         "en" : {
@@ -1107,6 +1132,9 @@
 
     },
     "Bold" : {
+
+    },
+    "Built by another program" : {
 
     },
     "Bulleted List" : {
@@ -1263,7 +1291,10 @@
     "Choose a file" : {
 
     },
-    "Choose a folder with a Jekyll site that you already publish with git." : {
+    "Choose a folder with a GitHub Pages site that you already publish with git." : {
+
+    },
+    "Choose a page to edit its HTML." : {
 
     },
     "Choose a page, or press ⇧⌘N to make a new one." : {
@@ -1621,6 +1652,9 @@
 
     },
     "Edit Table…" : {
+
+    },
+    "Edit a page" : {
 
     },
     "Edit its caption, alt text, place and date." : {
@@ -1984,6 +2018,53 @@
     "Inkwell found a %@ site." : {
 
     },
+    "Inkwell found a Jekyll website with %lld pages and no posts. Start a blog from the sidebar if you want one." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Inkwell found a Jekyll website with %lld page and no posts. Start a blog from the sidebar if you want one."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Inkwell found a Jekyll website with %lld pages and no posts. Start a blog from the sidebar if you want one."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Inkwell found a hand-built website: %lld HTML pages that GitHub Pages serves as they are." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Inkwell found a hand-built website: %lld HTML page that GitHub Pages serves as it is."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Inkwell found a hand-built website: %lld HTML pages that GitHub Pages serves as they are."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Inkwell found a site built by another program, so it opens read only. Edit its source instead." : {
+
+    },
     "Inkwell has no server and no account of its own. It sends nothing to its developer: no analytics, no crash reports." : {
 
     },
@@ -2082,6 +2163,12 @@
 
     },
     "Its address: %@" : {
+
+    },
+    "Its pages come from another program. Change them in that program’s source." : {
+
+    },
+    "Its stylesheet has no colour or size variables (such as --text-color) for Inkwell to show." : {
 
     },
     "JPEG quality" : {
@@ -2441,6 +2528,9 @@
     "Not in an Album" : {
 
     },
+    "Not included, as other pages use them too: %@. Publish them from Review Changes." : {
+
+    },
     "Not published" : {
 
     },
@@ -2576,6 +2666,9 @@
     "Pages and elements" : {
 
     },
+    "Pages lists every page. Each opens beside a live preview." : {
+
+    },
     "Palettes" : {
 
     },
@@ -2634,6 +2727,9 @@
 
     },
     "Posts are plain Markdown. Inkwell styles it as you type and hides the markers away from the line you are on; turn that off with **View › Hide Markdown Syntax**." : {
+
+    },
+    "Posts need Jekyll, which this site does not use. Edit its pages instead." : {
 
     },
     "Preparing preview…" : {
@@ -2747,6 +2843,9 @@
 
     },
     "Quote" : {
+
+    },
+    "Read only" : {
 
     },
     "Readers in dark mode see these colours too." : {
@@ -3036,6 +3135,9 @@
     "Site" : {
 
     },
+    "Site Files" : {
+
+    },
     "Site address" : {
 
     },
@@ -3085,6 +3187,12 @@
     "Source" : {
 
     },
+    "Start a Blog…" : {
+
+    },
+    "Start a blog on this site?" : {
+
+    },
     "Street" : {
 
     },
@@ -3092,6 +3200,9 @@
 
     },
     "Style" : {
+
+    },
+    "Style shows the colours and sizes your stylesheet defines." : {
 
     },
     "Styles and scripts" : {
@@ -3219,6 +3330,9 @@
     "The page each album gets: its title, description and photos." : {
 
     },
+    "The page has no title, so browsers show its address." : {
+
+    },
     "The photos stay in your photo stream" : {
 
     },
@@ -3294,6 +3408,9 @@
     "This Mac" : {
 
     },
+    "This folder holds a site generator's output. Edit the site's source and build it again; changes made here would be lost." : {
+
+    },
     "This post changed outside Inkwell while you were editing it." : {
 
     },
@@ -3304,6 +3421,12 @@
 
     },
     "This site has no section for posts yet." : {
+
+    },
+    "This site has pages but no posts. A new post stays a draft on this Mac. When you publish it, it goes into a _posts folder, and your site's layouts decide how posts look." : {
+
+    },
+    "This site is plain HTML, so it keeps its own design. Inkwell’s themes need Jekyll, which it does not use." : {
 
     },
     "This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here." : {
@@ -3456,6 +3579,9 @@
     "Write a Post" : {
 
     },
+    "Write a first post; publishing it adds a _posts folder" : {
+
+    },
     "Write a post" : {
 
     },
@@ -3478,6 +3604,9 @@
 
     },
     "Your drafts, sites and sign-in stay as they are." : {
+
+    },
+    "Your own design" : {
 
     },
     "Your own theme" : {

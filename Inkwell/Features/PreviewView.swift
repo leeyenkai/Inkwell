@@ -146,10 +146,24 @@ struct SitePreview: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             isLoaded = true
+            Self.snapshotIfAsked(webView)
             if browsing, let url = webView.url, url.scheme == SiteSchemeHandler.scheme {
                 let path = url.path(percentEncoded: false)
                 loadedURL = path
                 onNavigate?(path)
+            }
+        }
+
+        /// `--snapshot-preview <file.png>` saves what the preview shows, since window captures leave web views blank.
+        static func snapshotIfAsked(_ webView: WKWebView) {
+            let args = ProcessInfo.processInfo.arguments
+            guard let index = args.firstIndex(of: "--snapshot-preview"), index + 1 < args.count else { return }
+            let path = args[index + 1]
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                guard let image = try? await webView.takeSnapshot(configuration: nil), let tiff = image.tiffRepresentation,
+                      let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
+                try? png.write(to: URL(filePath: path))
             }
         }
 
@@ -232,6 +246,11 @@ struct PreviewPane: View {
 
     func render() {
         guard let builder = model.previewBuilder else { return }
+        // A page GitHub serves as it is shows as it is, with no layout or Liquid.
+        if editor.document.isStatic || builder.site.kind.servesFilesAsIs {
+            page = PreviewPage(html: editor.fullText, unsupportedTags: [])
+            return
+        }
         page = builder.render(text: editor.fullText, relativePath: editor.document.relativePath, url: editor.currentURL)
     }
 }

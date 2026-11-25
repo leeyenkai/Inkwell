@@ -16,10 +16,18 @@ struct DesignPanel: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
-                    Button("Change Theme…") { model.showThemeGallery = true }
+                    // A theme replaces the site's layouts; a hand-built site has none, and its own design would be lost.
+                    if model.site?.kind.servesFilesAsIs != true {
+                        Button("Change Theme…") { model.showThemeGallery = true }
+                    }
                 }
             } header: {
                 Text("Theme")
+            } footer: {
+                if model.site?.kind.servesFilesAsIs == true {
+                    Text("This site is plain HTML, so it keeps its own design. Inkwell’s themes need Jekyll, which it does not use.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
 
             if design.isInkwellTheme {
@@ -86,11 +94,14 @@ extension DesignPanel {
         if let reference = model.site.flatMap({ ThemeReference.of($0.config) }) {
             return String(localized: "\(reference.repository.capitalized) theme")
         }
-        return String(localized: "Your own theme")
+        return model.site?.kind.servesFilesAsIs == true ? String(localized: "Your own design") : String(localized: "Your own theme")
     }
 
     var themeSummary: String {
         guard let tokens = design.tokens else {
+            if model.site?.kind.servesFilesAsIs == true {
+                return String(localized: "Its stylesheet has no colour or size variables (such as --text-color) for Inkwell to show.")
+            }
             return String(localized: """
                 This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here.
                 """)

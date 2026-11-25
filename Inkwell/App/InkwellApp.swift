@@ -31,7 +31,8 @@ struct InkwellApp: App {
                     .disabled(model.site == nil)
                 Button("New Page…") { model.showNewPage = true }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
-                    .disabled(model.site == nil)
+                    // Page templates are Markdown with front matter, which a site served as it is would show as text.
+                    .disabled(model.site == nil || model.site?.kind.servesFilesAsIs == true)
                 Button("Switch Site…") { model.closeSite() }
                     .keyboardShortcut("o")
                     .disabled(model.site == nil)
@@ -217,7 +218,7 @@ enum Launch {
         // Flags that write to the site act only on a folder named with --site, never on the site reopened from last time.
         let siteGiven = value("--site") != nil
         let writingFlags = ["--apply-theme", "--new-page", "--new-draft", "--measure-typing", "--selftest-publish", "--selftest-content",
-                            "--selftest-design"]
+                            "--selftest-design", "--selftest-website"]
         if !siteGiven, let flag = writingFlags.first(where: args.contains) {
             print("\(flag) needs --site <folder>.")
             if flag.hasPrefix("--selftest") { print("SELFTEST FAIL") }
@@ -236,6 +237,11 @@ enum Launch {
             print(reason)
             print("SELFTEST FAIL")
             exit(1)
+        }
+        if args.contains("--selftest-website") {
+            let ok = await SelfTest.website(model)
+            print(ok ? "SELFTEST PASS" : "SELFTEST FAIL")
+            exit(ok ? 0 : 1)
         }
         if args.contains("--selftest-publish") {
             let ok = await SelfTest.publish(model)

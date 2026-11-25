@@ -152,7 +152,10 @@ final class LocalGitBackend: SiteBackend {
         return true
     }
 
-    var displayName: String { siteRoot.lastPathComponent }
+    /// A site in a repository's docs/ folder goes by the repository's folder name.
+    var displayName: String {
+        siteRoot.lastPathComponent == "docs" ? siteRoot.deletingLastPathComponent().lastPathComponent : siteRoot.lastPathComponent
+    }
     var draftKey: String { DraftStore(base: URL(fileURLWithPath: "/"), siteRoot: siteRoot).root.lastPathComponent }
     var repository: (owner: String, name: String)? { remote.flatMap(Git.gitHubRepository) }
 
