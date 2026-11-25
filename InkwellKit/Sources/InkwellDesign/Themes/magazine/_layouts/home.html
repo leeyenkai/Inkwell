@@ -2,7 +2,9 @@
 layout: default
 ---
 {% assign home_collection = page.list | default: site.inkwell.home_collection | default: 'posts' %}
-{% assign items = site[home_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% comment %} A collection with no posts yet is nil, and Jekyll's sort stops the build on nil. {% endcomment %}
+{% assign items = site[home_collection] %}
+{% if items %}{% assign items = items | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}{% endif %}
 {% assign style = site.inkwell.home_style | default: 'front' %}
 {% assign date_format = site.inkwell.date_format | default: "%B %-d, %Y" %}
 {% assign intro = content | strip %}
@@ -48,7 +50,7 @@ layout: default
   {% endfor %}
 </ul>
 {% endif %}
-{% if items.size == 0 %}<p class="empty">Nothing here yet.</p>{% endif %}
+{% unless items.size > 0 %}<p class="empty">Nothing here yet.</p>{% endunless %}
 {% else %}
 {% include inkwell-post-list.html items=items style=style %}
 {% endif %}

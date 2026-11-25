@@ -62,8 +62,8 @@ final class ElementKitTests: XCTestCase {
             XCTAssertFalse(page.html.contains("markdown=\"1\""), template.rawValue)
             XCTAssertFalse(page.html.contains("{%"), template.rawValue)
         }
-        let slides = builder.render(text: FrontMatterDocument(fields: [("layout", "slides"), ("title", "T")], body: PageTemplate.slides.body()).text,
-                                    relativePath: "s.md", url: "/s/")
+        let deck = FrontMatterDocument(fields: [("layout", "inkwell-slides"), ("title", "T")], body: PageTemplate.slides.body()).text
+        let slides = builder.render(text: deck, relativePath: "s.md", url: "/s/")
         XCTAssertTrue(slides.html.contains("class=\"ik-slides\""))
         XCTAssertEqual(slides.html.components(separatedBy: "<hr").count - 1, 2)
     }
@@ -78,7 +78,7 @@ final class ElementKitTests: XCTestCase {
         try FileManager.default.copyItem(at: fixtureSite(), to: temp)
         let theme = ThemeManifest.named(ProcessInfo.processInfo.environment["INKWELL_RENDER_THEME"] ?? "essayist")!
         try ThemeApplier.plan(theme: theme, siteRoot: temp).apply(to: temp)
-        let template = PageTemplate(rawValue: ProcessInfo.processInfo.environment["INKWELL_RENDER_TEMPLATE"] ?? "") 
+        let template = PageTemplate(rawValue: ProcessInfo.processInfo.environment["INKWELL_RENDER_TEMPLATE"] ?? "")
         var body = PageElement.allCases.filter { $0 != .map }.map { "### \($0.title)\n\n" + $0.template(collection: "notes") }.joined(separator: "\n\n")
         body = body.replacingOccurrences(of: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n</div>",
                                          with: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n"

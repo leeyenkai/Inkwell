@@ -93,6 +93,10 @@ final class AppModel {
     private(set) var unpushed = 0
     private(set) var syncStatus: SyncStatus = .idle
     var pagesURL: URL?
+    /// The repository's default branch and how GitHub Pages builds the site ("legacy" or "workflow"), when known.
+    /// Scheduling needs both: scheduled workflows run only on the default branch, and only legacy builds can be requested.
+    private(set) var defaultBranch: String?
+    private(set) var pagesBuildType: String?
 
     var sidebarSelection: SidebarSelection? = .section("notes")
     var selectedDocumentID: String?
@@ -197,7 +201,11 @@ final class AppModel {
             let copy = WorkingCopy(ref: ref, container: GitHubBackend.container)
             if await copy.isDownloaded, let client = account.client {
                 await attach(GitHubBackend(copy: copy, client: client))
-                if let html = try? await client.pages(owner, name)?.html_url { pagesURL = URL(string: html) }
+                if let pages = try? await client.pages(owner, name) {
+                    pagesURL = pages.html_url.flatMap(URL.init(string:))
+                    pagesBuildType = pages.build_type
+                }
+                defaultBranch = try? await client.repository(owner, name).default_branch
             }
         } else if saved["kind"] == "folder", let path = saved["path"], FileManager.default.fileExists(atPath: path) {
             await openFolder(URL(fileURLWithPath: path))
@@ -232,6 +240,8 @@ final class AppModel {
             }
             if let html = pages?.html_url { pagesURL = URL(string: html) }
             await attach(GitHubBackend(copy: copy, client: client))
+            defaultBranch = repo.default_branch
+            pagesBuildType = pages?.build_type
             showSitePicker = false
             if pages == nil {
                 errorMessage = String(localized: """
@@ -280,6 +290,8 @@ final class AppModel {
             selectedDocumentID = nil
             self.backend = backend
             self.site = site
+            defaultBranch = nil
+            pagesBuildType = nil
             loadError = nil
             if let github = backend as? GitHubBackend {
                 RecentSite.save(github: github.copy.ref)
@@ -320,6 +332,8 @@ final class AppModel {
         site = nil
         backend = nil
         pagesURL = nil
+        defaultBranch = nil
+        pagesBuildType = nil
         changes = [:]
         RecentSite.clear()
         showSitePicker = true
@@ -513,8 +527,11 @@ final class AppModel {
 
     var pendingChanges: Int { changes.count }
 
-    /// False for sites GitHub Pages builds from a folder such as /docs; workflows only run from the repository root.
-    var siteIsAtRepositoryRoot: Bool { (backend as? GitHubBackend)?.copy.ref.sitePath.isEmpty ?? true }
+    /// Why the hourly schedule workflow cannot run for this site, or nil when it can (or the site is a local folder).
+    var scheduleWorkflowBlocker: Schedule.WorkflowBlocker? {
+        guard let ref = (backend as? GitHubBackend)?.copy.ref else { return nil }
+        return Schedule.workflowBlocker(sitePath: ref.sitePath, branch: ref.branch, defaultBranch: defaultBranch, buildType: pagesBuildType)
+    }
 
     func select(_ id: String?) {
         guard id != selectedDocumentID || editor == nil else { return }

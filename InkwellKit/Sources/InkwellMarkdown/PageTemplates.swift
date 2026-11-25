@@ -76,7 +76,7 @@ public enum PageTemplate: String, CaseIterable, Sendable, Identifiable {
     }
 
     /// A layout other than the site's page layout.
-    public var layout: String? { self == .slides ? "slides" : nil }
+    public var layout: String? { self == .slides ? "inkwell-slides" : nil }
 
     public func body(collection: String = "posts", today: Date = Date()) -> String {
         let el = { (kind: PageElement) in kind.template(collection: collection) }

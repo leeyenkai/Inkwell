@@ -1,5 +1,6 @@
 /* Inkwell page elements. Uses the theme tokens (--bg, --surface, --text, --muted, --accent, --border, --radius,
-   --font-body, --font-heading, --font-mono) when the theme has them, and plain fallbacks when it does not. */
+   --font-body, --font-heading, --font-mono, and --accent-contrast for text on the accent colour) when the theme has
+   them. The fallbacks mix the page's own text colour, so they read on light and dark themes alike. */
 
 /* ==== Elements ==== */
 
@@ -14,8 +15,8 @@
 .ik-gallery > p { display: contents; }
 .ik-gallery img, .ik-gallery figure { width: 100%; margin: 0; }
 .ik-gallery img { display: block; aspect-ratio: 1; object-fit: cover; border-radius: calc(var(--radius, 8px) * .6); cursor: zoom-in;
-  background: var(--surface, #f3f3f3); }
-.ik-gallery figcaption { font-size: .85em; color: var(--muted, #6b6b6b); margin-top: .35em; }
+  background: var(--surface, color-mix(in srgb, currentColor 8%, transparent)); }
+.ik-gallery figcaption { font-size: .85em; color: var(--muted, color-mix(in srgb, currentColor 68%, transparent)); margin-top: .35em; }
 .ik-gallery[data-style="masonry"] { display: block; columns: var(--ik-columns, 3) 12rem; column-gap: .6rem; }
 .ik-gallery[data-style="masonry"] img, .ik-gallery[data-style="masonry"] figure { aspect-ratio: auto; margin-bottom: .6rem; break-inside: avoid; }
 @media (max-width: 600px) { .ik-gallery { --ik-columns: 2 !important; } }
@@ -33,8 +34,8 @@
 .ik-slideshow .ik-track::-webkit-scrollbar { display: none; }
 .ik-slideshow:not(.ik-ready) > p { display: contents; }
 .ik-slideshow figure, .ik-slideshow:not(.ik-ready) img { flex: 0 0 100%; margin: 0; scroll-snap-align: center; }
-.ik-slideshow img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--surface, #f3f3f3); }
-.ik-slideshow figcaption { padding: .5em .2em 0; font-size: .9em; color: var(--muted, #6b6b6b); text-align: center; }
+.ik-slideshow img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--surface, color-mix(in srgb, currentColor 8%, transparent)); }
+.ik-slideshow figcaption { padding: .5em .2em 0; font-size: .9em; color: var(--muted, color-mix(in srgb, currentColor 68%, transparent)); text-align: center; }
 .ik-slideshow .ik-prev, .ik-slideshow .ik-next { position: absolute; top: calc(50% - 1.5rem); width: 2.4rem; height: 2.4rem; border-radius: 50%;
   border: 0; background: rgba(0, 0, 0, .45); color: #fff; font-size: 1.3rem; line-height: 1; cursor: pointer; }
 .ik-slideshow .ik-prev { left: .6rem; } .ik-slideshow .ik-next { right: .6rem; }
@@ -53,13 +54,13 @@
 .ik-timeline ul, .ik-timeline ol { list-style: none; padding: 0 0 0 1.4rem; margin: 0; border-left: 2px solid var(--border, #ddd); }
 .ik-timeline li { position: relative; margin: 0 0 1.3em; }
 .ik-timeline li::before { content: ""; position: absolute; left: calc(-1.4rem - 6px); top: .45em; width: 10px; height: 10px; border-radius: 50%;
-  background: var(--accent, #3d6cf0); box-shadow: 0 0 0 3px var(--bg, #fff); }
+  background: var(--accent, #3d6cf0); box-shadow: 0 0 0 3px var(--bg, transparent); }
 .ik-timeline li > strong:first-child, .ik-timeline li > p > strong:first-child { display: block; font-family: var(--font-heading, inherit);
   color: var(--accent, #3d6cf0); font-size: .9em; letter-spacing: .02em; }
 
 /* Callout: a note, tip, warning or important box. */
 .ik-callout { --ik-tone: var(--accent, #3d6cf0); padding: .9em 1.1em; border-left: 4px solid var(--ik-tone); border-radius: var(--radius, 8px);
-  background: color-mix(in srgb, var(--ik-tone) 9%, var(--bg, #fff)); }
+  background: color-mix(in srgb, var(--ik-tone) 9%, transparent); }
 .ik-callout[data-tone="tip"] { --ik-tone: #2f9e6b; }
 .ik-callout[data-tone="warning"] { --ik-tone: #d98a1f; }
 .ik-callout[data-tone="important"] { --ik-tone: #d0453b; }
@@ -76,21 +77,21 @@ details[open] > summary { border-bottom: 1px solid var(--border, #ddd); margin-b
 
 /* Tabs: headings become tabs when the script runs; without it they read as sections. */
 .ik-tabs.ik-ready [role="tablist"] { display: flex; flex-wrap: wrap; gap: .25rem; border-bottom: 1px solid var(--border, #ddd); margin-bottom: 1em; }
-.ik-tabs [role="tab"] { font: inherit; font-weight: 600; padding: .5em .9em; border: 0; background: none; color: var(--muted, #6b6b6b);
+.ik-tabs [role="tab"] { font: inherit; font-weight: 600; padding: .5em .9em; border: 0; background: none; color: var(--muted, color-mix(in srgb, currentColor 68%, transparent));
   border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
 .ik-tabs [role="tab"][aria-selected="true"] { color: var(--text, inherit); border-bottom-color: var(--accent, #3d6cf0); }
 .ik-tabs [role="tabpanel"] > :first-child { margin-top: 0; }
 
 /* Button. */
-.ik-button, a.ik-button { display: inline-block; padding: .6em 1.3em; border-radius: 999px; background: var(--accent, #3d6cf0); color: #fff;
-  font-weight: 600; text-decoration: none; border: 2px solid var(--accent, #3d6cf0); }
+.ik-button, a.ik-button { display: inline-block; padding: .6em 1.3em; border-radius: 999px; background: var(--accent, #3d6cf0);
+  color: var(--accent-contrast, var(--bg, #fff)); font-weight: 600; text-decoration: none; border: 2px solid var(--accent, #3d6cf0); }
 .ik-button:hover { filter: brightness(1.08); text-decoration: none; }
 .ik-button--outline, a.ik-button--outline { background: transparent; color: var(--accent, #3d6cf0); }
 
 /* Cards: pictures with a linked title and a line of text; the whole card is the link. */
 .ik-cards ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
 .ik-cards li { position: relative; margin: 0; padding: 1rem 1rem 1.1rem; border: 1px solid var(--border, #ddd); border-radius: var(--radius, 8px);
-  overflow: hidden; background: var(--surface, transparent); color: var(--muted, #6b6b6b); font-size: .95em; }
+  overflow: hidden; background: var(--surface, transparent); color: var(--muted, color-mix(in srgb, currentColor 68%, transparent)); font-size: .95em; }
 .ik-cards li > p { margin: 0; }
 .ik-cards li img { display: block; width: calc(100% + 2rem); max-width: none; aspect-ratio: 16 / 10; object-fit: cover; margin: -1rem -1rem .9rem; }
 .ik-cards li strong { display: block; margin: 0 0 .3rem; color: var(--text, inherit); font-family: var(--font-heading, inherit); font-size: 1.08em; }
@@ -100,7 +101,7 @@ details[open] > summary { border-bottom: 1px solid var(--border, #ddd); margin-b
 
 /* Banner: a large title over a picture. */
 .ik-hero { padding: clamp(2.5rem, 8vw, 6rem) clamp(1.2rem, 5vw, 3.5rem); border-radius: var(--radius, 8px); text-align: center;
-  background: var(--surface, #f3f3f3) center / cover no-repeat; position: relative; overflow: hidden; }
+  background: var(--surface, color-mix(in srgb, currentColor 8%, transparent)) center / cover no-repeat; position: relative; overflow: hidden; }
 .ik-hero[style*="background-image"] { color: #fff; }
 .ik-hero[style*="background-image"]::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(0, 0, 0, .25), rgba(0, 0, 0, .55)); }
 .ik-hero > * { position: relative; }
@@ -116,7 +117,7 @@ details[open] > summary { border-bottom: 1px solid var(--border, #ddd); margin-b
 /* Recent posts and archive. */
 .ik-recent, .ik-archive ul { list-style: none; padding: 0; }
 .ik-recent li, .ik-archive li { display: flex; justify-content: space-between; gap: 1rem; padding: .45em 0; border-bottom: 1px solid var(--border, #eee); }
-.ik-recent time, .ik-archive time { color: var(--muted, #6b6b6b); font-size: .9em; white-space: nowrap; }
+.ik-recent time, .ik-archive time { color: var(--muted, color-mix(in srgb, currentColor 68%, transparent)); font-size: .9em; white-space: nowrap; }
 .ik-recent--cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
 .ik-recent--cards li { display: block; border: 1px solid var(--border, #eee); border-radius: var(--radius, 8px); padding: .8rem; }
 .ik-recent--cards img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: calc(var(--radius, 8px) * .6); margin-bottom: .5rem; }
@@ -129,13 +130,14 @@ details[open] > summary { border-bottom: 1px solid var(--border, #ddd); margin-b
 /* Slides: each section break starts a slide. */
 .ik-slides.ik-ready { position: relative; }
 .ik-slides .ik-slide { display: none; min-height: 60vh; padding: clamp(1.5rem, 5vw, 4rem); border: 1px solid var(--border, #ddd);
-  border-radius: var(--radius, 8px); background: var(--bg, #fff); flex-direction: column; justify-content: center; }
+  border-radius: var(--radius, 8px); background: var(--bg, transparent); flex-direction: column; justify-content: center; }
 .ik-slides .ik-slide.ik-current { display: flex; }
 .ik-slides .ik-slide img { max-height: 55vh; object-fit: contain; }
-.ik-slides .ik-slide-controls { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-top: 1rem; color: var(--muted, #6b6b6b); }
+.ik-slides .ik-slide-controls { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-top: 1rem; color: var(--muted, color-mix(in srgb, currentColor 68%, transparent)); }
 .ik-slides .ik-slide-controls button { font: inherit; padding: .35em .9em; border-radius: 999px; border: 1px solid var(--border, #ddd);
   background: var(--surface, transparent); color: inherit; cursor: pointer; }
-.ik-slides:fullscreen { background: var(--bg, #fff); padding: 2vh 3vw; display: flex; flex-direction: column; justify-content: center; }
+/* --ik-page-bg is the page's own background, read by the script when the deck goes full screen. */
+.ik-slides:fullscreen { background: var(--bg, var(--ik-page-bg, Canvas)); padding: 2vh 3vw; display: flex; flex-direction: column; justify-content: center; }
 .ik-slides:fullscreen .ik-slide { min-height: 85vh; border: 0; font-size: 1.5em; }
 
 @media print { .ik-slides .ik-slide { display: flex !important; page-break-after: always; } .ik-slide-controls { display: none !important; } }

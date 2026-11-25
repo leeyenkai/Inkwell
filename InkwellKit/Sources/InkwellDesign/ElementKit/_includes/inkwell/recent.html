@@ -2,7 +2,9 @@
 {% assign ik_collection = include.collection | default: 'posts' %}
 {% assign ik_limit = include.limit | default: 5 %}
 {% assign ik_format = site.inkwell.date_format | default: "%B %-d, %Y" %}
-{% assign ik_items = site[ik_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% comment %} A section with no posts yet is nil, and Jekyll's sort stops the build on nil. {% endcomment %}
+{% assign ik_items = site[ik_collection] %}
+{% if ik_items %}{% assign ik_items = ik_items | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}{% endif %}
 <ul class="ik-recent{% if include.style == 'cards' %} ik-recent--cards{% endif %}">
 {% for item in ik_items limit: ik_limit %}
   <li>
