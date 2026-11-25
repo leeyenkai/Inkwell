@@ -62,8 +62,8 @@ final class ElementKitTests: XCTestCase {
             XCTAssertFalse(page.html.contains("markdown=\"1\""), template.rawValue)
             XCTAssertFalse(page.html.contains("{%"), template.rawValue)
         }
-        let slides = builder.render(text: FrontMatterDocument(fields: [("layout", "slides"), ("title", "T")], body: PageTemplate.slides.body()).text,
-                                    relativePath: "s.md", url: "/s/")
+        let deck = FrontMatterDocument(fields: [("layout", "inkwell-slides"), ("title", "T")], body: PageTemplate.slides.body()).text
+        let slides = builder.render(text: deck, relativePath: "s.md", url: "/s/")
         XCTAssertTrue(slides.html.contains("class=\"ik-slides\""))
         XCTAssertEqual(slides.html.components(separatedBy: "<hr").count - 1, 2)
     }

@@ -65,10 +65,13 @@
     var slides = track.children, index = 0;
     var dots = document.createElement("div");
     dots.className = "ik-dots";
+    var mark = function () {
+      Array.prototype.forEach.call(dots.children, function (d, n) { d.setAttribute("aria-current", n === index ? "true" : "false"); });
+    };
     var go = function (i) {
       index = (i + slides.length) % slides.length;
       track.scrollTo({ left: slides[index].offsetLeft - track.offsetLeft, behavior: "smooth" });
-      Array.prototype.forEach.call(dots.children, function (d, n) { d.setAttribute("aria-current", n === index ? "true" : "false"); });
+      mark();
     };
     if (slides.length > 1) {
       [["ik-prev", "‹", "Previous", -1], ["ik-next", "›", "Next", 1]].forEach(function (b) {
@@ -89,9 +92,15 @@
       });
       el.appendChild(dots);
       el.addEventListener("keydown", function (e) { if (e.key === "ArrowLeft") go(index - 1); if (e.key === "ArrowRight") go(index + 1); });
+      // A swipe moves the strip by itself: once it comes to rest, follow it. This only reads the position, since
+      // scrolling from here would fight the smooth scroll that go() starts.
+      var settle;
       track.addEventListener("scroll", function () {
-        var n = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
-        if (n !== index && n < slides.length) { index = n; go(n); }
+        clearTimeout(settle);
+        settle = setTimeout(function () {
+          var n = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+          if (n !== index && n >= 0 && n < slides.length) { index = n; mark(); }
+        }, 120);
       }, { passive: true });
       var seconds = parseFloat(el.getAttribute("data-autoplay"));
       if (seconds > 0 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -183,10 +192,25 @@
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(m);
-      var points = places.map(function (p) { L.marker([p.lat, p.lon]).addTo(m).bindPopup(p.name); return [p.lat, p.lon]; });
+      var points = places.map(function (p) {
+        // A node with textContent, since Leaflet puts a string popup in as HTML.
+        var label = document.createElement("span");
+        label.textContent = p.name;
+        L.marker([p.lat, p.lon]).addTo(m).bindPopup(label);
+        return [p.lat, p.lon];
+      });
       var zoom = parseInt(el.getAttribute("data-zoom"), 10) || 12;
       if (points.length === 1) m.setView(points[0], zoom); else m.fitBounds(points, { padding: [30, 30] });
     }).catch(function () { canvas.remove(); });
+  }
+
+  // The first background colour behind a node, for a full-screen deck on a theme without a --bg token.
+  function pageBackground(node) {
+    for (; node && node.nodeType === 1; node = node.parentElement) {
+      var colour = getComputedStyle(node).backgroundColor;
+      if (colour && colour !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(colour)) return colour;
+    }
+    return "Canvas";
   }
 
   // Slides: each section break (<hr>) starts a new slide.
@@ -224,9 +248,23 @@
     };
     prev.addEventListener("click", function () { show(index - 1); });
     next.addEventListener("click", function () { show(index + 1); });
-    present.addEventListener("click", function () { if (el.requestFullscreen) el.requestFullscreen(); });
+    present.addEventListener("click", function () {
+      if (!el.requestFullscreen) return;
+      el.style.setProperty("--ik-page-bg", pageBackground(el.parentElement));
+      el.requestFullscreen();
+    });
+    // Keys move this deck only when it is full screen, has focus, or (with nothing else focused) fills the middle of
+    // the window, so other decks and the page's own scrolling keep their keys.
+    var active = function () {
+      if (document.fullscreenElement) return document.fullscreenElement === el;
+      var focused = document.activeElement;
+      if (focused && focused !== document.body && focused !== document.documentElement) return el.contains(focused);
+      var box = el.getBoundingClientRect(), middle = window.innerHeight / 2;
+      return box.top <= middle && box.bottom >= middle;
+    };
     document.addEventListener("keydown", function (e) {
-      if (e.target.closest && e.target.closest("input, textarea")) return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || !active()) return;
+      if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
       if (e.key === "ArrowRight" || e.key === "PageDown" || (e.key === " " && document.fullscreenElement === el)) { e.preventDefault(); show(index + 1); }
       if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); show(index - 1); }
     });
@@ -255,7 +293,8 @@
   var scrollY = 0;
 
   function lightbox() {
-    var id = decodeURIComponent(location.hash.slice(1));
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { return null; }
     var el = id ? document.getElementById(id) : null;
     return el && el.classList.contains("inkwell-lightbox") ? el : null;
   }

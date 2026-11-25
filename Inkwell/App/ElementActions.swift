@@ -11,8 +11,9 @@ extension AppModel {
         var inner: String
     }
 
-    /// Writes the element kit into the site when it is missing or older, and loads it on themes Inkwell did not write.
-    /// The files become unpublished changes and go out with the first post that uses an element.
+    /// Writes the element kit into the site when it is missing or an older version Inkwell wrote, and loads it on themes
+    /// Inkwell did not write. The site's own files at kit paths are never replaced. The files become unpublished changes
+    /// and go out with the first post that uses an element.
     func ensureElementKit() {
         guard let site else { return }
         var edits = ElementKit.changes(siteRoot: site.root).map { ContentEdit(path: $0.path, newText: $0.newText) }

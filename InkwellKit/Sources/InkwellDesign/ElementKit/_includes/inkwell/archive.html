@@ -1,6 +1,8 @@
 {% comment %} Added by Inkwell. Every post of a section, by year: collection="posts". {% endcomment %}
 {% assign ik_collection = include.collection | default: 'posts' %}
-{% assign ik_items = site[ik_collection] | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}
+{% comment %} A section with no posts yet is nil, and Jekyll's sort stops the build on nil. {% endcomment %}
+{% assign ik_items = site[ik_collection] %}
+{% if ik_items %}{% assign ik_items = ik_items | where_exp: "item", "item.published != false" | sort: 'date' | reverse %}{% endif %}
 {% assign ik_year = "" %}
 <div class="ik-archive">
 {% for item in ik_items %}

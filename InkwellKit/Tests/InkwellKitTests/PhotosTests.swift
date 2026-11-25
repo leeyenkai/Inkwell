@@ -91,7 +91,8 @@ final class ScheduleTests: XCTestCase {
 
     func testFutureSettingAndWorkflow() {
         XCTAssertTrue(Schedule.publishesFutureNow(SiteConfig(yaml: YAML.parse("future: true"))))
-        XCTAssertFalse(Schedule.publishesFutureNow(SiteConfig(yaml: YAML.parse("title: x"))))
+        XCTAssertTrue(Schedule.publishesFutureNow(SiteConfig(yaml: YAML.parse("title: x"))), "GitHub Pages defaults to future: true")
+        XCTAssertFalse(Schedule.publishesFutureNow(SiteConfig(yaml: YAML.parse("future: false"))))
         XCTAssertTrue(Schedule.workflow.contains("pages: write"))
         XCTAssertTrue(Schedule.workflow.contains("repos/${GITHUB_REPOSITORY}/pages/builds"))
         XCTAssertTrue(Schedule.workflow.hasPrefix("# Added by Inkwell."))

@@ -39,6 +39,9 @@ final class PublishSession: Identifiable {
     /// Offered when a post is dated in the future and the site has no schedule workflow yet.
     var addScheduleWorkflow: Bool?
     private(set) var scheduledFor: Date?
+    /// Set when publishing adds `future: false` to `_config.yml`, so the scheduled post really waits.
+    private(set) var holdsFuturePosts = false
+    private static let configPath = "_config.yml"
     let displayURL: String?
 
     private let backend: any SiteBackend
@@ -245,36 +248,71 @@ final class PublishSession: Identifiable {
         }
         if let date = doc.value("date")?.string.flatMap({ SiteDate.parse($0, timeZone: site.config.timeZone) }) ?? document.date,
            Schedule.isScheduled(date) {
-            if Schedule.publishesFutureNow(site.config) {
+            if Schedule.futureTurnedOn(site.config) {
                 let note = String(localized: "The date is in the future, but future: true in _config.yml shows it right away.")
                 items.append(CheckItem(level: .warning, text: note))
             } else {
                 scheduledFor = date
                 let when = date.formatted(Date.FormatStyle(date: .long, time: .shortened, timeZone: site.config.timeZone))
                 items.append(CheckItem(level: .info, text: String(localized: "Scheduled: the post stays off the site until \(when).")))
-                if !Schedule.hasWorkflow(siteRoot: site.root), model?.siteIsAtRepositoryRoot ?? true { addScheduleWorkflow = true }
+                if Schedule.publishesFutureNow(site.config) {
+                    items += holdFuturePostsChecks(document: document, site: site, changes: changes)
+                }
+                if !Schedule.hasWorkflow(siteRoot: site.root) {
+                    if let blocker = model?.scheduleWorkflowBlocker {
+                        items.append(CheckItem(level: .info, text: blocker.message))
+                    } else {
+                        addScheduleWorkflow = true
+                    }
+                }
             }
         }
         if let repo = backend.repository {
             let note = String(localized: "Goes to \(repo.owner)/\(repo.name); GitHub Pages then rebuilds the site.")
             items.append(CheckItem(level: .info, text: note))
         }
-        let kitPaths = elementKitPaths(uses: !elements.isEmpty || ["slides", "album"].contains(doc.value("layout")?.string ?? ""),
+        let kitLayouts = ["inkwell-slides", "slides", "album"]
+        let kitPaths = elementKitPaths(uses: !elements.isEmpty || kitLayouts.contains(doc.value("layout")?.string ?? ""),
                                        changes: changes, site: site)
         if !kitPaths.isEmpty {
             items.append(CheckItem(level: .info, text: String(localized: "Adds the files that page elements need (\(kitPaths.count)).")))
         }
         checks = items
-        paths = [document.relativePath] + imagePaths + kitPaths
+        paths = [document.relativePath] + imagePaths + kitPaths + (holdsFuturePosts ? [Self.configPath] : [])
     }
 
-    /// Element kit files not yet on GitHub, and head files changed to load the kit, when the post uses elements.
+    /// GitHub Pages builds posts dated in the future straight away unless `_config.yml` says `future: false`, so a
+    /// scheduled post adds that line and takes the file with it.
+    private func holdFuturePostsChecks(document: SiteDocument, site: Site, changes: [String: ChangeKind]) -> [CheckItem] {
+        holdsFuturePosts = true
+        let note = String(localized: "GitHub Pages shows posts dated in the future right away, so this adds future: false to _config.yml.")
+        var items = [CheckItem(level: .info, text: note)]
+        if changes[Self.configPath] != nil {
+            let note = String(localized: "_config.yml has other unpublished changes, and they go out with this post too.")
+            items.append(CheckItem(level: .warning, text: note))
+        }
+        let others = site.documents.filter {
+            $0.relativePath != document.relativePath && !$0.isPage && $0.publishedFlag && changes[$0.relativePath] != .added
+                && Schedule.isScheduled($0.date)
+        }
+        if !others.isEmpty {
+            let names = others.map { $0.title.isEmpty ? $0.filename : $0.title }.joined(separator: ", ")
+            let note = String(localized: "These posts are dated in the future and leave the site until their dates: \(names)")
+            items.append(CheckItem(level: .warning, text: note))
+        }
+        return items
+    }
+
+    /// Element kit files Inkwell wrote that are not yet on GitHub, and head files changed to load the kit, when the post
+    /// uses elements. A kit file someone edited by hand is theirs to publish.
     private func elementKitPaths(uses: Bool, changes: [String: ChangeKind], site: Site) -> [String] {
         guard uses else { return [] }
-        let kit = Set(ElementKit.files.keys)
+        let kit = ElementKit.files
         return changes.filter { path, kind in
             guard kind != .deleted else { return false }
-            if kit.contains(path) { return true }
+            if let text = kit[path] {
+                return (try? String(contentsOf: site.root.appending(path: path), encoding: .utf8)) == text
+            }
             guard path.hasPrefix("_includes/") || path.hasPrefix("_layouts/") else { return false }
             return (try? String(contentsOf: site.root.appending(path: path), encoding: .utf8))?.contains("inkwell-blocks") == true
         }
@@ -303,6 +341,11 @@ final class PublishSession: Identifiable {
         editor?.saveNow()
         do {
             try prepare()
+        } catch {
+            phase = .failed(error.localizedDescription)
+            return
+        }
+        do {
             if addScheduleWorkflow == true, let root = model?.site?.root {
                 let file = root.appending(path: Schedule.workflowPath)
                 try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -314,7 +357,11 @@ final class PublishSession: Identifiable {
                     try? FileManager.default.removeItem(at: file)
                 }
             }
+            if holdsFuturePosts, let root = model?.site?.root {
+                try holdFuturePosts(root: root)
+            }
         } catch {
+            rollback()
             phase = .failed(error.localizedDescription)
             return
         }
@@ -343,6 +390,21 @@ final class PublishSession: Identifiable {
         } catch {
             rollback()
             phase = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Writes `future: false` into `_config.yml` (read again now, in case it changed since the checklist), and puts the
+    /// file back if publishing fails.
+    private func holdFuturePosts(root: URL) throws {
+        let url = root.appending(path: Self.configPath)
+        let before = try? Data(contentsOf: url)
+        let text = before.map { String(data: $0, encoding: .utf8) } ?? ""
+        guard let text, let held = Schedule.configHoldingFuturePosts(text) else { return }
+        try Data(held.utf8).write(to: url, options: .atomic)
+        let earlier = rollback
+        rollback = {
+            earlier()
+            if let before { try? before.write(to: url, options: .atomic) } else { try? FileManager.default.removeItem(at: url) }
         }
     }
 
