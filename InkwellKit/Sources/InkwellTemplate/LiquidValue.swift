@@ -86,6 +86,25 @@ public indirect enum LiquidValue: Sendable {
         }
     }
 
+    /// The value as Ruby's Liquid sees an integer operand: nil for decimals, 0 for text and other values that are not numbers.
+    var wholeNumber: Int? {
+        switch self {
+        case let .int(i): return i
+        case .double: return nil
+        case let .string(s):
+            let t = s.trimmingCharacters(in: .whitespaces)
+            if let i = Int(t) { return i }
+            return Double(t) == nil ? 0 : nil
+        default: return 0
+        }
+    }
+
+    /// A number as a loop bound or count, truncated and kept far from where conversion would trap.
+    static func integer(_ value: Double) -> Int {
+        guard value.isFinite else { return 0 }
+        return Int(max(-1e15, min(1e15, value)))
+    }
+
     var asDate: Date? {
         switch self {
         case let .date(d): d

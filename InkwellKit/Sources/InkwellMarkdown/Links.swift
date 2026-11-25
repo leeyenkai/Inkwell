@@ -22,7 +22,8 @@ public struct MarkdownLink: Sendable, Equatable {
         var links: [MarkdownLink] = []
         for m in MarkdownScanner.regex(inlinePattern)?.matches(in: text, range: lines) ?? [] {
             var urlRange = m.range(at: 2)
-            if ns.character(at: urlRange.location) == 60 {
+            // Only a matched `<…>` pair is a bracketed address; a lone `<` is part of a bare one.
+            if urlRange.length >= 2, ns.character(at: urlRange.location) == 60, ns.character(at: NSMaxRange(urlRange) - 1) == 62 {
                 urlRange = NSRange(location: urlRange.location + 1, length: urlRange.length - 2)
             }
             links.append(MarkdownLink(range: m.range, textRange: m.range(at: 1), urlRange: urlRange,

@@ -52,7 +52,9 @@ extension AppModel {
         }
 
         let folder = (doc.relativePath as NSString).deletingLastPathComponent
-        let newPath = collection.map { "_\($0)/\(filename)" } ?? (folder.isEmpty ? filename : "\(folder)/\(filename)")
+        // A post in a collection's subfolder stays in it when it is renamed within that collection.
+        let newPath = collection.map { doc.relativePath.hasPrefix("_\($0)/") ? "\(folder)/\(filename)" : "_\($0)/\(filename)" }
+            ?? (folder.isEmpty ? filename : "\(folder)/\(filename)")
         if newPath == doc.relativePath {
             try? Data(text.utf8).write(to: doc.fileURL, options: .atomic)
             editor?.reloadIfChangedOnDisk()

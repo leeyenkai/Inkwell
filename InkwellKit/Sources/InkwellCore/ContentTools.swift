@@ -33,11 +33,12 @@ public enum MovePlanner {
     }
 
     public static func plan(document: SiteDocument, text: String, newPath: String, keepOldAddress: Bool, site: Site, configText: String?) -> Plan {
-        let collection = newPath.hasPrefix("_") ? String(newPath.dropFirst().prefix { $0 != "/" }) : nil
-        let filename = (newPath as NSString).lastPathComponent
-        let newURL = collection.map { Permalink.url(collection: $0, filename: filename, date: document.date, config: site.config) }
-            ?? Permalink.pageURL(relativePath: newPath, config: site.config)
         var doc = FrontMatterDocument(text: text)
+        // The same rule the site loader uses, so a fixed `permalink:` keeps its address and categories stay in it.
+        let values = doc.values
+        let filename = (newPath as NSString).lastPathComponent
+        let date = SiteLoader.date(values: values, filename: filename, config: site.config) ?? document.date
+        let newURL = SiteLoader.url(relativePath: newPath, values: values, date: date, config: site.config)
         var edits: [ContentEdit] = []
         if keepOldAddress, document.url != newURL {
             var redirects = doc.value("redirect_from")?.list?.compactMap(\.string) ?? doc.value("redirect_from")?.string.map { [$0] } ?? []

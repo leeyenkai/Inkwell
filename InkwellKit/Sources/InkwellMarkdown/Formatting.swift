@@ -29,20 +29,39 @@ public enum Formatting {
         let close = close ?? open
         let o = (open as NSString).length, c = (close as NSString).length
         let selected = ns.substring(with: selection)
-        if selected.hasPrefix(open), selected.hasSuffix(close), selection.length >= o + c {
-            let inner = (selected as NSString).substring(with: NSRange(location: o, length: selection.length - o - c))
-            return FormattingResult(edits: [TextEdit(selection, inner)], selection: NSRange(location: selection.location, length: (inner as NSString).length))
+        let marker = Emphasis(open: open, close: close)
+        let fits = selection.length >= o + c
+        let inner = fits ? (selected as NSString).substring(with: NSRange(location: o, length: selection.length - o - c)) : ""
+        let markedInside: Bool, markedOutside: Bool
+        if let marker {
+            // Only a pair that belongs together: `*a* and *b*` starts and ends with a star but is two styled parts.
+            let sel = selected as NSString
+            let lead = marker.run(sel, from: 0, forward: true), trail = marker.run(sel, from: sel.length - 1, forward: false)
+            markedInside = fits && marker.present(min(lead, trail)) && !marker.containsMarker(inner)
+            let before = marker.run(ns, from: selection.location - 1, forward: false)
+            let after = marker.run(ns, from: NSMaxRange(selection), forward: true)
+            markedOutside = marker.present(min(before, after)) && !marker.containsMarker(selected)
+        } else {
+            markedInside = fits && selected.hasPrefix(open) && selected.hasSuffix(close)
+            markedOutside = selection.location >= o && NSMaxRange(selection) + c <= ns.length
+                && ns.substring(with: NSRange(location: selection.location - o, length: o)) == open
+                && ns.substring(with: NSRange(location: NSMaxRange(selection), length: c)) == close
         }
-        if selection.location >= o, NSMaxRange(selection) + c <= ns.length,
-           ns.substring(with: NSRange(location: selection.location - o, length: o)) == open,
-           ns.substring(with: NSRange(location: NSMaxRange(selection), length: c)) == close {
+        if markedInside {
+            return FormattingResult(edits: [TextEdit(selection, inner)],
+                                    selection: NSRange(location: selection.location, length: (inner as NSString).length))
+        }
+        if markedOutside {
             let outer = NSRange(location: selection.location - o, length: selection.length + o + c)
-            return FormattingResult(edits: [TextEdit(outer, selected)], selection: NSRange(location: selection.location - o, length: selection.length))
+            return FormattingResult(edits: [TextEdit(outer, selected)],
+                                    selection: NSRange(location: selection.location - o, length: selection.length))
         }
         var core = selection
         while core.length > 0, isSpace(ns.character(at: NSMaxRange(core) - 1)) { core.length -= 1 }
-        let wrapped = open + ns.substring(with: core) + close
-        return FormattingResult(edits: [TextEdit(core, wrapped)], selection: NSRange(location: core.location + o, length: core.length))
+        // Parts of the selection that already have this style lose their own markers, so the whole is styled once.
+        let plain = marker.map { $0.removingMarkers(ns.substring(with: core)) } ?? ns.substring(with: core)
+        return FormattingResult(edits: [TextEdit(core, open + plain + close)],
+                                selection: NSRange(location: core.location + o, length: (plain as NSString).length))
     }
 
     public static func link(_ text: String, selection: NSRange, url: String) -> FormattingResult {
@@ -161,4 +180,58 @@ public enum Formatting {
     }
 
     static func isSpace(_ c: unichar) -> Bool { c == 32 || c == 10 || c == 9 }
+}
+
+/// `*`/`_` (italic) and `**`/`__` (bold) share a character, so whether a style is there depends on the length of the
+/// run of that character: italic is an odd run (`*`, `***`), bold a run of two or more.
+private struct Emphasis {
+    let character: unichar
+    let bold: Bool
+
+    init?(open: String, close: String) {
+        let units = Array(open.utf16)
+        guard open == close, let first = units.first, first == 42 || first == 95, units.count <= 2, units.allSatisfy({ $0 == first })
+        else { return nil }
+        character = first
+        bold = units.count == 2
+    }
+
+    func present(_ run: Int) -> Bool { bold ? run >= 2 : run % 2 == 1 }
+
+    func run(_ text: NSString, from start: Int, forward: Bool) -> Int {
+        var i = start, count = 0
+        while i >= 0, i < text.length, text.character(at: i) == character {
+            count += 1
+            i += forward ? 1 : -1
+        }
+        return count
+    }
+
+    /// Runs that can open or close this style; one with spaces on both sides (`2 * 3`) is a plain character.
+    private func markers(_ text: String) -> [NSRange] {
+        let ns = text as NSString
+        var result: [NSRange] = []
+        var i = 0
+        while i < ns.length {
+            let n = run(ns, from: i, forward: true)
+            if n > 0, present(n) {
+                let spaceBefore = i == 0 || Formatting.isSpace(ns.character(at: i - 1))
+                let spaceAfter = i + n == ns.length || Formatting.isSpace(ns.character(at: i + n))
+                if !(spaceBefore && spaceAfter) { result.append(NSRange(location: i, length: n)) }
+            }
+            i += max(n, 1)
+        }
+        return result
+    }
+
+    func containsMarker(_ text: String) -> Bool { !markers(text).isEmpty }
+
+    /// The text without its own markers of this style, when they come in pairs; otherwise unchanged.
+    func removingMarkers(_ text: String) -> String {
+        let found = markers(text)
+        guard found.count % 2 == 0 else { return text }
+        let ns = NSMutableString(string: text)
+        for range in found.reversed() { ns.deleteCharacters(in: NSRange(location: range.location, length: bold ? 2 : 1)) }
+        return ns as String
+    }
 }

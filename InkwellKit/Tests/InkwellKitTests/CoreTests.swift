@@ -107,7 +107,8 @@ final class SiteTests: XCTestCase {
         let site = try SiteLoader.load(fixtureSite())
         XCTAssertEqual(site.sections.map(\.label), ["About", "Notes", "Sidenotes", "Travel", "Photos", "Pages"])
         XCTAssertEqual(Set(site.documents(in: "pages").map(\.relativePath)), ["notes.md", "sidenotes.md"])
-        XCTAssertEqual(site.documents(in: "pages").first { $0.relativePath == "notes.md" }?.url, "/notes.html")
+        // The site's style ends in `/`, so Jekyll gives pages a trailing slash too.
+        XCTAssertEqual(site.documents(in: "pages").first { $0.relativePath == "notes.md" }?.url, "/notes/")
         XCTAssertEqual(site.sections[0].kind, .page("index.md"))
         XCTAssertEqual(site.documents(in: "notes").map(\.title), ["A sample essay", "Second note"])
         XCTAssertEqual(site.documents(in: "notes").first?.url, "/notes/sample-essay/")

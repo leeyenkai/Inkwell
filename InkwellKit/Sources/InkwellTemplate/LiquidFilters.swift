@@ -134,37 +134,52 @@ enum LiquidFilters {
             guard let r = input.text.range(of: arg0.text) else { return input }
             return .string(input.text.replacingCharacters(in: r, with: args.count > 1 ? args[1].text : ""))
         case "slice":
-            let start = Int(arg0.number ?? 0), length = Int(args.count > 1 ? args[1].number ?? 1 : 1)
+            // Ruby's slice(offset, length): nothing for a negative length or an offset outside the input.
+            let start = LiquidValue.integer(arg0.number ?? 0), length = LiquidValue.integer(args.count > 1 ? args[1].number ?? 1 : 1)
+            if case let .array(items) = input {
+                guard let range = sliceRange(count: items.count, start: start, length: length) else { return .array([]) }
+                return .array(Array(items[range]))
+            }
             let chars = Array(input.text)
-            let from = start < 0 ? max(0, chars.count + start) : min(start, chars.count)
-            return .string(String(chars[from ..< min(chars.count, from + length)]))
+            guard let range = sliceRange(count: chars.count, start: start, length: length) else { return .string("") }
+            return .string(String(chars[range]))
         case "truncate":
-            let limit = Int(arg0.number ?? 50)
+            let limit = LiquidValue.integer(arg0.number ?? 50)
             let ellipsis = args.count > 1 ? args[1].text : "..."
             let text = input.text
             guard text.count > limit else { return input }
             return .string(String(text.prefix(max(0, limit - ellipsis.count))) + ellipsis)
         case "truncatewords":
-            let limit = Int(arg0.number ?? 15)
+            // Liquid shows at least one word.
+            let limit = max(1, LiquidValue.integer(arg0.number ?? 15))
             let ellipsis = args.count > 1 ? args[1].text : "..."
             let words = input.text.split(whereSeparator: \.isWhitespace)
             guard words.count > limit else { return input }
             return .string(words.prefix(limit).joined(separator: " ") + ellipsis)
         // Numbers
-        case "plus": return arith(input, arg0, +)
-        case "minus": return arith(input, arg0, -)
-        case "times": return arith(input, arg0, *)
+        case "plus": return arith(input, arg0, { $0.addingReportingOverflow($1) }, +)
+        case "minus": return arith(input, arg0, { $0.subtractingReportingOverflow($1) }, -)
+        case "times": return arith(input, arg0, { $0.multipliedReportingOverflow(by: $1) }, *)
         case "divided_by":
-            guard let a = input.number, let b = arg0.number, b != 0 else { return .null }
-            if case .int = arg0 { return .int(Int((a / b).rounded(.down))) }
-            return .double(a / b)
+            guard let b = arg0.number, b != 0 else { return .null }
+            // Ruby's integer division rounds down.
+            return arith(input, arg0, { x, y in
+                let q = x.dividedReportingOverflow(by: y)
+                if q.overflow { return q }
+                return (x % y != 0 && (x < 0) != (y < 0) ? q.partialValue - 1 : q.partialValue, false)
+            }, /)
         case "modulo":
-            guard let a = input.number, let b = arg0.number, b != 0 else { return .null }
-            return .int(Int(a) % Int(b))
+            guard let b = arg0.number, b != 0 else { return .null }
+            // Ruby's % takes the sign of the divisor.
+            return arith(input, arg0, { x, y in
+                let r = x.remainderReportingOverflow(dividingBy: y)
+                if r.overflow { return r }
+                return (r.partialValue != 0 && (r.partialValue < 0) != (y < 0) ? r.partialValue + y : r.partialValue, false)
+            }, { x, y in x - y * (x / y).rounded(.down) })
         case "round":
             return .double((input.number ?? 0).rounded())
-        case "floor": return .int(Int((input.number ?? 0).rounded(.down)))
-        case "ceil": return .int(Int((input.number ?? 0).rounded(.up)))
+        case "floor": return whole((input.number ?? 0).rounded(.down))
+        case "ceil": return whole((input.number ?? 0).rounded(.up))
         case "abs": return .double(abs(input.number ?? 0))
         case "inspect": return .string(json(input))
         default:
@@ -178,12 +193,24 @@ enum LiquidFilters {
         return base + p
     }
 
-    static func arith(_ a: LiquidValue, _ b: LiquidValue, _ op: (Double, Double) -> Double) -> LiquidValue {
-        let x = a.number ?? 0, y = b.number ?? 0
-        let result = op(x, y)
-        if case .double = a { return .double(result) }
-        if case .double = b { return .double(result) }
-        return .int(Int(result))
+    /// Whole numbers stay whole, as in Ruby; a result too large for an integer becomes a decimal instead of trapping.
+    static func arith(_ a: LiquidValue, _ b: LiquidValue, _ intOp: (Int, Int) -> (partialValue: Int, overflow: Bool),
+                      _ op: (Double, Double) -> Double) -> LiquidValue {
+        if let x = a.wholeNumber, let y = b.wholeNumber {
+            let result = intOp(x, y)
+            if !result.overflow { return .int(result.partialValue) }
+        }
+        return .double(op(a.number ?? 0, b.number ?? 0))
+    }
+
+    static func whole(_ value: Double) -> LiquidValue {
+        value.isFinite && abs(value) < 9e15 ? .int(Int(value)) : .double(value)
+    }
+
+    static func sliceRange(count: Int, start: Int, length: Int) -> Range<Int>? {
+        let from = start < 0 ? count + start : start
+        guard length >= 0, from >= 0, from <= count else { return nil }
+        return from ..< from + min(length, count - from)
     }
 
     static func json(_ value: LiquidValue) -> String {

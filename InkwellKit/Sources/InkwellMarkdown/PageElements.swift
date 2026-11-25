@@ -146,27 +146,35 @@ public enum PageElements {
     public static func find(in text: String) -> [ElementSpan] {
         let ns = text as NSString
         var result: [ElementSpan] = []
-        var openStack: [(kind: PageElement?, tag: String, line: NSRange, attributes: [String: String])] = []
+        var openStack: [(kind: PageElement?, tag: String, line: NSRange, end: Int, attributes: [String: String])] = []
         var location = 0
         var inFence = false
+        var previousLineEnd = 0
         while location < ns.length {
-            let line = ns.lineRange(for: NSRange(location: location, length: 0))
-            let content = NSRange(location: line.location, length: line.length - (ns.substring(with: line).hasSuffix("\n") ? 1 : 0))
-            let s = ns.substring(with: content)
-            let trimmed = s.trimmingCharacters(in: .whitespaces)
-            location = NSMaxRange(line)
+            var start = 0, end = 0, contentsEnd = 0
+            ns.getLineStart(&start, end: &end, contentsEnd: &contentsEnd, for: NSRange(location: location, length: 0))
+            // The line without its `\n` or `\r\n`.
+            let content = NSRange(location: start, length: contentsEnd - start)
+            let lineBreakBefore = start - previousLineEnd
+            previousLineEnd = contentsEnd
+            let trimmed = ns.substring(with: content).trimmingCharacters(in: .whitespacesAndNewlines)
+            location = end
             if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") { inFence.toggle() }
             if inFence { continue }
             if let open = opening(trimmed) {
-                openStack.append((open.kind, open.tag, content, open.attributes))
+                openStack.append((open.kind, open.tag, content, end, open.attributes))
                 continue
             }
-            if let top = openStack.last, trimmed == "</\(top.tag)>" {
+            // Plain HTML blocks are tracked too, so their closing line is not taken for the element's.
+            if let tag = plainBlockTag(trimmed) {
+                openStack.append((nil, tag, content, end, [:]))
+                continue
+            }
+            if let top = openStack.last, trimmed.lowercased() == "</\(top.tag)>" {
                 openStack.removeLast()
                 guard let kind = top.kind else { continue }
-                let innerStart = NSMaxRange(top.line) + 1
-                // Without the newline before the closing line, so replacing it keeps the closing line on its own.
-                let inner = NSRange(location: min(innerStart, content.location), length: max(0, content.location - innerStart - 1))
+                // Without the line break before the closing line, so replacing it keeps the closing line on its own.
+                let inner = NSRange(location: min(top.end, content.location), length: max(0, content.location - lineBreakBefore - top.end))
                 result.append(ElementSpan(kind: kind, range: NSRange(location: top.line.location, length: NSMaxRange(content) - top.line.location),
                                           openRange: top.line, closeRange: content, innerRange: inner, attributes: top.attributes))
                 continue
@@ -207,6 +215,17 @@ public enum PageElements {
         return (kind, tag, data)
     }
 
+    /// A line that opens a `<div>`, `<details>` or `<section>` without closing it on the same line.
+    static func plainBlockTag(_ line: String) -> String? {
+        let lower = line.lowercased()
+        for tag in ["div", "details", "section"] where lower.hasPrefix("<\(tag)") {
+            let next = lower.dropFirst(tag.count + 1).first
+            guard next == ">" || next == " " || next == "\t", !lower.hasSuffix("/>"), !lower.contains("</\(tag)>") else { return nil }
+            return tag
+        }
+        return nil
+    }
+
     /// Includes from the element kit, and buttons.
     static func singleLine(_ line: String) -> (kind: PageElement, attributes: [String: String])? {
         if let m = line.firstMatch(of: /^\{%-?\s*include\s+inkwell\/([a-z-]+)\.html(.*?)-?%\}$/),
@@ -215,7 +234,7 @@ public enum PageElements {
         }
         if line.hasPrefix("<a "), line.hasSuffix("</a>"), line.contains("ik-button") {
             var attributes = htmlAttributes(line)
-            if let text = line.firstMatch(of: /^<a [^>]*>(.*)<\/a>$/) { attributes["text"] = String(text.1) }
+            if let text = line.firstMatch(of: /^<a [^>]*>(.*)<\/a>$/) { attributes["text"] = decodeEntities(String(text.1)) }
             let classes = (attributes["class"] ?? "").split(separator: " ")
             attributes["style"] = classes.contains("ik-button--outline") ? "outline" : "solid"
             attributes.removeValue(forKey: "class")
@@ -224,12 +243,46 @@ public enum PageElements {
         return nil
     }
 
+    /// Attribute values as plain text: entities are decoded here, so the writer escapes them exactly once.
     public static func htmlAttributes(_ tag: String) -> [String: String] {
         var result: [String: String] = [:]
-        for m in tag.matches(of: /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/) {
-            result[String(m.1).lowercased()] = String(m.2 ?? m.3 ?? m.4 ?? "")
-        }
+        for (key, value) in orderedAttributes(tag) { result[key] = value }
         return result
+    }
+
+    static func orderedAttributes(_ tag: String) -> [(key: String, value: String)] {
+        tag.matches(of: /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/).map { m in
+            (String(m.1).lowercased(), decodeEntities(String(m.2 ?? m.3 ?? m.4 ?? "")))
+        }
+    }
+
+    /// `&amp;`, `&quot;`, `&lt;`, `&gt;`, `&apos;` and numeric references, in one pass so `&amp;lt;` stays `&lt;`.
+    static func decodeEntities(_ text: String) -> String {
+        guard text.contains("&") else { return text }
+        let named: [Substring: String] = ["amp": "&", "quot": "\"", "lt": "<", "gt": ">", "apos": "'", "nbsp": "\u{A0}"]
+        var out = ""
+        var rest = Substring(text)
+        while let amp = rest.firstIndex(of: "&") {
+            out += rest[..<amp]
+            let after = rest[rest.index(after: amp)...]
+            if let semi = after.prefix(10).firstIndex(of: ";") {
+                let name = after[..<semi]
+                var decoded = named[name]
+                if decoded == nil, name.hasPrefix("#") {
+                    let number = name.dropFirst()
+                    let value = number.first == "x" || number.first == "X" ? UInt32(number.dropFirst(), radix: 16) : UInt32(number)
+                    decoded = value.flatMap(Unicode.Scalar.init).map { String(Character($0)) }
+                }
+                if let decoded {
+                    out += decoded
+                    rest = after[after.index(after: semi)...]
+                    continue
+                }
+            }
+            out += "&"
+            rest = after
+        }
+        return out + rest
     }
 
     public static func includeParameters(_ text: String) -> [String: String] {
@@ -247,18 +300,37 @@ public enum PageElements {
             .replacingOccurrences(of: "<", with: "&lt;")
     }
 
-    /// The opening line of a wrapped element with these settings, keeping attribute order stable.
-    public static func openingLine(_ kind: PageElement, attributes: [String: String]) -> String {
+    /// The opening line of a wrapped element with these settings, keeping attribute order stable. Attributes of
+    /// `existing` (the line being replaced) that the settings do not cover, such as an `id` or extra classes, are kept.
+    public static func openingLine(_ kind: PageElement, attributes: [String: String], existing: String? = nil) -> String {
         if kind == .toggle { return "<details markdown=\"1\">" }
-        var parts = ["class=\"\(kind.className)\""]
+        var classes = [kind.className]
+        var kept: [String] = []
+        var style: String?
+        for (key, value) in existing.map(orderedAttributes) ?? [] {
+            switch key {
+            case "class":
+                classes += value.split(whereSeparator: \.isWhitespace).map(String.init).filter { !classes.contains($0) }
+            case "markdown":
+                break
+            case "style":
+                // A background picture's style is written from the settings; any other style stays.
+                if !value.contains("url(") { style = value }
+            default:
+                if !key.hasPrefix("data-") { kept.append("\(key)=\"\(escapeAttribute(value))\"") }
+            }
+        }
+        var parts = ["class=\"\(classes.joined(separator: " "))\""]
         for key in attributes.keys.sorted() where key != "image" {
             guard let value = attributes[key], !value.isEmpty else { continue }
             parts.append("data-\(key)=\"\(escapeAttribute(value))\"")
         }
         if let image = attributes["image"], !image.isEmpty {
             parts.append("style=\"background-image: url('{{ '\(image.replacingOccurrences(of: "'", with: "%27"))' | relative_url }}')\"")
+        } else if let style {
+            parts.append("style=\"\(escapeAttribute(style))\"")
         }
-        return "<div " + parts.joined(separator: " ") + " markdown=\"1\">"
+        return "<div " + (parts + kept).joined(separator: " ") + " markdown=\"1\">"
     }
 
     public static func includeLine(_ kind: PageElement, attributes: [String: String]) -> String {
@@ -301,13 +373,17 @@ public enum PageElements {
             }
             return FormattingResult(edits: edits, selection: NSRange(location: span.range.location, length: 0))
         default:
-            line = openingLine(span.kind, attributes: attributes)
+            line = openingLine(span.kind, attributes: attributes, existing: ns.substring(with: span.openRange))
         }
         // Later text first, so each range still points at the text it means.
         var edits: [TextEdit] = []
         if let inner, let innerRange = span.innerRange {
-            let empty = innerRange.length == 0 && (innerRange.location >= ns.length || ns.character(at: innerRange.location) != 10)
-            edits.append(TextEdit(innerRange, empty && !inner.isEmpty ? inner + "\n" : inner))
+            let crlf = NSMaxRange(span.openRange) < ns.length && ns.character(at: NSMaxRange(span.openRange)) == 13
+            let empty = innerRange.length == 0
+                && (innerRange.location >= ns.length || ![10, 13].contains(ns.character(at: innerRange.location)))
+            let replacement = empty && !inner.isEmpty ? inner + "\n" : inner
+            edits.append(TextEdit(innerRange, crlf ? replacement.replacingOccurrences(of: "\r\n", with: "\n")
+                    .replacingOccurrences(of: "\n", with: "\r\n") : replacement))
         }
         edits.append(TextEdit(span.openRange, line))
         return FormattingResult(edits: edits, selection: NSRange(location: span.openRange.location, length: 0))
