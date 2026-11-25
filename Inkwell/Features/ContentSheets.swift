@@ -17,7 +17,9 @@ struct MoveSheet: View {
         let parts = Filename.parse(doc.filename)
         let file = (parts.dateText.map { "\($0)-" } ?? "") + Slug.make(slug.isEmpty ? title : slug) + ".\(parts.ext.isEmpty ? "md" : parts.ext)"
         if let collection = site.section(sectionID)?.collectionName {
-            return Permalink.display(Permalink.url(collection: collection, filename: file, date: doc.date, config: site.config), config: site.config)
+            let values = (try? String(contentsOf: doc.fileURL, encoding: .utf8)).map { FrontMatterDocument(text: $0).values } ?? .map([])
+            let url = SiteLoader.url(relativePath: "_\(collection)/\(file)", values: values, date: doc.date, config: site.config)
+            return Permalink.display(url, config: site.config)
         }
         return Permalink.display(Permalink.pageURL(relativePath: file, config: site.config), config: site.config)
     }

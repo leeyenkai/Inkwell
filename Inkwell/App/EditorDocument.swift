@@ -183,11 +183,12 @@ final class EditorDocument {
         Permalink.display(currentURL, config: site.config)
     }
 
+    /// The address as Jekyll will build it from the current fields (permalink, categories, slug, date).
     var currentURL: String {
-        guard let collection = document.relativePath.hasPrefix("_") ? String(document.relativePath.dropFirst().prefix { $0 != "/" }) : nil else {
-            return document.url
-        }
-        return Permalink.url(collection: collection, filename: document.filename, date: date("date"), config: site.config)
+        guard document.relativePath.hasPrefix("_") else { return document.url }
+        let values = frontMatter.values
+        let date = SiteLoader.date(values: values, filename: document.filename, config: site.config) ?? date("date")
+        return SiteLoader.url(relativePath: document.relativePath, values: values, date: date, config: site.config)
     }
 
     var wordCount: Int { ContentChecks.wordCount(frontMatter.body) }
