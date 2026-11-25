@@ -16,7 +16,7 @@
 - **Pages and elements.** Twelve page templates and fifteen page elements (gallery, slideshow, map, timeline, callout, columns, toggle, tabs, button, cards, banner, recent posts, archive, table of contents, social links), edited in place with a form for their settings; see §4.7a.
 - **Albums.** Photos in albums with their own pages, an album bar in Photos, several photos chosen at once.
 - **Editor additions.** A formatting bar, a link popover that searches posts and headings, ⌘-click to follow links, clickable checklists, moving lines, find and replace, zoom.
-- **Release.** Version 0.9.0 as an ad-hoc signed disk image (`scripts/make-dmg.sh`), an update check against GitHub releases, and a privacy note.
+- **Release.** Version 0.11.0 as an ad-hoc signed disk image (`scripts/make-dmg.sh`), an update check against GitHub releases, and a privacy note.
 - **Design.** Six bundled themes that differ in layout, shown as real renders and tried on your own posts before a reviewable switch; palette and font presets; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
 - **Websites (§4.12), phase W1.** Inkwell tells blogs, Jekyll websites, hand-built sites and generated output apart. It lists HTML pages that have no front matter and opens them as source beside a live preview. The preview serves files as they are. A site in `docs/` opens from its repository. The sidebar suits a website. Health checks relative links and pictures, alt text and page titles, and publishing a page takes its new pictures along.

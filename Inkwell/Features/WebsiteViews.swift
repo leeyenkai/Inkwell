@@ -165,7 +165,7 @@ struct MoveToJekyllSheet: View {
             Text("Move to Jekyll").font(.title2.weight(.semibold))
             Text("""
                 GitHub would build this site with Jekyll instead of serving its files as they are. A header, menu or footer that \
-                several pages copy moves into one file, so a change to it reaches every page. The pages look the same as before.
+                several pages copy moves into one file, so a change to it reaches every page. The HTML pages look the same as before.
                 """)
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let plan {
@@ -182,6 +182,15 @@ struct MoveToJekyllSheet: View {
                         }
                         if !plan.keptNames.isEmpty {
                             bullet("eye", "_config.yml lists files Jekyll would otherwise leave out: \(plan.keptNames.joined(separator: ", ")).")
+                        }
+                        if !plan.notKept.isEmpty {
+                            let names = plan.notKept.joined(separator: ", ")
+                            bullet("exclamationmark.triangle",
+                                   "Jekyll stops serving \(names) unless you add them to the include list in _config.yml yourself.")
+                        }
+                        if !plan.markdownShown.isEmpty {
+                            let names = plan.markdownShown.joined(separator: ", ")
+                            bullet("exclamationmark.triangle", "These Markdown files become web pages instead of plain text: \(names).")
                         }
                         if !plan.leftAlone.isEmpty {
                             let count = plan.leftAlone.count
@@ -232,8 +241,13 @@ struct SiteKindPicker: View {
             Divider()
             ForEach(SiteKind.allCases, id: \.self) { kind in
                 Text(kind.title).tag(Optional(kind))
+                    // GitHub serves these files as they are: a Jekyll kind would write front matter readers then see.
+                    .disabled(!kind.servesFilesAsIs && model.site?.filesServedAsIs == true)
             }
         }
+        .help(model.site?.filesServedAsIs == true
+            ? String(localized: "GitHub serves this site's files as they are, so it can only be treated as a website of plain files.")
+            : String(localized: "If Inkwell guessed wrong, choose what this site is."))
     }
 }
 

@@ -17,6 +17,8 @@ final class FakeGitHub: @unchecked Sendable {
     var staleHeadOnce: String?
     /// Moves the branch but answers with a server error, as when the reply is lost.
     var loseRefAnswerOnce = false
+    /// The branch refuses updates, as a protected branch does.
+    var protectedBranch = false
     var truncateTrees = false
     /// Runs while a blob is being served, to change local files mid-sync.
     var duringBlobFetch: (() -> Void)?
@@ -143,6 +145,7 @@ final class FakeGitHub: @unchecked Sendable {
             return ok(["sha": sha])
         case ("PATCH", "git", "refs"):
             let sha = json["sha"] as! String
+            if protectedBranch { return (422, Data(#"{"message":"Protected branch update failed"}"#.utf8), [:]) }
             guard commits[sha]?.parents.contains(head) == true else {
                 return (422, Data(#"{"message":"Update is not a fast forward"}"#.utf8), [:])
             }

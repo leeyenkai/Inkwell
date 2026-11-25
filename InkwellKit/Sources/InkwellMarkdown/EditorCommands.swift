@@ -34,6 +34,16 @@ public enum EditorCommands {
         return ns.lineRange(for: sel)
     }
 
+    /// `text` split into its content and its line ending (`\r\n`, `\n` or none). Swift sees `\r\n` as one
+    /// character, so `hasSuffix("\n")` and `removeLast()` would misread it.
+    static func splitEnding(_ text: String) -> (body: String, ending: String) {
+        let ns = text as NSString
+        guard ns.length > 0, ns.character(at: ns.length - 1) == 10 else { return (text, "") }
+        let cr = ns.length > 1 && ns.character(at: ns.length - 2) == 13
+        let cut = cr ? 2 : 1
+        return (ns.substring(to: ns.length - cut), cr ? "\r\n" : "\n")
+    }
+
     /// Moves the lines the selection touches up or down past one line, in one edit. Nil at the top or bottom.
     public static func moveLines(_ text: String, selection: NSRange, up: Bool) -> FormattingResult? {
         let ns = text as NSString
@@ -43,10 +53,12 @@ public enum EditorCommands {
             guard block.location > 0 else { return nil }
             let previous = ns.lineRange(for: NSRange(location: block.location - 1, length: 0))
             var previousText = ns.substring(with: previous)
-            if !blockText.hasSuffix("\n") {
+            let (blockBody, blockEnding) = splitEnding(blockText)
+            if blockEnding.isEmpty {
                 // The last line has no newline; the one moving down past it takes over that ending.
-                blockText += "\n"
-                previousText.removeLast()
+                let (previousBody, previousEnding) = splitEnding(previousText)
+                blockText = blockBody + previousEnding
+                previousText = previousBody
             }
             let replacement = blockText + previousText
             let result = FormattingResult(edits: [TextEdit(NSUnionRange(previous, block), replacement)],
@@ -56,9 +68,11 @@ public enum EditorCommands {
         guard NSMaxRange(block) < ns.length else { return nil }
         let next = ns.lineRange(for: NSRange(location: NSMaxRange(block), length: 0))
         var nextText = ns.substring(with: next)
-        if !nextText.hasSuffix("\n") {
-            nextText += "\n"
-            blockText.removeLast()
+        let (nextBody, nextEnding) = splitEnding(nextText)
+        if nextEnding.isEmpty {
+            let (blockBody, blockEnding) = splitEnding(blockText)
+            nextText = nextBody + blockEnding
+            blockText = blockBody
         }
         let shift = (nextText as NSString).length
         let result = FormattingResult(edits: [TextEdit(NSUnionRange(block, next), nextText + blockText)],
@@ -342,12 +356,11 @@ public enum EditorCommands {
                                     selection: NSRange(location: location, length: min(selection.length, newLength - location)))
         }
         let block = lineBlock(ns, selection)
-        var inner = ns.substring(with: block)
-        let hadNewline = inner.hasSuffix("\n")
-        if hadNewline { inner.removeLast() }
-        let replacement = "```\n" + inner + "\n```" + (hadNewline ? "\n" : "")
+        let (inner, ending) = splitEnding(ns.substring(with: block))
+        let eol = ending.isEmpty ? (ns.range(of: "\r\n").location != NSNotFound ? "\r\n" : "\n") : ending
+        let replacement = "```" + eol + inner + eol + "```" + ending
         return FormattingResult(edits: [TextEdit(block, replacement)],
-                                selection: NSRange(location: selection.location + 4, length: selection.length))
+                                selection: NSRange(location: selection.location + 3 + (eol as NSString).length, length: selection.length))
     }
 
     /// Languages offered for code blocks, as written after the fence.

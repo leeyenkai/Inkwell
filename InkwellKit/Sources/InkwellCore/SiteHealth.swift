@@ -260,6 +260,8 @@ public enum SiteHealth {
         let configText = (try? String(contentsOf: site.root.appending(path: "_config.yml"), encoding: .utf8)) ?? ""
 
         func pluginFix(_ plugin: String, tag: String?, summary: String) -> Fix? {
+            // With a Gemfile that lacks the gem, adding the plugin would stop the build; that is a change for the person.
+            guard Plugins.usable(plugin, siteRoot: site.root) else { return nil }
             var edits: [ContentEdit] = []
             var config = ConfigEditing(text: configText)
             if config.appendToList("plugins", item: plugin) { edits.append(ContentEdit(path: "_config.yml", newText: config.text)) }

@@ -772,7 +772,7 @@ struct MediaGrid: View {
     @State private var unusedOnly = false
     @State private var loading = true
 
-    var shown: [MediaLibrary.Item] { unusedOnly ? items.filter(\.usedBy.isEmpty) : items }
+    var shown: [MediaLibrary.Item] { unusedOnly ? items.filter(\.isUnused) : items }
 
     var subtitle: String {
         let size = ByteCountFormatter.string(fromByteCount: Int64(items.reduce(0) { $0 + $1.bytes }), countStyle: .file)
@@ -787,8 +787,8 @@ struct MediaGrid: View {
                         SquareThumbnail(url: model.site?.root.appending(path: item.path))
                         .clipShape(RoundedRectangle(cornerRadius: 5))
                         .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(model.selectedMedia == item.path ? Color.accentColor : .clear, lineWidth: 3))
-                        Text(item.usedBy.isEmpty ? "Unused" : "\(item.usedBy.count) uses")
-                            .font(.caption2).foregroundStyle(item.usedBy.isEmpty ? .orange : .secondary)
+                        Text(item.isUnused ? "Unused" : item.usedBy.isEmpty ? "Site icon" : "\(item.usedBy.count) uses")
+                            .font(.caption2).foregroundStyle(item.isUnused ? .orange : .secondary)
                     }
                     .choosable(spokenLabel(item), selected: model.selectedMedia == item.path) { model.selectedMedia = item.path }
                 }
@@ -800,7 +800,7 @@ struct MediaGrid: View {
             HStack {
                 Toggle("Unused only", isOn: $unusedOnly).toggleStyle(.checkbox)
                 Spacer()
-                let unused = items.filter(\.usedBy.isEmpty)
+                let unused = items.filter(\.isUnused)
                 // On a hand-built site, scripts can name pictures in ways Inkwell cannot follow, so "unused" is a guess.
                 if model.site?.kind.servesFilesAsIs != true {
                     Button("Delete \(unused.count) Unused…") { deleteUnused(unused) }.disabled(unused.isEmpty)
@@ -816,26 +816,34 @@ struct MediaGrid: View {
 
     func spokenLabel(_ item: MediaLibrary.Item) -> String {
         let name = (item.path as NSString).lastPathComponent
-        return item.usedBy.isEmpty ? String(localized: "\(name), unused") : String(localized: "\(name), used \(item.usedBy.count) times")
+        if item.isUnused { return String(localized: "\(name), unused") }
+        return item.usedBy.isEmpty ? String(localized: "\(name), site icon") : String(localized: "\(name), used \(item.usedBy.count) times")
     }
 
     func load() async {
         guard let root = model.site?.root else { return }
-        items = await Task.detached { MediaLibrary.scan(siteRoot: root) }.value
+        let drafts = model.draftTexts()
+        items = await Task.detached { MediaLibrary.scan(siteRoot: root, extraTexts: drafts) }.value
         model.mediaItems = items
         loading = false
     }
 
     func deleteUnused(_ unused: [MediaLibrary.Item]) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Delete \(unused.count) unused images?")
+        alert.messageText = String(localized: "Move \(unused.count) unused images to the Trash?")
         alert.informativeText = String(localized: """
-            No post, page or stylesheet links to them. They leave the site when you next publish; GitHub keeps their history.
+            No post, page, draft or stylesheet names them. Ones already published leave the site when you next publish.
             """)
-        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.addButton(withTitle: String(localized: "Move to Trash"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, let root = model.site?.root else { return }
-        for item in unused { try? FileManager.default.removeItem(at: root.appending(path: item.path)) }
+        for item in unused {
+            do {
+                try FileManager.default.trashItem(at: root.appending(path: item.path), resultingItemURL: nil)
+            } catch {
+                model.errorMessage = error.localizedDescription
+            }
+        }
         model.selectedMedia = nil
         model.mediaRevision += 1
         model.refreshChanges()
@@ -864,10 +872,11 @@ struct MediaDetail: View {
                 }
                 LabeledContent("Used in") {
                     VStack(alignment: .trailing) {
-                        if item.usedBy.isEmpty { Text("Nothing links to it").foregroundStyle(.orange) }
+                        if item.isUnused { Text("Nothing links to it").foregroundStyle(.orange) }
+                        if item.keptByConvention, item.usedBy.isEmpty { Text("Browsers ask for this icon by name") }
                         ForEach(item.usedBy, id: \.self) { path in
                             Button(path) {
-                                if let doc = model.site?.documents.first(where: { $0.relativePath == path }) {
+                                if let doc = model.allDocuments.first(where: { $0.relativePath == path }) {
                                     model.sidebarSelection = .section(doc.sectionID)
                                     if doc.sectionID == PhotoStream.collection { model.selectedPhotoID = doc.id } else { model.select(doc.id) }
                                 }
@@ -913,12 +922,16 @@ struct MediaDetail: View {
         let alert = NSAlert()
         alert.messageText = String(localized: "Delete \((item.path as NSString).lastPathComponent)?")
         alert.informativeText = item.usedBy.isEmpty
-            ? String(localized: "Nothing links to it.")
+            ? String(localized: "Nothing links to it. It moves to the Trash.")
             : String(localized: "It is used in \(item.usedBy.count) places, which will show a broken image.")
-        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.addButton(withTitle: String(localized: "Move to Trash"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, let url else { return }
-        try? FileManager.default.removeItem(at: url)
+        do {
+            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+        } catch {
+            model.errorMessage = error.localizedDescription
+        }
         model.selectedMedia = nil
         model.mediaRevision += 1
         model.refreshChanges()

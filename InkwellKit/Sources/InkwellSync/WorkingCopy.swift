@@ -89,6 +89,8 @@ public enum SyncError: Error, LocalizedError, Sendable, Equatable {
     case nothingToPublish
     case extractFailed(String)
     case tooLarge
+    /// GitHub did not answer whether the branch moved. Nothing is undone here, since the publish may be live.
+    case unconfirmed
 
     public var errorDescription: String? {
         switch self {
@@ -97,6 +99,7 @@ public enum SyncError: Error, LocalizedError, Sendable, Equatable {
         case .nothingToPublish: localized("There is nothing new to publish.")
         case let .extractFailed(message): localized("The site could not be unpacked: \(message)")
         case .tooLarge: localized("The repository has more files than GitHub lists in one answer, so Inkwell cannot keep it in step.")
+        case .unconfirmed: localized("GitHub did not confirm the publish. Check GitHub for changes in a moment to see whether it went through.")
         }
     }
 }
@@ -363,9 +366,17 @@ public actor WorkingCopy {
         } catch GitHubError.notFastForward {
             throw GitHubError.notFastForward
         } catch {
-            // The answer can be lost after GitHub moved the branch. Ask again before reporting a failure, or the
-            // caller would roll back a publish that is already live.
-            guard (try? await client.branchHead(ref.owner, ref.name, branch: ref.branch)) == commit else { throw error }
+            // The answer can be lost after GitHub moved the branch, and GitHub can report the old head for a moment.
+            // Ask again a few times; without an answer either way, nothing may be rolled back.
+            var head: String?
+            for attempt in 0 ..< 4 {
+                head = try? await client.branchHead(ref.owner, ref.name, branch: ref.branch)
+                if head == commit { break }
+                if attempt < 3 { try? await Task.sleep(for: .seconds(1)) }
+            }
+            // GitHub answered with the old head: the publish was refused (a protected branch, a limit), so it is undone.
+            // Only no answer at all leaves the outcome open.
+            if head != commit { throw head == nil ? SyncError.unconfirmed : error }
         }
         state.pass(state.baseCommit)
         state.baseCommit = commit
@@ -374,7 +385,9 @@ public actor WorkingCopy {
         for entry in entries { state.modes[entry.path] = entry.sha == nil ? nil : entry.mode }
         state.updated = Date()
         self.state = state
-        try saveState()
+        // The branch has moved: a state file that cannot be written now is written by the next pull, and must not
+        // make the caller undo a publish that is live.
+        try? saveState()
         return commit
     }
 
@@ -389,8 +402,13 @@ public actor WorkingCopy {
 
     private func pullNow(client: GitHubClient) async throws -> PullOutcome {
         guard var state else { throw SyncError.notDownloaded }
+        try await settleStaleConflicts(client: client)
+        state = self.state ?? state
         let head = try await client.branchHead(ref.owner, ref.name, branch: ref.branch)
-        guard head != state.baseCommit, !(state.passed ?? []).contains(head) else { return PullOutcome() }
+        // An older head shortly after moving the branch is GitHub's lag. Long after, it is a real change: someone
+        // reset the branch to an earlier commit.
+        let lagging = (state.passed ?? []).contains(head) && Date().timeIntervalSince(state.updated) < 120
+        guard head != state.baseCommit, !lagging else { return PullOutcome() }
         let commit = try await client.commit(ref.owner, ref.name, sha: head)
         let tree = try await client.tree(ref.owner, ref.name, sha: commit.tree.sha)
         // A partial list would read as files deleted on GitHub.
@@ -403,7 +421,10 @@ public actor WorkingCopy {
         }
         let local = try changes()
         var outcome = PullOutcome()
-        for path in Set(state.files.keys).union(remote.keys).sorted() {
+        // Removals first: on a disk that ignores case, a file renamed only in case on GitHub is the same file here,
+        // and removing the old name after writing the new one would delete it.
+        let paths = Set(state.files.keys).union(remote.keys).sorted { (remote[$0] != nil ? 1 : 0, $0) < (remote[$1] != nil ? 1 : 0, $1) }
+        for path in paths {
             let old = state.files[path], new = remote[path]
             guard old != new else { continue }
             if local[path] != nil {
@@ -411,6 +432,7 @@ public actor WorkingCopy {
                 let localSHA = (try? contents(url)).map(GitBlob.sha)
                 if localSHA == new {
                     state.files[path] = new
+                    state.conflicts[path] = nil
                 } else {
                     state.conflicts[path] = .some(new)
                     outcome.conflicts.append(path)
@@ -440,6 +462,26 @@ public actor WorkingCopy {
         self.state = state
         try saveState()
         return outcome
+    }
+
+    /// Conflicts that settled themselves: the file here now matches GitHub's, or the file here is gone and was never on
+    /// GitHub before (a draft whose publish stopped on the conflict), so GitHub's version simply comes in.
+    private func settleStaleConflicts(client: GitHubClient) async throws {
+        guard var state, !state.conflicts.isEmpty else { return }
+        for (path, remote) in state.conflicts {
+            let url = root.appending(path: path)
+            let localSHA = (try? contents(url)).map(GitBlob.sha)
+            if localSHA == remote {
+                state.files[path] = remote
+                state.conflicts[path] = nil
+            } else if localSHA == nil, state.files[path] == nil {
+                try await write(path: path, sha: remote, client: client)
+                state.files[path] = remote
+                state.conflicts[path] = nil
+            }
+        }
+        self.state = state
+        try saveState()
     }
 
     private func write(path: String, sha: String?, client: GitHubClient) async throws {

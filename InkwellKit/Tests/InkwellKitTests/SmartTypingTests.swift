@@ -26,9 +26,10 @@ final class SmartTypingTests: XCTestCase {
     }
 
     func testSlashBlocks() {
+        // Words after the slash are kept, behind the new marker.
         let text = "Intro\n/qu"
         let quote = SmartTyping.insert(.quote, in: text, slashAt: 6)
-        XCTAssertEqual(apply(quote, to: text), "Intro\n> ")
+        XCTAssertEqual(apply(quote, to: text), "Intro\n> qu")
         XCTAssertEqual(quote.selection, NSRange(location: 8, length: 0))
         let table = SmartTyping.insert(.table, in: "/", slashAt: 0)
         XCTAssertEqual(apply(table, to: "/"), "| Column | Column |\n| --- | --- |\n|  |  |")

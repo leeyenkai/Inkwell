@@ -94,7 +94,10 @@ struct CodeEditor: NSViewRepresentable {
         context.coordinator.parent = self
         guard let textView = scroll.documentView as? NSTextView else { return }
         (textView as? DroppingTextView)?.onDropImages = onDropImages
-        if context.coordinator.identity != identity || (textView.string != text && !context.coordinator.isEditing) {
+        // A character still being composed (accents, Korean, Chinese) is not in `text` yet: replacing the text now would
+        // throw it away. A different file is loaded regardless.
+        let composing = textView.hasMarkedText()
+        if context.coordinator.identity != identity || (textView.string != text && !context.coordinator.isEditing && !composing) {
             load(textView, coordinator: context.coordinator)
         }
         textView.isEditable = editable

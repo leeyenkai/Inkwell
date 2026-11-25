@@ -153,19 +153,33 @@ extension AppModel {
         guard let site else { return }
         let alert = NSAlert()
         alert.messageText = String(localized: "Delete this photo?")
-        alert.informativeText = String(localized: "It leaves the photo stream when you next publish. GitHub keeps its history.")
-        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.informativeText = String(localized: "It moves to the Trash and leaves the photo stream when you next publish.")
+        alert.addButton(withTitle: String(localized: "Move to Trash"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        try? FileManager.default.removeItem(at: entry.doc.fileURL)
-        if let image = fileURL(forSitePath: entry.image) {
-            let relative = String(image.standardizedFileURL.path.dropFirst(site.root.standardizedFileURL.path.count + 1))
-            if MediaLibrary.scan(siteRoot: site.root).first(where: { $0.path == relative })?.usedBy.isEmpty == true {
-                try? FileManager.default.removeItem(at: image)
-            }
+        do {
+            try FileManager.default.trashItem(at: entry.doc.fileURL, resultingItemURL: nil)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
         }
         selectedPhotoID = nil
-        reloadSite()
+        let root = site.root, drafts = draftTexts()
+        guard let image = fileURL(forSitePath: entry.image) else { return reloadSite() }
+        let relative = String(image.standardizedFileURL.path.dropFirst(root.standardizedFileURL.path.count + 1))
+        // The picture goes too when nothing else uses it, checked off the main thread on a large site.
+        Task {
+            let unused = await Task.detached {
+                MediaLibrary.scan(siteRoot: root, extraTexts: drafts).first { $0.path == relative }?.isUnused == true
+            }.value
+            if unused { try? FileManager.default.trashItem(at: image, resultingItemURL: nil) }
+            reloadSite()
+        }
+    }
+
+    /// The text of each local draft, so pictures only drafts use are never taken for unused.
+    func draftTexts() -> [(label: String, text: String)] {
+        drafts.compactMap { doc in (try? String(contentsOf: doc.fileURL, encoding: .utf8)).map { (doc.relativePath, $0) } }
     }
 
     // MARK: Albums

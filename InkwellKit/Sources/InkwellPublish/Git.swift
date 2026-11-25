@@ -40,6 +40,9 @@ public struct Git: Sendable {
         executable = URL(fileURLWithPath: path)
     }
 
+    /// Fetching and pushing large pictures over a slow connection takes longer than local commands.
+    public static let networkTimeout: TimeInterval = 900
+
     @discardableResult
     public func run(_ arguments: [String], allowFailure: Bool = false, timeout: TimeInterval = 120) async throws -> String {
         let process = Process()
@@ -51,6 +54,8 @@ public struct Git: Sendable {
         environment["LC_ALL"] = "C"
         // Background status checks must not take the index lock while a publish is committing.
         environment["GIT_OPTIONAL_LOCKS"] = "0"
+        // Paths are file names, never patterns: `a[1].md` must not also match `a1.md`.
+        environment["GIT_LITERAL_PATHSPECS"] = "1"
         process.environment = environment
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -186,19 +191,19 @@ public struct Git: Sendable {
     /// undone, so the folder is never left half-way through one.
     public func push() async throws {
         let branch = try await currentBranch()
-        try await run(["fetch", "origin", branch], allowFailure: true)
+        try await run(["fetch", "origin", branch], allowFailure: true, timeout: Git.networkTimeout)
         let behind = try await run(["rev-list", "--count", "HEAD..origin/\(branch)"], allowFailure: true)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let n = Int(behind), n > 0 {
             try await refuseOverlap(branch: branch)
             do {
-                try await run(["pull", "--rebase", "--autostash", "origin", branch])
+                try await run(["pull", "--rebase", "--autostash", "origin", branch], timeout: Git.networkTimeout)
             } catch {
                 _ = try? await run(["rebase", "--abort"], allowFailure: true)
                 throw GitError(command: "pull", output: "rejected: the site changed on GitHub in the same files. \(error.localizedDescription)")
             }
         }
-        try await run(["push", "origin", "HEAD:\(branch)"])
+        try await run(["push", "origin", "HEAD:\(branch)"], timeout: Git.networkTimeout)
     }
 
     /// Uncommitted edits in files GitHub also changed would come back from the autostash as conflict markers, and the

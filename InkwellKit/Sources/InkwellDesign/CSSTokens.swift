@@ -55,16 +55,47 @@ public struct CSSTokenDocument: Sendable, Equatable {
     public var tokens: [Token] {
         var result: [Token] = []
         let ns = text as NSString
-        guard let regex = try? NSRegularExpression(pattern: #"(--[A-Za-z0-9_-]+)\s*:\s*([^;}]*?)\s*(?:;|$)"#) else { return [] }
+        guard let regex = try? NSRegularExpression(pattern: #"(--[A-Za-z0-9_-]+)\s*:\s*"#) else { return [] }
         for block in blocks() {
-            let content = Self.maskingComments(ns.substring(with: block.contentRange))
-            for m in regex.matches(in: content, range: NSRange(location: 0, length: (content as NSString).length)) {
-                let name = (content as NSString).substring(with: m.range(at: 1))
-                let valueRange = NSRange(location: block.contentRange.location + m.range(at: 2).location, length: m.range(at: 2).length)
+            let content = Self.maskingComments(ns.substring(with: block.contentRange)) as NSString
+            var scanned = 0
+            for m in regex.matches(in: content as String, range: NSRange(location: 0, length: content.length)) where m.range.location >= scanned {
+                let name = content.substring(with: m.range(at: 1))
+                let start = NSMaxRange(m.range)
+                let end = Self.valueEnd(in: content, from: start)
+                scanned = end
+                var trimmedEnd = end
+                while trimmedEnd > start, [32, 9, 10, 13].contains(content.character(at: trimmedEnd - 1)) { trimmedEnd -= 1 }
+                let valueRange = NSRange(location: block.contentRange.location + start, length: trimmedEnd - start)
                 result.append(Token(name: name, value: ns.substring(with: valueRange), scheme: block.scheme, valueRange: valueRange))
             }
         }
         return result
+    }
+
+    /// Where a property's value ends: the first `;` or `}` outside quotes and brackets, so `url("data:…;utf8,…")` and
+    /// strings with semicolons stay whole.
+    static func valueEnd(in text: NSString, from start: Int) -> Int {
+        var quote: unichar?
+        var depth = 0
+        var i = start
+        while i < text.length {
+            let c = text.character(at: i)
+            if let open = quote {
+                if c == 92 { i += 2; continue } // a backslash escapes the next character
+                if c == open { quote = nil }
+            } else if c == 34 || c == 39 {
+                quote = c
+            } else if c == 40 || c == 91 {
+                depth += 1
+            } else if c == 41 || c == 93 {
+                depth = max(0, depth - 1)
+            } else if depth == 0, c == 59 || c == 125 {
+                return i
+            }
+            i += 1
+        }
+        return min(i, text.length)
     }
 
     public func value(_ name: String, scheme: ColorSchemeKind = .light) -> String? {

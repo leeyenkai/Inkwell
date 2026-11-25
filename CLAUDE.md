@@ -56,6 +56,8 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
 - Always build outside the iCloud folder: `scripts/build.sh` (DerivedData in `~/Library/Caches/InkwellBuild`), and
   `cd InkwellKit && swift test --scratch-path ~/Library/Caches/InkwellBuild/spm`.
 - Run against a copy, never the real site: `scripts/make-sample-site.sh` clones the site into `~/Library/Caches/InkwellBuild/sample-site` with a local bare repo as `origin`.
+  `scripts/make-demo-site.sh [theme]` makes Field Notes, the made-up site (the theme gallery's `Themes/_sample`), the same way
+  (`--make-demo-site <folder>` with `--demo-theme <id>`).
 - End to end: `Inkwell.app/Contents/MacOS/Inkwell --site <sample-site> --selftest-publish` prints `SELFTEST PASS` when a draft and its image are published as exactly one two-file commit. It refuses GitHub remotes.
 - Launch the built app with `open -n <app> --args …` (running the binary directly from a shell may show no window), and use
   `open -W --stdout <file>` to read self-test output.
@@ -89,7 +91,8 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
   `--edit-table` (the table grid, in a window so it can be captured), `--settings`, `--help <topic>`, `--summary` (first-open
   summary, which `--site` otherwise suppresses), `--move-to-jekyll` (the move sheet on a hand-built site), `--page-link <address>`
   (the address sheet for that link on the open HTML page).
-- README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
+- README screenshots: `scripts/readme/screenshots.sh` takes them from the demo site, never a real one (needs a Debug build and
+  Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
 ## Rules
 

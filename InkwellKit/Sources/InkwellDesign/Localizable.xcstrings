@@ -166,6 +166,9 @@
     "Teal" : {
 
     },
+    "The %@ colours, fonts and styles." : {
+
+    },
     "The dark palette, used when the reader’s Mac or phone is in dark mode." : {
 
     },
@@ -188,6 +191,12 @@
 
     },
     "Used by page elements such as galleries, maps and timelines." : {
+
+    },
+    "You changed this file; your changes are replaced." : {
+
+    },
+    "Your own colours and fonts are kept." : {
 
     }
   },

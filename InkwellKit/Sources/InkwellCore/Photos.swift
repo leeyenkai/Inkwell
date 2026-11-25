@@ -105,10 +105,14 @@ public enum PhotoStream {
             plan.append((edit, localized("Moves a photo that was written by hand in the old page.")))
         }
         let navText = read("_data/navigation.yml")
-        if let navText {
-            let listed = YAML.parse(navText).list?.contains { $0["url"]?.string?.hasPrefix("/photos") == true } ?? false
+        // Only a plain list takes another item at its end; a file of named menus is left alone.
+        let navigation = navText.map(YAML.parse)
+        if let navText, navigation?.list != nil || navText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let listed = navigation?.list?.contains { $0["url"]?.string?.hasPrefix("/photos") == true } ?? false
+            let urls = navigation?.list?.compactMap { $0["url"]?.string } ?? []
+            let style = urls.first { $0.count > 1 && $0.hasPrefix("/") }?.hasSuffix("/") == true ? "/photos/" : "/photos"
             if !listed {
-                let text = (navText.hasSuffix("\n") ? navText : navText + "\n") + "- title: photos\n  url: /photos\n"
+                let text = (navText.hasSuffix("\n") || navText.isEmpty ? navText : navText + "\n") + "- title: Photos\n  url: \(style)\n"
                 plan.append((ContentEdit(path: "_data/navigation.yml", newText: text), localized("Adds Photos to the menu.")))
             }
         }
@@ -170,43 +174,71 @@ public extension ConfigEditing {
     @discardableResult
     mutating func addCollection(_ name: String, output: Bool) -> Bool {
         let parsed = YAML.parse(lines.joined(separator: "\n"))
-        if parsed["collections"]?[name] != nil || parsed["collections"]?.list?.contains(where: { $0.string == name }) == true { return false }
-        guard let start = lines.firstIndex(where: { $0.hasPrefix("collections:") }) else {
+        let collections = parsed["collections"]
+        if collections?[name] != nil || collections?.list?.contains(where: { $0.string == name }) == true { return false }
+        guard let start = lines.lastIndex(where: { $0.hasPrefix("collections:") }) else {
             if let last = lines.last, !last.isEmpty { lines.append("") }
             lines += ["collections:", "  \(name):", "    output: \(output)"]
             return true
         }
         var end = start + 1
-        var indent = "  "
         while end < lines.count {
             let line = lines[end]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty || line.hasPrefix(" ") {
-                if !trimmed.isEmpty, trimmed.hasSuffix(":"), line.prefix(while: { $0 == " " }).count <= 2 { indent = String(line.prefix { $0 == " " }) }
-                end += 1
-            } else {
-                break
-            }
+            guard trimmed.isEmpty || line.hasPrefix(" ") || line.hasPrefix("-") else { break }
+            end += 1
         }
         while end > start + 1, lines[end - 1].trimmingCharacters(in: .whitespaces).isEmpty { end -= 1 }
-        lines.insert(contentsOf: ["\(indent)\(name):", "\(indent)\(indent)output: \(output)"], at: end)
+        // A list of names (`[notes, travel]` or `- notes` lines) becomes a mapping: the same collections, unchanged
+        // (a listed collection has no pages of its own), and the new one.
+        if let names = collections?.list?.compactMap(\.string) {
+            var block = ["collections:"]
+            for existing in names { block += ["  \(existing):", "    output: false"] }
+            block += ["  \(name):", "    output: \(output)"]
+            lines.replaceSubrange(start ..< end, with: block)
+            return true
+        }
+        // The file's own indentation: its first child for the name, and that child's first setting below it.
+        let body = lines[(start + 1) ..< end].filter {
+            let trimmed = $0.trimmingCharacters(in: .whitespaces)
+            return !trimmed.isEmpty && !trimmed.hasPrefix("#")
+        }
+        let childIndent = body.first.map { $0.prefix { $0 == " " }.count } ?? 2
+        let grandchild = body.map { $0.prefix { $0 == " " }.count }.first { $0 > childIndent } ?? childIndent * 2
+        lines.insert(contentsOf: [String(repeating: " ", count: childIndent) + "\(name):",
+                                  String(repeating: " ", count: grandchild) + "output: \(output)"], at: end)
         return true
     }
 }
 
-/// Every image in the site and where each is used.
+/// Every image in the site and where each is used. "Unused" leads to deletion, so the matching leans towards "used":
+/// a file referenced by its name anywhere (a relative path, a bare name in front matter, a srcset) counts as used.
 public enum MediaLibrary {
     public struct Item: Sendable, Equatable, Identifiable {
         public var path: String
         public var bytes: Int
         public var usedBy: [String]
+        /// Icons browsers ask for by name (favicon, apple-touch-icon…), which nothing has to link to.
+        public var keptByConvention = false
         public var id: String { path }
+
+        public var isUnused: Bool { usedBy.isEmpty && !keptByConvention }
+
+        public init(path: String, bytes: Int, usedBy: [String], keptByConvention: Bool = false) {
+            self.path = path
+            self.bytes = bytes
+            self.usedBy = usedBy
+            self.keptByConvention = keptByConvention
+        }
     }
 
-    static let imageExtensions: Set = ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif", "heic"]
-    static let textExtensions: Set = ["md", "markdown", "html", "htm", "yml", "yaml", "css", "scss", "sass", "js", "json", "xml", "liquid"]
+    static let imageExtensions: Set = ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif", "heic", "ico"]
+    static let textExtensions: Set = ["md", "markdown", "html", "htm", "yml", "yaml", "css", "scss", "sass", "js", "mjs", "json", "xml",
+                                      "liquid", "webmanifest", "txt", "toml"]
+    static let conventionalIcons = ["favicon", "apple-touch-icon", "android-chrome", "mstile", "safari-pinned-tab"]
 
-    public static func scan(siteRoot: URL) -> [Item] {
+    /// `extraTexts` are files outside the site that can still use its images: local drafts, by a label and their text.
+    public static func scan(siteRoot: URL, extraTexts: [(label: String, text: String)] = []) -> [Item] {
         let fm = FileManager.default
         guard let enumerator = fm.enumerator(at: siteRoot, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
                                              options: [.skipsHiddenFiles]) else { return [] }
@@ -222,32 +254,54 @@ public enum MediaLibrary {
             let ext = url.pathExtension.lowercased()
             if imageExtensions.contains(ext) {
                 images.append((relative, (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0))
+                // An SVG can draw other pictures.
+                if ext == "svg", let text = try? String(contentsOf: url, encoding: .utf8) { texts.append((relative, text)) }
             } else if textExtensions.contains(ext), let text = try? String(contentsOf: url, encoding: .utf8) {
                 texts.append((relative, text))
             }
         }
-        // Each text is read once: every image-like path in it is indexed under each of its trailing parts
-        // ("/assets/a/b.jpg" under "assets/a/b.jpg", "a/b.jpg" and "b.jpg"), so a lookup by site path finds it.
+        texts += extraTexts.map { ($0.label, $0.text) }
+        let index = references(in: texts)
+        return images.sorted { $0.0 < $1.0 }.map { path, bytes in
+            let key = path.lowercased()
+            let name = (key as NSString).lastPathComponent
+            // The exact site path first; any file naming the picture otherwise, which also covers relative paths.
+            var users = (index[key] ?? []).filter { $0 != path }
+            if users.isEmpty { users = (index[name] ?? []).filter { $0 != path } }
+            let conventional = conventionalIcons.contains { name.hasPrefix($0) }
+            return Item(path: path, bytes: bytes, usedBy: Array(Set(users)).sorted(), keptByConvention: conventional)
+        }
+    }
+
+    /// Every image-like reference in the texts, indexed (in lower case) under each of its trailing parts, split at `/`,
+    /// spaces and `(`: "/assets/a/b@2x.png" under "assets/a/b@2x.png", "a/b@2x.png" and "b@2x.png".
+    static func references(in texts: [(String, String)]) -> [String: [String]] {
         var index: [String: [String]] = [:]
-        let pattern = #"[\p{L}\p{N}_./%~+-]+\.(?:jpe?g|png|gif|webp|svg|avif|heic)\b"#
-        let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+        // Each image extension, with the name before it back to a quote, tag, comma or line end: names may hold spaces,
+        // @ and parentheses.
+        let regex = try? NSRegularExpression(pattern: #"\.(?:jpe?g|png|gif|webp|svg|avif|heic|ico)(?![\p{L}\p{N}_-])"#,
+                                             options: [.caseInsensitive])
+        let stops = Set("\n\r\t\"'<>=[]{}|*,;:`".utf16)
         for (file, text) in texts {
             let ns = text as NSString
             var seen = Set<String>()
             for m in regex?.matches(in: text, range: NSRange(location: 0, length: ns.length)) ?? [] {
-                let token = ns.substring(with: m.range)
-                let path = token.removingPercentEncoding ?? token
-                var start = path.startIndex
-                while true {
-                    let suffix = String(path[start...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                    if !suffix.isEmpty, seen.insert(suffix).inserted { index[suffix, default: []].append(file) }
-                    guard let slash = path[start...].firstIndex(of: "/") else { break }
-                    start = path.index(after: slash)
+                var start = m.range.location
+                while start > 0, m.range.location - start < 300, !stops.contains(ns.character(at: start - 1)) { start -= 1 }
+                guard start < m.range.location else { continue }
+                let token = ns.substring(with: NSRange(location: start, length: NSMaxRange(m.range) - start))
+                for form in Set([token, token.removingPercentEncoding ?? token]) {
+                    let path = form.lowercased()
+                    var start = path.startIndex
+                    while true {
+                        let suffix = String(path[start...]).trimmingCharacters(in: CharacterSet(charactersIn: "/ ").union(.whitespaces))
+                        if !suffix.isEmpty, seen.insert(suffix).inserted { index[suffix, default: []].append(file) }
+                        guard let cut = path[start...].firstIndex(where: { $0 == "/" || $0 == " " || $0 == "(" }) else { break }
+                        start = path.index(after: cut)
+                    }
                 }
             }
         }
-        return images.sorted { $0.0 < $1.0 }.map { path, bytes in
-            Item(path: path, bytes: bytes, usedBy: (index[path] ?? []).sorted())
-        }
+        return index
     }
 }

@@ -176,8 +176,9 @@ struct PropertiesView: View {
                         Text("Scheduled").font(.caption).foregroundStyle(Color.accentColor)
                     }
                 } else {
-                    TextField("YYYY-MM-DD", text: Binding(get: { editor.string(field.key) }, set: { editor.frontMatterSetRaw(field.key, $0) }))
-                        .textFieldStyle(.roundedBorder)
+                    // Committed on Return or leaving the field: a date read while it is still being typed (2026-11-2)
+                    // would turn the field into a date picker holding the wrong day.
+                    CommitField(placeholder: "YYYY-MM-DD", value: editor.string(field.key)) { editor.frontMatterSetRaw(field.key, $0) }
                         .frame(width: 140)
                 }
             case .toggle:
@@ -217,9 +218,10 @@ struct PropertiesView: View {
 }
 
 extension EditorDocument {
-    /// Keeps whatever was typed into a date field that does not hold a date yet, so it can be fixed in place.
+    /// Keeps whatever was typed into a date field that does not hold a date yet, so it can be fixed in place. A date is
+    /// read in the site's time zone, the one it is written in.
     func frontMatterSetRaw(_ key: String, _ text: String) {
-        if let date = SiteDate.parse(text), text.count >= 8 {
+        if let date = SiteDate.parse(text, timeZone: timeZone), text.count >= 8 {
             setDate(key, date)
         } else {
             setString(key, text)

@@ -11,7 +11,8 @@ public struct MarkdownLink: Sendable, Equatable {
     public var text: String
     public var url: String
 
-    static let inlinePattern = #"(?<!\!)\[([^\]^][^\]]*)\]\(\s*(<[^>]*>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)"#
+    /// The text may hold escaped brackets (`\[Draft\]`); the address may hold balanced parentheses, as Wikipedia's do.
+    static let inlinePattern = #"(?<!\!)\[((?!\^)(?:\\.|[^\]\\])+)\]\(\s*(<[^>]*>|(?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)"#
     static let autoPattern = #"<((?:https?|mailto):[^>\s]+)>"#
 
     /// Every link on the lines touched by `range` (the whole text when nil), in order.
@@ -123,7 +124,7 @@ public extension Formatting {
                 return FormattingResult(edits: [TextEdit(link.range, replacement)],
                                         selection: NSRange(location: link.range.location + (replacement as NSString).length, length: 0))
             }
-            let written = url.contains(" ") ? "<\(url)>" : url
+            let written = writtenAddress(url)
             var urlRange = link.urlRange
             if urlRange.location > 0, (text as NSString).character(at: urlRange.location - 1) == 60 {
                 urlRange = NSRange(location: urlRange.location - 1, length: urlRange.length + 2)
@@ -141,7 +142,7 @@ public extension Formatting {
             core.length -= 1
         }
         let label = core.length > 0 ? ns.substring(with: core) : escapeLabel(title)
-        let written = url.contains(" ") ? "<\(url)>" : url
+        let written = writtenAddress(url)
         let replacement = "[\(label)](\(written))"
         let at = core.length > 0 ? core : NSRange(location: selection.location, length: selection.length)
         return FormattingResult(edits: [TextEdit(at, replacement)],
@@ -154,7 +155,19 @@ public extension Formatting {
                          selection: NSRange(location: link.range.location, length: (link.text as NSString).length))
     }
 
-    internal static func escapeLabel(_ title: String) -> String {
+    /// An address as written inside `(…)`: in angle brackets when it has spaces or parentheses that do not pair up,
+    /// which would otherwise end the link early.
+    internal static func writtenAddress(_ url: String) -> String {
+        var depth = 0, balanced = true
+        for ch in url {
+            if ch == "(" { depth += 1 }
+            if ch == ")" { depth -= 1 }
+            if depth < 0 || depth > 1 { balanced = false }
+        }
+        return url.contains(" ") || !balanced || depth != 0 ? "<\(url)>" : url
+    }
+
+    static func escapeLabel(_ title: String) -> String {
         title.replacingOccurrences(of: "[", with: "\\[").replacingOccurrences(of: "]", with: "\\]")
     }
 }

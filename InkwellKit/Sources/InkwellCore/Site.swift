@@ -151,6 +151,9 @@ public struct Site: Sendable {
     public var detectedKind: SiteKind = .blog
     /// A GitHub Actions workflow builds the site with another generator: these files are its source.
     public var builtByWorkflow = false
+    /// GitHub serves the files as they are (`.nojekyll`, or a workflow that uploads them), whatever kind is chosen: front
+    /// matter written into them would reach readers as text.
+    public var filesServedAsIs = false
 
     public var name: String {
         if let host = URL(string: config.url)?.host { return host }
@@ -197,15 +200,18 @@ public enum SiteLoader {
         guard let configText = (try? String(contentsOf: configURL, encoding: .utf8)) ?? (looksLikeSite(root) ? "" : nil) else {
             throw SiteError.notASite(root)
         }
-        let config = SiteConfig(yaml: YAML.parse(configText))
+        var config = SiteConfig(yaml: YAML.parse(configText))
         let workflow = options.pagesBuildType == "legacy" ? nil : PagesWorkflow.build(siteRoot: root)
         let hasConfig = fm.fileExists(atPath: configURL.path)
         // A workflow that uploads the files as they are serves them the way `.nojekyll` does.
-        var noJekyll = fm.fileExists(atPath: root.appending(path: ".nojekyll").path) || workflow == .filesAsIs
+        let servedAsIs = fm.fileExists(atPath: root.appending(path: ".nojekyll").path) || workflow == .filesAsIs
+        var noJekyll = servedAsIs
         let builtByWorkflow = workflow == .otherGenerator && !hasConfig
-        switch options.kind {
+        // A Jekyll kind chosen for files GitHub serves as they are would let front matter reach readers: not taken.
+        var chosen = options.kind
+        switch chosen {
         case .handBuilt?, .generated?: noJekyll = true
-        case .blog?, .website?: noJekyll = false
+        case .blog?, .website?: if servedAsIs { chosen = nil }
         case nil: break
         }
         var navigation: [NavItem] = []
@@ -237,7 +243,7 @@ public enum SiteLoader {
                 addCollection(trimmed, label: item.title.capitalized)
             } else if let page = pagePath(for: item.url, root: root) {
                 let id = "page:\(page)"
-                sections.append(SiteSection(id: id, label: item.title.capitalized, kind: .page(page), symbol: symbol(for: trimmed.isEmpty ? "about" : trimmed)))
+                sections.append(SiteSection(id: id, label: item.title.capitalized, kind: .page(page), symbol: symbol(for: trimmed.isEmpty ? "index" : trimmed)))
                 if let doc = document(at: root.appending(path: page), relativePath: page, sectionID: id, config: config, url: item.url) {
                     documents.append(doc)
                 }
@@ -269,7 +275,9 @@ public enum SiteLoader {
             }
         }
         scan(root, prefix: "", depth: 0)
-        for (file, relativePath) in pageFiles.sorted(by: { $0.1 < $1.1 }) where ["md", "markdown", "html"].contains(file.pathExtension.lowercased()) {
+        var staticTexts: [String] = []
+        for (file, relativePath) in pageFiles.sorted(by: { $0.1 < $1.1 })
+            where ["md", "markdown", "html", "htm"].contains(file.pathExtension.lowercased()) {
             let name = relativePath
             guard !claimed.contains(name), !excluded.contains(name), !name.hasPrefix("_"), !name.hasPrefix("."),
                   let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
@@ -278,11 +286,18 @@ public enum SiteLoader {
             } else if ["html", "htm"].contains(file.pathExtension.lowercased()) {
                 // HTML without front matter, or any HTML on a site Jekyll does not build: served as it is.
                 pages.append(staticPage(at: file, relativePath: name, text: text, config: config))
+                staticTexts.append(text)
             }
+        }
+        // A project site's hand-written links often start with its address (`/repo/style.css`); without a `baseurl` to
+        // say so, those would all look broken.
+        if !hasConfig, config.baseurl.isEmpty, let inferred = inferredBaseurl(root: root, pages: staticTexts) {
+            config.baseurl = inferred
+            for index in pages.indices where pages[index].isStatic { pages[index].url = inferred + pages[index].url }
         }
         let detected = builtByWorkflow ? .generated
             : siteKind(root: root, noJekyll: noJekyll, hasConfig: hasConfig, hasCollections: hasCollections, documents: documents + pages)
-        let kind = options.kind ?? detected
+        let kind = chosen ?? detected
         // Every Jekyll blog has posts; without a folder or another collection, offer a Posts section to start one.
         if !hasCollections, kind == .blog {
             addCollection("posts", label: localized("Posts"))
@@ -295,7 +310,37 @@ public enum SiteLoader {
         site.kind = kind
         site.detectedKind = detected
         site.builtByWorkflow = builtByWorkflow
+        site.filesServedAsIs = servedAsIs
         return site
+    }
+
+    /// `/name` when most of the pages' root-absolute links start with `/name/`, `name` is the folder of the site or of
+    /// its repository, and the site has no file or folder of that name (so the links cannot mean one).
+    static func inferredBaseurl(root: URL, pages: [String]) -> String? {
+        var counts: [String: Int] = [:]
+        var total = 0
+        for page in pages {
+            for reference in SiteHealth.htmlReferences(in: page) {
+                let target = reference.target
+                guard target.hasPrefix("/"), !target.hasPrefix("//") else { continue }
+                total += 1
+                if let first = target.dropFirst().split(separator: "/", omittingEmptySubsequences: false).first, !first.isEmpty,
+                   target.dropFirst(first.count + 1).hasPrefix("/") {
+                    counts[String(first), default: 0] += 1
+                }
+            }
+        }
+        guard total > 0, let best = counts.max(by: { $0.value < $1.value }), Double(best.value) >= Double(total) * 0.6 else { return nil }
+        let name = best.key
+        var folders: [String] = []
+        var folder = root
+        for _ in 0 ..< 3 {
+            folders.append(folder.lastPathComponent.lowercased())
+            folder = folder.deletingLastPathComponent()
+        }
+        guard folders.contains(name.lowercased()),
+              !FileManager.default.fileExists(atPath: root.appending(path: name).path) else { return nil }
+        return "/" + name
     }
 
     /// The kind of site (SPEC §4.12): files Jekyll leaves alone, Jekyll pages without posts, or a blog.
@@ -369,7 +414,7 @@ public enum SiteLoader {
 
     /// A `_config.yml`, or a home page GitHub Pages can build on its own.
     public static func looksLikeSite(_ root: URL) -> Bool {
-        ["_config.yml", "index.md", "index.markdown", "index.html", "README.md"].contains {
+        ["_config.yml", "index.md", "index.markdown", "index.html", "index.htm", "README.md"].contains {
             FileManager.default.fileExists(atPath: root.appending(path: $0).path)
         }
     }
@@ -450,7 +495,8 @@ public enum SiteLoader {
 
     static func symbol(for name: String) -> String {
         switch name.lowercased() {
-        case "about", "", "index": "house"
+        case "", "index", "home": "house"
+        case "about", "me", "now": "person.crop.circle"
         case "notes", "essays", "posts", "blog": "note.text"
         case "sidenotes", "links", "quotes": "text.bubble"
         case "travel": "airplane"

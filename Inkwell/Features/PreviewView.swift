@@ -68,6 +68,9 @@ struct SitePreview: NSViewRepresentable {
     var onNavigate: ((String) -> Void)?
     /// Edits made on the page itself (SPEC §4.12, W3), for pages marked by `PageEditing`.
     var onPageEdit: (([String: Any]) -> Void)?
+    /// A page served as it is, whose own scripts build parts of it: updates reload it (keeping the scroll position)
+    /// rather than swapping its body, which would leave those parts empty.
+    var runsOwnScripts = false
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -116,19 +119,12 @@ struct SitePreview: NSViewRepresentable {
             if let url = Self.url(address) { web.load(URLRequest(url: url)) }
             return
         }
-        if reload { c.html = nil }
-        guard c.html != html else { return }
-        let base = Self.url(pageURL)
-        // Same page: swap the body in place so the scroll position stays where the writer is reading.
-        if c.loadedURL == pageURL, c.isLoaded, let body = Self.body(of: html), let old = c.html.flatMap(Self.head), old == Self.head(html) {
-            let json = (try? String(data: JSONEncoder().encode(body), encoding: .utf8)) ?? "\"\""
-            web.evaluateJavaScript("document.body.innerHTML = \(json);")
-        } else {
-            c.isLoaded = false
-            web.loadHTMLString(html, baseURL: base)
+        if reload {
+            c.html = nil
+            c.target = nil
         }
-        c.html = html
-        c.loadedURL = pageURL
+        guard c.target != html else { return }
+        c.show(html: html, pageURL: pageURL, runsOwnScripts: runsOwnScripts, in: web)
     }
 
     static func url(_ path: String) -> URL? {
@@ -156,14 +152,60 @@ struct SitePreview: NSViewRepresentable {
         }
 
         var html: String?
+        /// The newest page asked for; `html` is the one shown.
+        var target: String?
+        private var pending: (html: String, pageURL: String, scripts: Bool)?
+        private var showing = false
+        private var restoreScroll: Double?
         var loadedURL: String?
         var isLoaded = false
+
+        /// Shows a new version of the page, but never under someone typing on it: an element being edited on the page
+        /// would be replaced and its new text lost, so the update waits until they leave it.
+        func show(html: String, pageURL: String, runsOwnScripts: Bool, in web: WKWebView) {
+            target = html
+            pending = (html, pageURL, runsOwnScripts)
+            guard !showing else { return }
+            showing = true
+            Task { @MainActor in
+                while let next = pending {
+                    if isLoaded, loadedURL == next.pageURL,
+                       (try? await web.evaluateJavaScript("!!(document.activeElement && document.activeElement.isContentEditable)")) as? Bool == true {
+                        try? await Task.sleep(for: .milliseconds(400))
+                        continue
+                    }
+                    pending = nil
+                    await apply(next.html, pageURL: next.pageURL, runsOwnScripts: next.scripts, in: web)
+                }
+                showing = false
+            }
+        }
+
+        private func apply(_ html: String, pageURL: String, runsOwnScripts: Bool, in web: WKWebView) async {
+            let samePage = loadedURL == pageURL && isLoaded
+            if samePage, !runsOwnScripts, let body = SitePreview.body(of: html), let old = self.html.flatMap(SitePreview.head),
+               old == SitePreview.head(html) {
+                // Same page: swap the body in place so the scroll position stays where the writer is reading.
+                let json = (try? String(data: JSONEncoder().encode(body), encoding: .utf8)) ?? "\"\""
+                _ = try? await web.evaluateJavaScript("document.body.innerHTML = \(json); 0")
+            } else {
+                if samePage { restoreScroll = (try? await web.evaluateJavaScript("window.scrollY")) as? Double }
+                isLoaded = false
+                web.loadHTMLString(html, baseURL: SitePreview.url(pageURL))
+            }
+            self.html = html
+            loadedURL = pageURL
+        }
         var reloadToken = 0
         var browsing = false
         var onNavigate: ((String) -> Void)?
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             isLoaded = true
+            if let y = restoreScroll {
+                restoreScroll = nil
+                webView.evaluateJavaScript("window.scrollTo(0, \(y))")
+            }
             Self.snapshotIfAsked(webView)
             if browsing, let url = webView.url, url.scheme == SiteSchemeHandler.scheme {
                 let path = url.path(percentEncoded: false)
@@ -232,7 +274,8 @@ struct PreviewPane: View {
                     if let page, let root = model.site?.root {
                         SitePreview(html: page.html, pageURL: editor.currentURL, root: root, baseurl: model.site?.config.baseurl ?? "",
                                     resources: model.siteResources, appearance: model.previewAppearance,
-                                    onPageEdit: editsOnPage ? { model.applyPageEdit($0) } : nil)
+                                    onPageEdit: editsOnPage ? { model.applyPageEdit($0) } : nil,
+                                    runsOwnScripts: editor.document.isStatic || model.site?.kind.servesFilesAsIs == true)
                             .frame(width: model.previewWidth == .phone ? min(390, geo.size.width) : geo.size.width)
                             .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .phone ? 18 : 0))
                             .overlay {

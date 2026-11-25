@@ -260,6 +260,9 @@ final class AppModel {
                 try await copy.download(client: client) { [weak self] message in
                     await MainActor.run { self?.opening = message }
                 }
+            } else if !SiteLoader.looksLikeSite(copy.siteRoot) {
+                // Rejected before; the site may have been pushed since.
+                _ = try? await copy.pull(client: client)
             }
             guard SiteLoader.looksLikeSite(copy.siteRoot) else {
                 throw SiteError.notASite(URL(filePath: repo.full_name))
@@ -317,6 +320,7 @@ final class AppModel {
             settleEditor()
             editor = nil
             selectedDocumentID = nil
+            resetSiteState()
             self.backend = backend
             self.site = site
             defaultBranch = nil
@@ -353,11 +357,28 @@ final class AppModel {
         }
     }
 
+    /// What belongs to one site and must not carry over to the next.
+    private func resetSiteState() {
+        schemaCache = [:]
+        albumFilter = .all
+        selectedPhotoID = nil
+        selectedPhotoIDs = []
+        syncLoop?.cancel()
+        syncStatus = .idle
+        codeFile = nil
+        selectedTag = nil
+        selectedMedia = nil
+        selectedIssueID = nil
+        themeStatus = nil
+        previewBuilder = nil
+    }
+
     func closeSite() {
         settleEditor()
         syncLoop?.cancel()
         editor = nil
         selectedDocumentID = nil
+        resetSiteState()
         site = nil
         backend = nil
         pagesURL = nil
@@ -383,6 +404,8 @@ final class AppModel {
                 }
                 return (PreviewBuilder(site: site, timeZone: site.config.timeZone, themeRoot: theme), index, tags)
             }.value
+            // A slow build for a site that was closed or reloaded since must not replace the current one.
+            guard self.site?.root == site.root, self.themeRoot == theme else { return }
             previewBuilder = builder
             siteResources = SiteResources(builder: builder, themeRoot: theme, sass: Self.sass)
             searchIndex = index
@@ -408,11 +431,14 @@ final class AppModel {
         let client = account.client ?? GitHubClient(token: "")
         Task {
             do {
-                themeRoot = try await cache.ensure(owner: reference.owner, repository: reference.repository, ref: reference.ref, client: client)
+                let fetched = try await cache.ensure(owner: reference.owner, repository: reference.repository, ref: reference.ref, client: client)
+                guard self.site?.root == site.root else { return }
+                themeRoot = fetched
                 themeStatus = nil
                 if let site = self.site { rebuildDerived(site) }
                 design?.reload()
             } catch {
+                guard self.site?.root == site.root else { return }
                 themeStatus = String(localized: """
                     The \(reference.repository) theme could not be downloaded, so the preview is unstyled: \(error.localizedDescription)
                     """)
@@ -424,12 +450,31 @@ final class AppModel {
         guard let root = backend?.siteRoot else { return }
         let options = loadOptions
         Task {
-            guard let site = try? await Task.detached(operation: { try SiteLoader.load(root, options: options) }).value else { return }
+            let site: Site
+            do {
+                site = try await Task.detached(operation: { try SiteLoader.load(root, options: options) }).value
+            } catch {
+                if backend?.siteRoot == root { errorMessage = error.localizedDescription }
+                return
+            }
+            guard backend?.siteRoot == root else { return }
+            schemaCache = [:]
             self.site = site
+            closeEditorIfFileIsGone()
             reloadDrafts()
             rebuildDerived(site)
             refreshChanges()
         }
+    }
+
+    /// A published file deleted elsewhere (on GitHub, by a sync) closes its editor, so the next autosave cannot bring
+    /// it back. Unsaved edits are kept: the person then sees the file as a new change and decides.
+    func closeEditorIfFileIsGone() {
+        guard let editor, editor.document.origin == .repository,
+              !FileManager.default.fileExists(atPath: editor.document.fileURL.path), !editor.hasUnsavedEdits else { return }
+        editor.retire()
+        self.editor = nil
+        selectedDocumentID = nil
     }
 
     // MARK: Site kind (SPEC §4.12)
@@ -478,7 +523,8 @@ final class AppModel {
         guard let backend else { return }
         changesTask?.cancel()
         changesTask = Task {
-            let changes = (try? await backend.changes()) ?? [:]
+            // A failed look keeps the last known changes, rather than claiming the site is up to date.
+            let changes = (try? await backend.changes()) ?? self.changes
             let conflicts = await backend.conflicts()
             let unpushed = await backend.unpushed()
             guard !Task.isCancelled else { return }
@@ -589,6 +635,8 @@ final class AppModel {
 
     /// Why the hourly schedule workflow cannot run for this site, or nil when it can (or the site is a local folder).
     var scheduleWorkflowBlocker: Schedule.WorkflowBlocker? {
+        // A local folder's site in docs/ would get the workflow inside docs/, where GitHub never runs it.
+        if let local = backend as? LocalGitBackend { return local.repoPrefix.isEmpty ? nil : .siteInFolder }
         guard let ref = (backend as? GitHubBackend)?.copy.ref else { return nil }
         return Schedule.workflowBlocker(sitePath: ref.sitePath, branch: ref.branch, defaultBranch: defaultBranch, buildType: pagesBuildType)
     }
@@ -796,7 +844,11 @@ final class AppModel {
         alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         retireEditor(for: doc)
-        try? FileManager.default.trashItem(at: doc.fileURL, resultingItemURL: nil)
+        do {
+            try FileManager.default.trashItem(at: doc.fileURL, resultingItemURL: nil)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
         reloadDrafts()
     }
 
@@ -840,7 +892,8 @@ final class AppModel {
         Task {
             let options = loadOptions
             guard let root = backend?.siteRoot,
-                  let site = try? await Task.detached(operation: { try SiteLoader.load(root, options: options) }).value else { return }
+                  let site = try? await Task.detached(operation: { try SiteLoader.load(root, options: options) }).value,
+                  backend?.siteRoot == root else { return }
             self.site = site
             reloadDrafts()
             rebuildDerived(site)
@@ -980,6 +1033,7 @@ final class AppModel {
                 errorMessage = String(localized: "That text changed in the source while you were editing it, so your edit was not kept.")
             }
         case "image":
+            let original = PageEditing.imageSource(index, in: editor.fullText, liquid: editor.document.isHTMLPage)
             let panel = NSOpenPanel()
             panel.allowedContentTypes = [.image]
             panel.message = String(localized: "Choose a picture to show here instead.")
@@ -998,7 +1052,7 @@ final class AppModel {
                     }.value
                     let source = Self.relativePath(to: String(image.sitePath.drop { $0 == "/" }), from: page)
                     guard let current = self.editor, ObjectIdentifier(current) == id,
-                          let updated = PageEditing.replacingImage(index, with: source, in: current.fullText, liquid: liquid) else {
+                          let updated = PageEditing.replacingImage(index, with: source, expecting: original, in: current.fullText, liquid: liquid) else {
                         try? FileManager.default.removeItem(at: image.fileURL)
                         errorMessage = Self.pictureNotAdded
                         return

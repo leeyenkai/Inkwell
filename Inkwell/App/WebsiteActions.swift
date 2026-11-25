@@ -3,6 +3,13 @@ import InkwellKit
 
 /// Hand-built websites (SPEC §4.12, W4): the menu copied into every page, and the optional move to Jekyll.
 extension AppModel {
+    /// The open document is Markdown in the writing editor, where renaming, images and elements work. HTML pages, and
+    /// every page of a site served as it is, are edited as source instead.
+    var editsMarkdown: Bool {
+        guard let editor, let site else { return false }
+        return !editor.document.editsAsHTML && !site.kind.servesFilesAsIs
+    }
+
     /// Files whose menu can be edited: HTML pages, and on a Jekyll site the includes that hold a `<nav>`.
     var menuSources: [MenuSource] {
         guard let site else { return [] }

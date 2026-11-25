@@ -91,13 +91,19 @@ final class PublishSession: Identifiable {
         session.buildChecklist(document: document, text: text, site: site, changes: model.changes)
         if document.origin == .localDraft {
             let target = site.root.appending(path: document.relativePath)
+            var published = text
             session.prepare = { [weak session] in
                 let current = session?.editor?.fullText ?? text
+                published = current
                 try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try Data(current.utf8).write(to: target, options: .withoutOverwriting)
             }
             session.rollback = { try? FileManager.default.removeItem(at: target) }
             session.succeeded = { [weak session] in
+                // Typing after the sheet was hidden, while the post was on its way, stays as an unpublished edit.
+                if let latest = session?.editor?.fullText, latest != published {
+                    try? Data(latest.utf8).write(to: target, options: .atomic)
+                }
                 session?.editor?.retire()
                 try? FileManager.default.removeItem(at: document.fileURL)
             }
@@ -442,6 +448,10 @@ final class PublishSession: Identifiable {
         } catch let SyncError.conflict(paths) {
             rollback()
             phase = .conflict(paths)
+            model?.refreshChanges()
+        } catch SyncError.unconfirmed {
+            // The publish may be live: undoing it here could lose the post. The next check with GitHub settles it.
+            phase = .failed(SyncError.unconfirmed.localizedDescription)
             model?.refreshChanges()
         } catch {
             rollback()

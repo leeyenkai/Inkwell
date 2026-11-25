@@ -12,11 +12,13 @@ public enum SmartTyping {
         let lineRange = ns.lineRange(for: NSRange(location: cursor, length: 0))
         var contentEnd = NSMaxRange(lineRange)
         if contentEnd > lineRange.location, ns.character(at: contentEnd - 1) == 10 { contentEnd -= 1 }
-        guard cursor == contentEnd || cursor >= lineRange.location else { return nil }
+        if contentEnd > lineRange.location, ns.character(at: contentEnd - 1) == 13 { contentEnd -= 1 }
         let line = ns.substring(with: NSRange(location: lineRange.location, length: contentEnd - lineRange.location))
         let lineNS = line as NSString
         if let m = listPattern?.firstMatch(in: line, range: NSRange(location: 0, length: lineNS.length)) {
             let markerEnd = m.range.length
+            // Return before or inside the marker opens a plain line above the item and leaves the item as it is.
+            guard cursor >= lineRange.location + markerEnd else { return nil }
             let rest = lineNS.substring(from: markerEnd).trimmingCharacters(in: .whitespaces)
             if rest.isEmpty, cursor == contentEnd {
                 // An empty item ends the list.
@@ -35,6 +37,7 @@ public enum SmartTyping {
                                     selection: NSRange(location: cursor + (insert as NSString).length, length: 0))
         }
         if let m = quotePattern?.firstMatch(in: line, range: NSRange(location: 0, length: lineNS.length)) {
+            guard cursor >= lineRange.location + m.range.length else { return nil }
             let marker = lineNS.substring(with: m.range(at: 1))
             if lineNS.substring(from: m.range.length).trimmingCharacters(in: .whitespaces).isEmpty, cursor == contentEnd {
                 return FormattingResult(edits: [TextEdit(NSRange(location: lineRange.location, length: contentEnd - lineRange.location), "")],
@@ -113,23 +116,40 @@ public enum SmartTyping {
         }
     }
 
-    /// Replaces the typed `/` (and anything typed after it on the line) with a block.
+    /// Replaces the typed `/` with a block. Words already on the line after the slash are kept: a heading, quote or list
+    /// marker goes in front of them, a code block wraps them, and a table or section break comes before them.
     public static func insert(_ block: Block, in text: String, slashAt location: Int) -> FormattingResult {
         let ns = text as NSString
         let line = ns.lineRange(for: NSRange(location: location, length: 0))
         var end = NSMaxRange(line)
         if end > line.location, ns.character(at: end - 1) == 10 { end -= 1 }
+        if end > line.location, ns.character(at: end - 1) == 13 { end -= 1 }
+        let restStart = min(location + 1, end)
+        let rest = ns.substring(with: NSRange(location: restStart, length: end - restStart))
+        let eol = ns.range(of: "\r\n").location != NSNotFound ? "\r\n" : "\n"
+        let slash = NSRange(location: location, length: restStart - location)
         if block == .table {
             // The cursor lands on the first header, selected for typing over.
-            let table = "| Column | Column |\n| --- | --- |\n|  |  |"
-            return FormattingResult(edits: [TextEdit(NSRange(location: location, length: end - location), table)],
-                                    selection: NSRange(location: location + 2, length: 6))
+            let table = ["| Column | Column |", "| --- | --- |", "|  |  |"].joined(separator: eol)
+            let after = rest.trimmingCharacters(in: .whitespaces).isEmpty ? "" : eol + eol
+            return FormattingResult(edits: [TextEdit(slash, table + after)], selection: NSRange(location: location + 2, length: 6))
         }
-        let template = block.template
-        let marker = (template as NSString).range(of: "|")
-        let clean = (template as NSString).replacingCharacters(in: marker, with: "")
-        return FormattingResult(edits: [TextEdit(NSRange(location: location, length: end - location), clean)],
-                                selection: NSRange(location: location + marker.location, length: 0))
+        switch block {
+        case .code:
+            let open = "```" + eol, close = eol + "```"
+            let kept = rest.trimmingCharacters(in: .whitespaces).isEmpty ? "" : rest
+            return FormattingResult(edits: [TextEdit(NSRange(location: location, length: end - location), open + kept + close)],
+                                    selection: NSRange(location: location + (open as NSString).length, length: 0))
+        case .divider:
+            let rule = "***" + eol + eol
+            return FormattingResult(edits: [TextEdit(slash, rule)],
+                                    selection: NSRange(location: location + (rule as NSString).length, length: 0))
+        default:
+            let template = block.template
+            let marker = (template as NSString).range(of: "|")
+            let clean = (template as NSString).replacingCharacters(in: marker, with: "")
+            return FormattingResult(edits: [TextEdit(slash, clean)], selection: NSRange(location: location + marker.location, length: 0))
+        }
     }
 
     /// An embed for a YouTube or Vimeo address, as responsive HTML that every Jekyll theme passes through.

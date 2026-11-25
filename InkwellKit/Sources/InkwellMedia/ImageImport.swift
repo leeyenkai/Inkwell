@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import ImageIO
 import InkwellCore
@@ -22,11 +23,19 @@ public struct ImportedImage: Sendable, Equatable {
 public enum ImageImportError: Error, LocalizedError {
     case unreadable(String)
     case writeFailed(String)
+    /// The existing file's kind cannot hold the new picture without losing something (animation, drawing, format).
+    case cannotReplace(String)
+    /// A JPEG would lose the new picture's transparent parts.
+    case wouldLoseTransparency(String)
 
     public var errorDescription: String? {
         switch self {
         case let .unreadable(name): localized("\(name) could not be read as an image.")
         case let .writeFailed(name): localized("\(name) could not be saved.")
+        case let .cannotReplace(name):
+            localized("\(name) can only be replaced by a picture of the same kind. Add the new picture instead, and link to it.")
+        case let .wouldLoseTransparency(name):
+            localized("\(name) is a JPEG, which cannot keep the new picture’s transparent parts. Choose a picture without them.")
         }
     }
 }
@@ -91,16 +100,34 @@ public struct ImageImport: Sendable {
     }
 
     /// Writes a new picture over an existing image file, keeping its path and format so every link to it still works.
+    /// A GIF or SVG takes only a file of its own kind, copied as it is (an animation or drawing would not survive being
+    /// redrawn), and a format the Mac cannot write, or a JPEG asked to hold transparency, is refused rather than degraded.
     public func replace(_ existing: URL, with source: URL) throws -> ImportedImage {
         let name = source.lastPathComponent
         let originalBytes = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let existingName = existing.lastPathComponent
+        let kind = existing.pathExtension.lowercased()
+        if ["gif", "svg"].contains(kind) {
+            guard source.pathExtension.lowercased() == kind else { throw ImageImportError.cannotReplace(existingName) }
+            let staging = existing.deletingLastPathComponent().appending(path: ".inkwell-replace-\(UUID().uuidString).\(kind)")
+            try FileManager.default.copyItem(at: source, to: staging)
+            _ = try FileManager.default.replaceItemAt(existing, withItemAt: staging)
+            return ImportedImage(sitePath: "", fileURL: existing, originalBytes: originalBytes, finalBytes: originalBytes,
+                                 pixelWidth: 0, pixelHeight: 0, removedLocation: false)
+        }
+        let writable = (CGImageDestinationCopyTypeIdentifiers() as? [String]) ?? []
+        guard let type = UTType(filenameExtension: kind), writable.contains(type.identifier) else {
+            throw ImageImportError.cannotReplace(existingName)
+        }
         guard let image = CGImageSourceCreateWithURL(source as CFURL, nil) else { throw ImageImportError.unreadable(name) }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
         ]
         guard let cgImage = CGImageSourceCreateThumbnailAtIndex(image, 0, options as CFDictionary) else { throw ImageImportError.unreadable(name) }
-        let type = UTType(filenameExtension: existing.pathExtension) ?? .jpeg
+        if type.conforms(to: .jpeg), Self.hasTransparentPixels(cgImage) {
+            throw ImageImportError.wouldLoseTransparency(existingName)
+        }
         let staging = existing.deletingLastPathComponent().appending(path: ".inkwell-replace-\(UUID().uuidString).\(existing.pathExtension)")
         guard let destination = CGImageDestinationCreateWithURL(staging as CFURL, type.identifier as CFString, 1, nil) else {
             throw ImageImportError.writeFailed(existing.lastPathComponent)
@@ -112,6 +139,21 @@ public struct ImageImport: Sendable {
         let finalBytes = (try? existing.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         return ImportedImage(sitePath: "", fileURL: existing, originalBytes: originalBytes, finalBytes: finalBytes,
                              pixelWidth: cgImage.width, pixelHeight: cgImage.height, removedLocation: false)
+    }
+
+    /// Whether any pixel is not fully opaque (an alpha channel alone, as screenshots have, does not count). Checked on
+    /// a copy at most 256 pixels wide.
+    static func hasTransparentPixels(_ image: CGImage) -> Bool {
+        guard ![.none, .noneSkipLast, .noneSkipFirst].contains(image.alphaInfo) else { return false }
+        let scale = min(1, 256 / Double(max(image.width, image.height)))
+        let width = max(1, Int(Double(image.width) * scale)), height = max(1, Int(Double(image.height) * scale))
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = context.data else { return true }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let pixels = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        for i in 0 ..< width * height where pixels[i * 4 + 3] < 255 { return true }
+        return false
     }
 
     /// When a photo was taken, from its camera data.

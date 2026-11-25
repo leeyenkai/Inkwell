@@ -8,9 +8,12 @@ public struct FrontMatterDocument: Sendable, Equatable {
     public var body: String
     private var openingLine: String
     private var closingLine: String
-    private var newlineAfterClosing: Bool
+    /// Each line keeps its own ending, so a file that mixes CRLF and LF comes back byte for byte.
+    private var endings: [String] = []
+    private var openingEnding = "\n"
+    /// What follows the closing `---`: a line ending, or nothing at the very end of the file.
+    private var closingEnding = "\n"
     private var byteOrderMark = false
-    private var crlf = false
 
     public init(text: String) {
         var source = text
@@ -20,21 +23,31 @@ public struct FrontMatterDocument: Sendable, Equatable {
         }
         let all = source.components(separatedBy: "\n")
         let isFence: (String) -> Bool = { ["---", "..."].contains($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        func split(_ line: String) -> (String, Bool) { line.hasSuffix("\r") ? (String(line.dropLast()), true) : (line, false) }
         if let first = all.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == "---",
            let close = all.dropFirst().firstIndex(where: isFence) {
-            crlf = first.hasSuffix("\r")
-            let clean: (String) -> String = { [crlf] line in crlf && line.hasSuffix("\r") ? String(line.dropLast()) : line }
             hasFrontMatter = true
-            openingLine = clean(first)
-            lines = all[1 ..< close].map(clean)
-            closingLine = clean(all[close])
-            newlineAfterClosing = close + 1 < all.count
-            body = close + 1 < all.count ? all[(close + 1)...].joined(separator: "\n") : ""
+            let (opening, openingCR) = split(first)
+            openingLine = opening
+            openingEnding = openingCR ? "\r\n" : "\n"
+            lines = []
+            for line in all[1 ..< close] {
+                let (clean, cr) = split(line)
+                lines.append(clean)
+                endings.append(cr ? "\r\n" : "\n")
+            }
+            let (closing, closingCR) = split(all[close])
+            closingLine = closing
+            let more = close + 1 < all.count
+            closingEnding = (closingCR ? "\r" : "") + (more ? "\n" : "")
+            body = more ? all[(close + 1)...].joined(separator: "\n") : ""
         } else {
             hasFrontMatter = false
             openingLine = "---"
             closingLine = "---"
-            newlineAfterClosing = true
+            // Front matter added later follows the file's own line endings.
+            openingEnding = source.contains("\r\n") ? "\r\n" : "\n"
+            closingEnding = openingEnding
             lines = []
             body = source
         }
@@ -44,20 +57,17 @@ public struct FrontMatterDocument: Sendable, Equatable {
         hasFrontMatter = true
         openingLine = "---"
         closingLine = "---"
-        newlineAfterClosing = true
         lines = fields.map { "\($0.0): \($0.1)" }
+        endings = Array(repeating: "\n", count: lines.count)
         self.body = body
     }
 
     public var text: String {
         let bom = byteOrderMark ? "\u{FEFF}" : ""
         guard hasFrontMatter else { return bom + body }
-        let eol = crlf ? "\r\n" : "\n"
-        var out = bom + openingLine + eol
-        for line in lines { out += line + eol }
-        out += closingLine
-        if newlineAfterClosing { out += eol }
-        return out + body
+        var out = bom + openingLine + openingEnding
+        for (line, ending) in zip(lines, endings) { out += line + ending }
+        return out + closingLine + closingEnding + body
     }
 
     public var frontMatterText: String { lines.joined(separator: "\n") }
@@ -87,12 +97,15 @@ public struct FrontMatterDocument: Sendable, Equatable {
         if let span = spans.first(where: { $0.key == key }) {
             guard let raw else {
                 lines.removeSubrange(span.range)
+                endings.removeSubrange(span.range)
                 return
             }
             let current = YAML.parse(lines[span.range].joined(separator: "\n"))[key]
             let proposed = YAML.parse("\(key): \(raw)")[key]
             if current == proposed, span.range.count == 1 { return }
+            let ending = endings[span.range.upperBound - 1]
             lines.replaceSubrange(span.range, with: ["\(key): \(raw)"])
+            endings.replaceSubrange(span.range, with: [ending])
             return
         }
         guard let raw else { return }
@@ -102,12 +115,14 @@ public struct FrontMatterDocument: Sendable, Equatable {
             let later = Set(order[(position + 1)...])
             if let next = spans.first(where: { later.contains($0.key) }) {
                 lines.insert(newLine, at: next.range.lowerBound)
+                endings.insert(openingEnding, at: next.range.lowerBound)
                 return
             }
         }
         var insertAt = spans.last?.range.upperBound ?? lines.count
         while insertAt > 0, insertAt <= lines.count, lines[insertAt - 1].trimmingCharacters(in: .whitespaces).isEmpty { insertAt -= 1 }
         lines.insert(newLine, at: insertAt)
+        endings.insert(openingEnding, at: insertAt)
     }
 
     public struct FieldSpan: Sendable, Equatable {

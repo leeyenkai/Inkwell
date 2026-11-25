@@ -7,7 +7,8 @@ extension AppModel {
     /// Saves a new title, address and section for a post. A published post's file moves in one change, with its old
     /// address kept working and links in other posts updated; a draft simply follows.
     func applyMove(_ doc: SiteDocument, title: String, slug: String, sectionID: String, keepOldAddress: Bool) {
-        guard let site, let backend else { return }
+        // Renaming writes front matter, which a page served as it is would show to readers as text.
+        guard let site, let backend, !doc.isStatic, !site.kind.servesFilesAsIs else { return }
         if editor?.document.id == doc.id { settleEditor() }
         let cleanSlug = Slug.make(slug.isEmpty ? title : slug)
         var text = (try? String(contentsOf: doc.fileURL, encoding: .utf8)) ?? ""
@@ -67,22 +68,35 @@ extension AppModel {
         }
         let published = status(of: doc) != .notPublished
         let config = try? String(contentsOf: site.root.appending(path: "_config.yml"), encoding: .utf8)
-        let plan = MovePlanner.plan(document: doc, text: text, newPath: newPath, keepOldAddress: keepOldAddress && published, site: site,
-                                    configText: config)
+        let drafts = drafts, keep = keepOldAddress && published
         retireEditor(for: doc)
-        do {
-            for edit in plan.edits { try edit.apply(to: site.root) }
-        } catch {
-            errorMessage = String(localized: "The post could not be moved: \(error.localizedDescription)")
-            return
+        // Every post is read for links to rewrite, which takes a moment on a large site: off the main thread.
+        Task {
+            let plan = await Task.detached { [text, site, config, drafts, doc, keep, newPath] in
+                MovePlanner.plan(document: doc, text: text, newPath: newPath, keepOldAddress: keep, site: site, configText: config, drafts: drafts)
+            }.value
+            guard self.site?.root == site.root else { return }
+            do {
+                for edit in plan.edits { try edit.apply(to: site.root) }
+                for edit in plan.draftEdits { try Data(edit.newText.utf8).write(to: edit.fileURL, options: .atomic) }
+            } catch {
+                errorMessage = String(localized: "The post could not be moved: \(error.localizedDescription)")
+                return
+            }
+            if plan.redirectUnavailable {
+                errorMessage = String(localized: """
+                    The old address could not be kept: the site’s Gemfile does not include jekyll-redirect-from. Links in your posts \
+                    were updated.
+                    """)
+            }
+            sidebarSelection = sectionID == doc.sectionID ? sidebarSelection : .section(sectionID)
+            didPublish(selecting: newPath)
+            guard published else { return }
+            let links = plan.updatedLinks.count
+            let heading = links > 0 ? String(localized: "Move “\(title)” and update \(links) links") : String(localized: "Move “\(title)”")
+            publishSheet = PublishSession.changes(paths: plan.edits.map(\.path), message: "Move: \(title)", backend: backend, model: self,
+                                                  heading: heading, selecting: newPath)
         }
-        sidebarSelection = sectionID == doc.sectionID ? sidebarSelection : .section(sectionID)
-        didPublish(selecting: newPath)
-        guard published else { return }
-        let links = plan.updatedLinks.count
-        let heading = links > 0 ? String(localized: "Move “\(title)” and update \(links) links") : String(localized: "Move “\(title)”")
-        publishSheet = PublishSession.changes(paths: plan.edits.map(\.path), message: "Move: \(title)", backend: backend, model: self,
-                                              heading: heading, selecting: newPath)
     }
 
     /// Sections a post can move to: collections only (pages stay pages).

@@ -308,6 +308,22 @@ final class InkwellTextView: NSTextView {
         }
     }
 
+    /// The text changed while an input method is composing. Nothing is restyled until it commits, but the chips and
+    /// pictures after the change move with it, and the commit restyles everything.
+    func markedTextChanged() {
+        guard let edit = pendingEdit else { return }
+        pendingEdit = nil
+        let delta = edit.newLength - edit.range.length
+        func shift(_ r: NSRange) -> NSRange? {
+            if NSMaxRange(r) <= edit.range.location { return r }
+            if r.location >= NSMaxRange(edit.range) { return NSRange(location: r.location + delta, length: r.length) }
+            return nil
+        }
+        liquidRanges = liquidRanges.compactMap(shift)
+        placedImages = placedImages.compactMap { p in shift(p.range).map { ($0, p.size, p.url, p.alt) } }
+        editsSinceStyle = 2
+    }
+
     /// Restyles only these paragraphs, keeping chips, tables and picture spacing right inside them.
     private func restyle(windows: [NSRange]) {
         guard let storage = textStorage else { return }
@@ -471,7 +487,7 @@ final class InkwellTextView: NSTextView {
         // The post may have been reloaded while the picker was open.
         let location = min(max(requested, 0), ns.length)
         let length = location + 2 <= ns.length && ns.substring(with: NSRange(location: location, length: 2)) == "[[" ? 2 : 0
-        let link = "[\(title)](\(url))"
+        let link = "[\(Formatting.escapeLabel(title))](\(url))"
         apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: length), link)],
                                selection: NSRange(location: location + (link as NSString).length, length: 0)))
     }
@@ -893,7 +909,9 @@ struct MarkdownEditor: NSViewRepresentable {
         model.textView = textView
         let modeChanged = textView.sourceMode != sourceMode || textView.hidesSyntax != model.hideSyntax
         textView.hidesSyntax = model.hideSyntax
-        if modeChanged || context.coordinator.revision != revision || (textView.string != text && !context.coordinator.isEditing) {
+        // A character still being composed is not in `text` yet; replacing the text now would throw it away.
+        let composing = textView.hasMarkedText()
+        if modeChanged || context.coordinator.revision != revision || (textView.string != text && !context.coordinator.isEditing && !composing) {
             context.coordinator.revision = revision
             textView.sourceMode = sourceMode
             if textView.string != text {
@@ -916,8 +934,10 @@ struct MarkdownEditor: NSViewRepresentable {
         }
 
         func textDidChange(_ notification: Notification) {
-            // While an input method is composing (accents, Chinese, Japanese), leave the text alone until it commits.
-            guard let textView = notification.object as? InkwellTextView, !textView.hasMarkedText() else { return }
+            // While an input method is composing (accents, Chinese, Japanese), leave the text alone until it commits;
+            // only the chips' places move along, so the next keystroke is not taken for an edit inside one.
+            guard let textView = notification.object as? InkwellTextView else { return }
+            if textView.hasMarkedText() { return textView.markedTextChanged() }
             isEditing = true
             textView.textChanged()
             parent.text = textView.string

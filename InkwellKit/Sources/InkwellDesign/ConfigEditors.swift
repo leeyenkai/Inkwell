@@ -17,16 +17,26 @@ public struct ConfigDocument: Sendable, Equatable {
     public var text: String { lines.joined(separator: "\n") + (trailingNewline || lines.isEmpty ? "\n" : "") }
     public var values: YAMLValue { YAML.parse(lines.joined(separator: "\n")) }
 
+    /// The value at `key` or `parent.key`. With a key written twice, the last one, which is the one Jekyll reads.
     public func value(_ path: String) -> YAMLValue? {
         var value: YAMLValue? = values
-        for key in path.split(separator: ".") { value = value?[String(key)] }
+        for key in path.split(separator: ".") { value = value?.entries?.last { $0.key == String(key) }?.value }
         return value
     }
 
     /// Sets `key` or `parent.key` to an already formatted YAML value; nil removes it. Equal values change nothing.
+    /// A key holding a mapping or a list (an `author:` with `name` and `links`, say) is never replaced by a single value
+    /// or removed here: that would lose everything under it.
     public mutating func set(_ path: String, raw: String?) {
         let keys = path.split(separator: ".").map(String.init)
-        if let current = value(path), let raw, current == YAML.parse("x: \(raw)")["x"] { return }
+        let new: YAMLValue? = raw.flatMap { YAML.parse("x: \($0)")["x"] }
+        if let current = value(path) {
+            if raw != nil, current == new { return }
+            if current.entries != nil || current.list != nil, new?.entries == nil, new?.list == nil { return }
+        }
+        // An inline mapping (`inkwell: { a: b }`) cannot take a line of its own without losing what it holds.
+        if keys.count > 1, let line = lines.last(where: { $0.hasPrefix(keys[0] + ":") }),
+           line.dropFirst(keys[0].count + 1).trimmingCharacters(in: .whitespaces).hasPrefix("{") { return }
         if keys.count == 1 {
             setTop(keys[0], raw: raw)
         } else {
@@ -88,10 +98,29 @@ public struct ConfigDocument: Sendable, Equatable {
         return (key, String(content[after...]))
     }
 
+    /// ` # a note` at the end of a one-line setting, kept when its value changes.
+    static func trailingComment(_ line: String) -> String {
+        var quote: Character?
+        var previous: Character = " "
+        for (offset, char) in line.enumerated() {
+            if let open = quote {
+                if char == open { quote = nil }
+            } else if char == "\"" || char == "'" {
+                quote = char
+            } else if char == "#", previous == " " {
+                let start = line.index(line.startIndex, offsetBy: offset)
+                return " " + line[start...]
+            }
+            previous = char
+        }
+        return ""
+    }
+
     mutating func setTop(_ key: String, raw: String?) {
         let top = spans(indent: 0, in: 0 ..< lines.count)
-        if let span = top.first(where: { $0.key == key }) {
-            if let raw { lines.replaceSubrange(span.range, with: ["\(key): \(raw)"]) } else { lines.removeSubrange(span.range) }
+        if let span = top.last(where: { $0.key == key }) {
+            let comment = span.range.count == 1 ? Self.trailingComment(lines[span.range.lowerBound]) : ""
+            if let raw { lines.replaceSubrange(span.range, with: ["\(key): \(raw)\(comment)"]) } else { lines.removeSubrange(span.range) }
         } else if let raw {
             lines.append("\(key): \(raw)")
         }
@@ -99,7 +128,7 @@ public struct ConfigDocument: Sendable, Equatable {
 
     mutating func setNested(_ parent: String, _ key: String, raw: String?) {
         let top = spans(indent: 0, in: 0 ..< lines.count)
-        guard let parentSpan = top.first(where: { $0.key == parent }) else {
+        guard let parentSpan = top.last(where: { $0.key == parent }) else {
             guard let raw else { return }
             if let last = lines.last, !last.trimmingCharacters(in: .whitespaces).isEmpty { lines.append("") }
             lines.append("\(parent):")
@@ -114,9 +143,10 @@ public struct ConfigDocument: Sendable, Equatable {
         }
         let childIndent = firstChild.map { $0.prefix { $0 == " " }.count } ?? 2
         let children = spans(indent: childIndent, in: inner)
-        if let child = children.first(where: { $0.key == key }) {
+        if let child = children.last(where: { $0.key == key }) {
             if let raw {
-                lines.replaceSubrange(child.range, with: [String(repeating: " ", count: childIndent) + "\(key): \(raw)"])
+                let comment = child.range.count == 1 ? Self.trailingComment(lines[child.range.lowerBound]) : ""
+                lines.replaceSubrange(child.range, with: [String(repeating: " ", count: childIndent) + "\(key): \(raw)\(comment)"])
             } else {
                 lines.removeSubrange(child.range)
             }
@@ -145,14 +175,27 @@ public struct NavigationDocument: Sendable, Equatable {
     public var entries: [NavigationEntry]
     private var header: [String]
 
+    /// False when the file holds more than a plain list of `title` and `url` (named menus, submenus, other keys, notes
+    /// between items). Writing it back from `entries` would lose that, so it is then edited as code only.
+    public private(set) var isEditable = true
+
     public init(text: String) {
         let lines = text.components(separatedBy: "\n")
         header = Array(lines.prefix { $0.trimmingCharacters(in: .whitespaces).hasPrefix("#") || $0.trimmingCharacters(in: .whitespaces).isEmpty })
         while header.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { header.removeLast() }
-        entries = (YAML.parse(text).list ?? []).compactMap { item in
+        let parsed = YAML.parse(text)
+        let items = parsed.list ?? []
+        entries = items.compactMap { item in
             guard let title = item["title"]?.string, let url = item["url"]?.string else { return nil }
             return NavigationEntry(title: title, url: url)
         }
+        let body = lines.dropFirst(header.count).map { $0.trimmingCharacters(in: .whitespaces) }
+        let hasContent = body.contains { !$0.isEmpty }
+        let plain = items.allSatisfy { item in
+            guard let keys = item.entries?.map(\.key) else { return false }
+            return Set(keys) == ["title", "url"] && item["title"]?.string != nil && item["url"]?.string != nil
+        }
+        isEditable = !hasContent || (parsed.list != nil && plain && !body.contains { $0.hasPrefix("#") })
     }
 
     public init(entries: [NavigationEntry]) {

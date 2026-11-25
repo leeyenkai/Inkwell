@@ -49,7 +49,7 @@ struct InkwellApp: App {
                     .disabled(model.site == nil)
                 Divider()
                 Button("Rename or Move…") { model.moveRequest = model.editor?.document }
-                    .disabled(model.editor == nil)
+                    .disabled(!model.editsMarkdown)
                 Button("Version History…") { model.historyRequest = model.editor?.document }
                     .disabled(model.editor?.document.origin != .repository)
             }
@@ -58,8 +58,9 @@ struct InkwellApp: App {
                     .keyboardShortcut("p", modifiers: [.command, .option])
                 Toggle("Source", isOn: $model.showSource)
                     .keyboardShortcut("e", modifiers: [.command, .shift])
+                // ⌥⌘H is the system's Hide Others, which the app menu would take first.
                 Toggle("Hide Markdown Syntax", isOn: $model.hideSyntax)
-                    .keyboardShortcut("h", modifiers: [.command, .option])
+                    .keyboardShortcut("h", modifiers: [.command, .control])
                 Toggle("Properties", isOn: $model.showProperties)
                     .keyboardShortcut("i", modifiers: [.command, .option])
                 EditorViewCommands(model: model)
@@ -170,15 +171,15 @@ struct FormatCommands: Commands {
             .disabled(!model.editorHasFocus)
             Divider()
             Button("Add Image…") { addImage() }.keyboardShortcut("i", modifiers: [.command, .shift])
-                .disabled(model.editor == nil)
+                .disabled(!model.editsMarkdown)
             Button("Table…") { model.textView?.editTable() }.keyboardShortcut("t", modifiers: [.command, .shift])
                 .help("Edit the table the cursor is in as a grid, or insert a new one")
                 .disabled(!model.editorHasFocus)
             Divider()
             Button("Insert Element…") { model.showElementPicker = true }.keyboardShortcut("e", modifiers: [.command, .option])
-                .disabled(model.editor == nil)
+                .disabled(!model.editsMarkdown)
             Button("Edit Element…") { model.editElement() }.keyboardShortcut("e", modifiers: [.command, .option, .shift])
-                .disabled(model.editor == nil)
+                .disabled(!model.editsMarkdown)
         }
     }
 
@@ -186,7 +187,7 @@ struct FormatCommands: Commands {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
         panel.message = String(localized: "Choose an image. It is resized, cleaned of location data and copied into the site.")
-        guard model.editor != nil, panel.runModal() == .OK, let url = panel.url else { return }
+        guard model.editsMarkdown, panel.runModal() == .OK, let url = panel.url else { return }
         model.importImages([url], at: model.textView?.selectedRange().location ?? 0)
     }
 }
@@ -214,6 +215,17 @@ enum Launch {
             setvbuf(stdout, nil, _IONBF, 0)
             let ok = await ThemePreviewRenderer.renderAll(into: URL(fileURLWithPath: (folder as NSString).expandingTildeInPath), arguments: args)
             exit(ok ? 0 : 1)
+        }
+        // `--make-demo-site <folder>` writes the made-up sample site (the theme gallery's) with a theme applied, for screenshots.
+        if let folder = value("--make-demo-site") {
+            let destination = URL(fileURLWithPath: (folder as NSString).expandingTildeInPath)
+            guard !FileManager.default.fileExists(atPath: destination.path), let theme = ThemeManifest.named(value("--demo-theme") ?? "essayist"),
+                  (try? ThemeTrial.make(theme: theme, site: ThemeManifest.sampleSite, at: destination)) != nil else {
+                print("The demo site could not be made at \(destination.path); the folder must not exist yet.")
+                exit(1)
+            }
+            print(destination.path)
+            exit(0)
         }
         // Flags that write to the site act only on a folder named with --site, never on the site reopened from last time.
         let siteGiven = value("--site") != nil
@@ -425,6 +437,8 @@ enum SelfTest {
         guard let post = site.documents.first(where: { $0.relativePath == "_notes/2026-06-20-morality.md" }) else { return false }
         model.applyMove(post, title: post.title, slug: "politics-of-morality", sectionID: post.sectionID, keepOldAddress: true)
         let moved = "_notes/2026-06-20-politics-of-morality.md"
+        // The move reads every post off the main thread, then offers the publish.
+        for _ in 0 ..< 100 where model.publishSheet == nil { try? await Task.sleep(for: .milliseconds(100)) }
         let movedText = (try? String(contentsOf: root.appending(path: moved), encoding: .utf8)) ?? ""
         ok = check(!FileManager.default.fileExists(atPath: post.fileURL.path) && movedText.contains("redirect_from: [/notes/morality/]"),
                    "file moved with redirect_from") && ok

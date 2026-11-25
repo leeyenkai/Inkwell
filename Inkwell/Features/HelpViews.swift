@@ -202,7 +202,7 @@ struct ShortcutList: View {
         (String(localized: "View"), [
             ("⌥⌘P", String(localized: "Preview")),
             ("⇧⌘E", String(localized: "Source")),
-            ("⌥⌘H", String(localized: "Hide Markdown syntax")),
+            ("⌃⌘H", String(localized: "Hide Markdown syntax")),
             ("⌥⌘I", String(localized: "Properties")),
         ]),
         (String(localized: "Format"), [

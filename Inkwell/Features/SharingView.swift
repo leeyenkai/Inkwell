@@ -20,7 +20,11 @@ struct SharingView: View {
                         Button(editor.string("image").isEmpty
                             ? String(localized: "Choose Share Image…") : String(localized: "Change Share Image…")) { chooseImage() }
                         if !editor.string("image").isEmpty {
-                            Button("Remove") { editor.setRaw("image", nil) }
+                            Button("Remove") {
+                                let previous = editor.string("image")
+                                editor.setRaw("image", nil)
+                                discardUnpublishedShareImage(previous)
+                            }
                         }
                     }
                     .controlSize(.small)
@@ -82,6 +86,24 @@ struct SharingView: View {
         return result
     }
 
+    /// A share picture imported here and never published is moved to the Trash when it is replaced or removed, so it
+    /// does not linger as a change waiting to be published. One that any post, page or draft still uses stays.
+    func discardUnpublishedShareImage(_ sitePath: String) {
+        let path = String(sitePath.drop { $0 == "/" })
+        guard !path.isEmpty, path.contains("-share"), model.changes[path] == .added, let url = model.fileURL(forSitePath: sitePath),
+              let root = model.site?.root else { return }
+        editor.saveNow()
+        let drafts = model.draftTexts()
+        Task {
+            let unused = await Task.detached {
+                MediaLibrary.scan(siteRoot: root, extraTexts: drafts).first { $0.path == path }?.isUnused ?? false
+            }.value
+            guard unused, model.site?.root == root else { return }
+            try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            model.refreshChanges()
+        }
+    }
+
     func chooseImage() {
         guard let site = model.site else { return }
         let panel = NSOpenPanel()
@@ -91,7 +113,9 @@ struct SharingView: View {
         let slug = Filename.parse(editor.document.filename).slug
         do {
             let image = try ImageImport.app.importImage(at: url, siteRoot: site.root, slug: (slug == "untitled" ? "post" : slug) + "-share")
+            let previous = editor.string("image")
             editor.setRaw("image", image.sitePath)
+            discardUnpublishedShareImage(previous)
             model.refreshChanges()
         } catch {
             model.errorMessage = error.localizedDescription

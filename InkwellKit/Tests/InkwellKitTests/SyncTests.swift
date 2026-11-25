@@ -143,6 +143,64 @@ final class WorkingCopyTests: XCTestCase {
         XCTAssertEqual(changes, [:])
     }
 
+    func testCaseOnlyRenameOnGitHubKeepsTheFile() async throws {
+        let (fake, copy, client) = try await make(["assets/photo.jpg": "picture"])
+        fake.remoteEdit(["assets/photo.jpg": nil, "assets/Photo.jpg": "picture"])
+        try await copy.pull(client: client)
+        XCTAssertEqual(read(copy, "assets/Photo.jpg"), "picture")
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, [:], "nothing is queued for deletion on GitHub")
+    }
+
+    func testStaleConflictSettlesWhenBothSidesAgree() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n"])
+        fake.remoteEdit(["_notes/a.md": "A from GitHub\n"])
+        try write(copy, "_notes/a.md", "A from this Mac\n")
+        try await copy.pull(client: client)
+        var conflicts = await copy.conflicts
+        XCTAssertEqual(conflicts, ["_notes/a.md"])
+        // The person copies GitHub's text by hand: nothing is left to choose.
+        try write(copy, "_notes/a.md", "A from GitHub\n")
+        try await copy.pull(client: client)
+        conflicts = await copy.conflicts
+        XCTAssertEqual(conflicts, [])
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, [:])
+    }
+
+    func testAConflictedNewFileWithdrawnHereTakesGitHubsVersion() async throws {
+        let (fake, copy, client) = try await make(["index.md": "Home\n"])
+        fake.remoteEdit(["_posts/2026-01-01-a.md": "From GitHub\n"])
+        try write(copy, "_posts/2026-01-01-a.md", "My draft\n")
+        try await copy.pull(client: client)
+        var conflicts = await copy.conflicts
+        XCTAssertEqual(conflicts, ["_posts/2026-01-01-a.md"])
+        // The draft's publish stopped on the conflict and took its file back out.
+        try FileManager.default.removeItem(at: copy.root.appending(path: "_posts/2026-01-01-a.md"))
+        try await copy.pull(client: client)
+        conflicts = await copy.conflicts
+        XCTAssertEqual(conflicts, [])
+        XCTAssertEqual(read(copy, "_posts/2026-01-01-a.md"), "From GitHub\n")
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, [:], "GitHub's file is not queued for deletion")
+    }
+
+    func testARefusedPublishIsAFailureNotAnOpenQuestion() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n"])
+        try write(copy, "_notes/a.md", "A edited\n")
+        fake.protectedBranch = true
+        let before = fake.head
+        do {
+            _ = try await copy.publish(paths: ["_notes/a.md"], message: "Update", client: client)
+            XCTFail("expected a failure")
+        } catch {
+            XCTAssertNotEqual(error as? SyncError, .unconfirmed, "GitHub answered, so the publish is undone as a failure")
+        }
+        XCTAssertEqual(fake.head, before)
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, ["_notes/a.md": .modified], "the edit is still waiting to publish")
+    }
+
     func testPullRefusesPartialTree() async throws {
         let (fake, copy, client) = try await make(["_notes/a.md": "A\n", "index.md": "Home\n"])
         fake.remoteEdit(["about.md": "About\n"])

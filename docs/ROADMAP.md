@@ -19,7 +19,18 @@ This plan becomes `docs/ROADMAP.md`, and the relevant parts are folded into `doc
 
 ---
 
-## Progress (24 Nov 2026)
+## Progress (25 Nov 2026)
+
+- **Release audit (0.11.0).** Five independent reviews (sync and publishing, the editor, websites, design and media, app
+  lifecycle) found about fifty problems, all fixed with regression tests. Among them:
+  - a case-only rename on GitHub queued the file for deletion;
+  - git read file names with `[` as patterns;
+  - adding a missing page description could crash on emoji or Windows line endings;
+  - Delete Unused could remove pictures only drafts used;
+  - the Author setting could wipe an `author:` block;
+  - the menu editor dropped submenus;
+  - Return at the start of a list line duplicated its marker;
+  - work for a closed site could land in the next one.
 
 - **M7 Websites: done.** Support for Pages sites that are not blogs, such as hand-built HTML sites (SPEC §4.12).
   - W1 covers the kinds of site, HTML pages, the plain preview, `docs/` folders, and HTML health and publishing. A site built by a

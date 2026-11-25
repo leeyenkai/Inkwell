@@ -225,6 +225,7 @@ final class DesignModel {
     // MARK: Navigation
 
     func saveNavigation(_ entries: [NavigationEntry]) {
+        guard navigation.isEditable else { return }
         var nav = navigation
         nav.entries = entries
         guard nav != navigation || !hasNavigationFile else { return }

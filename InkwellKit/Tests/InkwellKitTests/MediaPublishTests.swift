@@ -129,6 +129,31 @@ final class GitTests: XCTestCase {
         XCTAssertEqual(remoteHead, result.commit)
     }
 
+    func testFileNamesAreNeverPatterns() async throws {
+        let remote = temp.appending(path: "remote.git"), work = temp.appending(path: "work")
+        for url in [remote, work] { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
+        let bare = try XCTUnwrap(Git(root: remote))
+        try await bare.run(["init", "--bare", "-b", "main"])
+        let git = try XCTUnwrap(Git(root: work))
+        try await git.run(["init", "-b", "main"])
+        try await git.run(["config", "user.email", "test@example.com"])
+        try await git.run(["config", "user.name", "Test"])
+        try await git.run(["remote", "add", "origin", remote.path])
+        for name in ["a[1].md", "a1.md"] { try "base\n".write(to: work.appending(path: name), atomically: true, encoding: .utf8) }
+        try await git.run(["add", "-A"])
+        try await git.run(["commit", "-m", "init"])
+        try await git.run(["push", "-u", "origin", "main"])
+
+        for name in ["a[1].md", "a1.md"] { try "edited\n".write(to: work.appending(path: name), atomically: true, encoding: .utf8) }
+        _ = try await git.publish(paths: ["a[1].md"], message: "Update")
+        let files = try await git.run(["show", "--name-only", "--format=", "HEAD"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(files, "a[1].md", "a1.md is not swept into the commit")
+        try "again\n".write(to: work.appending(path: "a[1].md"), atomically: true, encoding: .utf8)
+        try await git.discard(path: "a[1].md")
+        let kept = try String(contentsOf: work.appending(path: "a1.md"), encoding: .utf8)
+        XCTAssertEqual(kept, "edited\n", "discarding a[1].md leaves a1.md's edit alone")
+    }
+
     func testEarlierLocalCommitsAreNotPushedWithAPost() async throws {
         let remote = temp.appending(path: "remote.git"), work = temp.appending(path: "work"), other = temp.appending(path: "other")
         for url in [remote, work] { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }

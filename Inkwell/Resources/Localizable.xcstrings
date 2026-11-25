@@ -74,6 +74,9 @@
         }
       }
     },
+    "%@, site icon" : {
+
+    },
     "%@, unused" : {
 
     },
@@ -1243,6 +1246,9 @@
     "Bold" : {
 
     },
+    "Browsers ask for this icon by name" : {
+
+    },
     "Built by another program" : {
 
     },
@@ -1344,6 +1350,9 @@
 
     },
     "Check Links" : {
+
+    },
+    "Check Now" : {
 
     },
     "Check for Updates…" : {
@@ -1639,9 +1648,6 @@
     "Default" : {
 
     },
-    "Delete" : {
-
-    },
     "Delete %@" : {
 
     },
@@ -1671,6 +1677,7 @@
       }
     },
     "Delete %lld unused images?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2001,7 +2008,10 @@
     "GitHub could not change HTTPS yet: %@" : {
 
     },
-    "GitHub would build this site with Jekyll instead of serving its files as they are. A header, menu or footer that several pages copy moves into one file, so a change to it reaches every page. The pages look the same as before." : {
+    "GitHub serves this site's files as they are, so it can only be treated as a website of plain files." : {
+
+    },
+    "GitHub would build this site with Jekyll instead of serving its files as they are. A header, menu or footer that several pages copy moves into one file, so a change to it reaches every page. The HTML pages look the same as before." : {
 
     },
     "Goes to %@/%@; GitHub Pages then rebuilds the site." : {
@@ -2104,6 +2114,9 @@
 
     },
     "How many" : {
+
+    },
+    "If Inkwell guessed wrong, choose what this site is." : {
 
     },
     "If Inkwell guessed wrong, choose what this site is. The Site menu has the same choice." : {
@@ -2314,7 +2327,7 @@
         }
       }
     },
-    "It leaves the photo stream when you next publish. GitHub keeps its history." : {
+    "It moves to the Trash and leaves the photo stream when you next publish." : {
 
     },
     "It talks to **GitHub** with your sign-in, to download your site and publish what you choose to publish. The sign-in is kept in your keychain. Drafts stay on this Mac until you publish them." : {
@@ -2339,6 +2352,9 @@
 
     },
     "JPEG quality" : {
+
+    },
+    "Jekyll stops serving %@ unless you add them to the include list in _config.yml yourself." : {
 
     },
     "Jump to Selection" : {
@@ -2503,6 +2519,28 @@
     },
     "Monospaced" : {
 
+    },
+    "Move %lld unused images to the Trash?" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Move %lld unused image to the Trash?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Move %lld unused images to the Trash?"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Move Down" : {
 
@@ -2670,7 +2708,7 @@
     "No post or page of this site has the address %@." : {
 
     },
-    "No post, page or stylesheet links to them. They leave the site when you next publish; GitHub keeps their history." : {
+    "No post, page, draft or stylesheet names them. Ones already published leave the site when you next publish." : {
 
     },
     "No posts or pages match." : {
@@ -2749,7 +2787,7 @@
     "Nothing links to it" : {
 
     },
-    "Nothing links to it." : {
+    "Nothing links to it. It moves to the Trash." : {
 
     },
     "Nothing to fix" : {
@@ -2804,6 +2842,9 @@
 
     },
     "Open Site" : {
+
+    },
+    "Open _data/navigation.yml" : {
 
     },
     "Open a Folder…" : {
@@ -3350,6 +3391,9 @@
     "Site health" : {
 
     },
+    "Site icon" : {
+
+    },
     "Site title" : {
 
     },
@@ -3564,6 +3608,9 @@
     "The new page copies the look of an existing one: its stylesheets, header and footer. Its main part starts empty." : {
 
     },
+    "The old address could not be kept: the site’s Gemfile does not include jekyll-redirect-from. Links in your posts were updated." : {
+
+    },
     "The page at %@ stops working once GitHub Pages rebuilds the site." : {
 
     },
@@ -3639,6 +3686,9 @@
     "Themes change how every page looks. Your posts and pages stay exactly as they are." : {
 
     },
+    "These Markdown files become web pages instead of plain text: %@." : {
+
+    },
     "These files were changed on GitHub and on this Mac since they were last in step. Choose which version to keep." : {
 
     },
@@ -3673,6 +3723,9 @@
 
     },
     "This site is plain HTML, so it keeps its own design. Inkwell’s themes need Jekyll, which it does not use." : {
+
+    },
+    "This site’s menu file holds more than a list of titles and addresses, such as several menus or submenus. Edit it as code so nothing in it is lost." : {
 
     },
     "This theme has no design settings Inkwell can find. Pick one of Inkwell’s themes to edit colours and fonts here." : {
@@ -3786,6 +3839,9 @@
     "Using a local folder needs git. Install the command line tools (xcode-select --install), or sign in with GitHub instead." : {
 
     },
+    "Version %@" : {
+
+    },
     "Version %@ is the newest." : {
 
     },
@@ -3841,9 +3897,6 @@
 
     },
     "Writing" : {
-
-    },
-    "YYYY-MM-DD" : {
 
     },
     "You can also drag them onto an album above the photos." : {

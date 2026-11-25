@@ -52,6 +52,8 @@ extension AppModel {
             }
         } catch {
             loadError = String(localized: "The site could not be created: \(error.localizedDescription)")
+            // A repository made before the failure is listed, so it can be opened or its name is known to be taken.
+            await account.loadRepositories()
         }
         opening = nil
     }

@@ -135,7 +135,7 @@ final class LocalGitBackend: SiteBackend {
     let git: Git
     let siteRoot: URL
     let client: GitHubClient?
-    private var repoPrefix = ""
+    private(set) var repoPrefix = ""
     private(set) var remote: String?
 
     init?(siteRoot: URL, client: GitHubClient?) {
@@ -182,18 +182,18 @@ final class LocalGitBackend: SiteBackend {
         guard remote != nil, await unpushed() == 0 else { return SyncOutcome() }
         let before = try await git.head()
         let branch = try await git.currentBranch()
-        try await git.run(["fetch", "origin", branch], allowFailure: true)
+        try await git.run(["fetch", "origin", branch], allowFailure: true, timeout: Git.networkTimeout)
         let behind = Int(try await git.run(["rev-list", "--count", "HEAD..origin/\(branch)"], allowFailure: true)
             .trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         guard behind > 0 else { return SyncOutcome() }
         try await git.refuseOverlap(branch: branch)
         do {
-            try await git.run(["pull", "--rebase", "--autostash", "origin", branch])
+            try await git.run(["pull", "--rebase", "--autostash", "origin", branch], timeout: Git.networkTimeout)
         } catch {
             _ = try? await git.run(["rebase", "--abort"], allowFailure: true)
             throw error
         }
-        let changed = try await git.run(["diff", "--name-only", before, "HEAD"]).split(separator: "\n").map(String.init)
+        let changed = try await git.run(["diff", "-z", "--name-only", before, "HEAD"]).split(separator: "\0").map(String.init)
         return SyncOutcome(updated: changed.compactMap { $0.hasPrefix(repoPrefix) ? String($0.dropFirst(repoPrefix.count)) : nil })
     }
 

@@ -174,12 +174,36 @@ public struct AdoptionPlan: Sendable, Equatable {
 public enum ThemeApplier {
     /// The changes that switch a site to a bundled theme. Posts and pages are never touched; layouts with the same
     /// names are replaced, the theme's stylesheets are added, and `_config.yml` gets an `inkwell:` section.
+    /// Switching from another Inkwell theme keeps the colours and fonts the person changed (where the new theme has the
+    /// same setting), and says which theme files they had edited, since those are replaced.
     public static func plan(theme: ThemeManifest, siteRoot: URL) -> AdoptionPlan {
         var changes: [FileChange] = []
+        let configURL = siteRoot.appending(path: "_config.yml")
+        let configText = (try? String(contentsOf: configURL, encoding: .utf8)) ?? ""
+        let previous = ConfigDocument(text: configText).value("inkwell.theme")?.string.flatMap(ThemeManifest.named)
         func propose(_ path: String, _ text: String?, _ reason: String) {
             let old = try? String(contentsOf: siteRoot.appending(path: path), encoding: .utf8)
             guard old != text else { return }
+            var reason = reason
+            if let old, let previous, let original = previous.siteFiles[path], original != old {
+                reason += " " + localized("You changed this file; your changes are replaced.")
+            }
             changes.append(FileChange(path: path, oldText: old, newText: text, reason: reason))
+        }
+        /// The new theme's stylesheet with the values the person set in the old one (those that differ from its defaults).
+        func carryingEdits(_ new: String, current path: String, previousDefault: String?) -> (String, Int) {
+            guard let previous, previous.id != theme.id, let previousDefault,
+                  let current = try? String(contentsOf: siteRoot.appending(path: path), encoding: .utf8) else { return (new, 0) }
+            let defaults = CSSTokenDocument(text: previousDefault), mine = CSSTokenDocument(text: current)
+            var result = CSSTokenDocument(text: new)
+            let names = Set(result.tokens.map(\.name))
+            var kept = 0
+            for token in mine.tokens where token.scheme == .light && names.contains(token.name) {
+                guard let original = defaults.value(token.name), original != token.value else { continue }
+                result.set(token.name, to: token.value)
+                kept += 1
+            }
+            return (result.text, kept)
         }
         let reasons = [
             "_layouts/default.html": localized("The page frame: header, navigation and footer."),
@@ -198,11 +222,12 @@ public enum ThemeApplier {
         for change in ElementKit.changes(siteRoot: siteRoot) where !changes.contains(where: { $0.path == change.path }) {
             changes.append(change)
         }
-        propose("assets/css/inkwell.css", theme.stylesheet, "The \(theme.name) colours, fonts and styles.")
-        propose("assets/css/inkwell-dark.css", theme.darkStylesheet, localized("The dark palette, used when the reader’s Mac or phone is in dark mode."))
+        let light = carryingEdits(theme.stylesheet, current: "assets/css/inkwell.css", previousDefault: previous?.stylesheet)
+        let dark = carryingEdits(theme.darkStylesheet, current: "assets/css/inkwell-dark.css", previousDefault: previous?.darkStylesheet)
+        let kept = light.1 + dark.1 > 0 ? " " + localized("Your own colours and fonts are kept.") : ""
+        propose("assets/css/inkwell.css", light.0, localized("The \(theme.name) colours, fonts and styles.") + kept)
+        propose("assets/css/inkwell-dark.css", dark.0, localized("The dark palette, used when the reader’s Mac or phone is in dark mode.") + kept)
 
-        let configURL = siteRoot.appending(path: "_config.yml")
-        let configText = (try? String(contentsOf: configURL, encoding: .utf8)) ?? ""
         var config = ConfigDocument(text: configText)
         config.set("inkwell.theme", raw: YAMLFormat.quoted(theme.id))
         for (key, value) in theme.defaults.sorted(by: { $0.key < $1.key }) where config.value("inkwell.\(key)") == nil {

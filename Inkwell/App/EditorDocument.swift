@@ -32,7 +32,7 @@ final class EditorDocument {
         self.model = model
         var text = ""
         do {
-            text = try String(contentsOf: document.fileURL, encoding: .utf8)
+            text = try TextFile.read(document.fileURL)
         } catch {
             loadError = String(localized: "“\(document.filename)” could not be opened: \(error.localizedDescription)")
         }
@@ -42,6 +42,9 @@ final class EditorDocument {
         validate()
     }
 
+    /// Text typed here that is not on disk yet.
+    var hasUnsavedEdits: Bool { frontMatter.text != lastSaved }
+
     /// Stops all saving, for an editor whose file is being published, moved or deleted.
     func retire() {
         saveTask?.cancel()
@@ -50,7 +53,7 @@ final class EditorDocument {
 
     /// Picks up a change made outside the editor (a sync, another app). Unsaved edits here are never overwritten.
     func reloadIfChangedOnDisk() {
-        guard !retired, loadError == nil, let disk = try? String(contentsOf: document.fileURL, encoding: .utf8), disk != lastSaved else { return }
+        guard !retired, loadError == nil, let disk = try? TextFile.read(document.fileURL), disk != lastSaved else { return }
         if frontMatter.text == lastSaved {
             frontMatter = FrontMatterDocument(text: disk)
             lastSaved = disk
@@ -221,7 +224,7 @@ final class EditorDocument {
         let text = frontMatter.text
         guard !retired, loadError == nil, diskConflict == nil, text != lastSaved else { return }
         // A sync may have written GitHub's version since the last save: never write over it unseen.
-        if let disk = try? String(contentsOf: document.fileURL, encoding: .utf8), disk != lastSaved, disk != text {
+        if let disk = try? TextFile.read(document.fileURL), disk != lastSaved, disk != text {
             diskConflict = disk
             return
         }

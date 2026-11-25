@@ -74,8 +74,9 @@ public extension SiteHealth {
         var issues: [Issue] = []
         func exists(_ path: String) -> Bool {
             let folder = path.hasSuffix("/") ? String(path.dropLast()) : path
-            if folder.isEmpty { return files.exists("index.html") }
-            return files.exists(folder) || files.exists(folder + "/index.html") || files.exists(folder + ".html")
+            if folder.isEmpty { return files.exists("index.html") || files.exists("index.htm") }
+            return files.exists(folder) || files.exists(folder + "/index.html") || files.exists(folder + "/index.htm")
+                || files.exists(folder + ".html")
         }
         for doc in site.documents where doc.editsAsHTML {
             guard let text = texts[doc.relativePath] else { continue }

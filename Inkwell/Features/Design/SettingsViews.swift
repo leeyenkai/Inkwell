@@ -9,6 +9,30 @@ struct NavigationEditor: View {
     @State private var selection: Int?
 
     var body: some View {
+        if design.navigation.isEditable { editor } else { codeOnly }
+    }
+
+    /// A menu file with more than a plain list (named menus, submenus, other keys) is left to the code editor, since
+    /// rewriting it from a list would lose the rest.
+    var codeOnly: some View {
+        Form {
+            Section("Menu") {
+                Text("""
+                    This site’s menu file holds more than a list of titles and addresses, such as several menus or submenus. \
+                    Edit it as code so nothing in it is lost.
+                    """)
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Button("Open _data/navigation.yml") {
+                    model.codeFile = CodeFile(path: "_data/navigation.yml", inTheme: false)
+                    model.sidebarSelection = .code
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Navigation")
+    }
+
+    var editor: some View {
         Form {
             Section {
                 List(selection: $selection) {
@@ -104,7 +128,8 @@ struct SiteSettingsView: View {
                 field("Title", "title")
                 field("Description", "description",
                       prompt: String(localized: "One sentence about the site, for search results and link previews"))
-                field("Author", "author")
+                // Many themes keep the author as a mapping (name, avatar, links); only its name is edited here.
+                field("Author", design.config.value("author")?.entries != nil ? "author.name" : "author")
                 field("Language", "lang", prompt: "en")
                 Picker("Time zone", selection: Binding(get: { design.string("timezone").isEmpty ? TimeZone.current.identifier : design.string("timezone") },
                                                        set: { design.setRaw("timezone", $0) })) {

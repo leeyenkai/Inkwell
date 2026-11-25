@@ -1,16 +1,15 @@
 #!/bin/bash
-# Takes the README screenshots from a throwaway copy of the site (scripts/make-sample-site.sh), never the real one.
-# Needs Screen Recording permission for the terminal that runs it.
+# Takes the README screenshots from the made-up demo site (scripts/make-demo-site.sh: invented posts and photos), so no
+# real site's words appear. Needs a Debug build and Screen Recording permission for the terminal that runs it.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 CACHE="${INKWELL_BUILD_CACHE:-$HOME/Library/Caches/InkwellBuild}"
 APP="$CACHE/DerivedData/Build/Products/Debug/Inkwell.app"
-SITE=$(./scripts/make-sample-site.sh "${1:-$HOME/Desktop/leeyenkai.github.io}")
+SITE=$(./scripts/make-demo-site.sh "${1:-essayist}")
 OUT=docs/images
 TMP=$(mktemp -d)
-swift scripts/readme/dusk.swift "$SITE/assets/images/writing-without-the-terminal-dusk.jpg"
 DRAFTS="$HOME/Library/Application Support/Inkwell/Drafts"
-rm -rf "$DRAFTS"/sample-site-*
+rm -rf "$DRAFTS"/demo-site-*
 
 window() {
   cat > "$TMP/win.swift" <<'SWIFT'
@@ -47,12 +46,14 @@ shot() {
 
 # The app reads the body from the cache: the project folder may be in a privacy-protected place such as the Desktop.
 cp scripts/readme/draft.md "$CACHE/readme-draft.md"
-DRAFT_ARGS=(--section notes --new-draft "Writing without the terminal" --draft-body "$CACHE/readme-draft.md")
-shot main window --section notes --open _notes/2026-06-20-morality.md --preview
-shot draft window "${DRAFT_ARGS[@]}" --preview
-DRAFT_PATH="_notes/$(date +%Y-%m-%d)-writing-without-the-terminal.md"
-shot publish sheet --section notes --open "$DRAFT_PATH" --publish-sheet
-shot sidenotes window --section sidenotes --open _sidenotes/2026-03-28-romney.md --preview
-shot source window --section notes --open _notes/2025-12-01-estonia.md --source
+DRAFT_ARGS=(--section posts --new-draft "Writing without the terminal" --draft-body "$CACHE/readme-draft.md")
+shot main window --fresh --section posts --open _posts/2026-10-28-the-long-way-round-the-headland.md --preview
+# The draft's picture arrives with the draft, so the publish sheet shows it going out with the post.
+swift scripts/readme/dusk.swift "$SITE/assets/images/writing-without-the-terminal-dusk.jpg"
+shot draft window --fresh "${DRAFT_ARGS[@]}" --preview
+DRAFT_PATH="_posts/$(date +%Y-%m-%d)-writing-without-the-terminal.md"
+shot publish sheet --fresh --section posts --open "$DRAFT_PATH" --publish-sheet
+shot design window --fresh --pane design
+shot source window --fresh --section posts --open _posts/2026-09-21-above-the-snow-line.md --source
 pkill -x Inkwell 2>/dev/null || true
-rm -rf "$DRAFTS"/sample-site-* "$TMP" "$CACHE/readme-draft.md"
+rm -rf "$DRAFTS"/demo-site-* "$TMP" "$CACHE/readme-draft.md"

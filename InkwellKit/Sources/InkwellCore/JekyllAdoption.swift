@@ -22,6 +22,11 @@ public enum JekyllAdoption {
         public var leftAlone: [String] = []
         /// Names Jekyll would stop serving (they start with `_` or `.`), kept by `include:` in `_config.yml`.
         public var keptNames: [String] = []
+        /// Names Jekyll would stop serving that could not be added to an `include:` list written in a form Inkwell does
+        /// not edit; the person adds them, or they stop being served.
+        public var notKept: [String] = []
+        /// Markdown files GitHub serves as plain text today and would turn into web pages after the move.
+        public var markdownShown: [String] = []
 
         public var changedPages: [String] { writes.keys.filter { !$0.hasPrefix("_") }.sorted() }
         public var isWorthDoing: Bool { !shared.isEmpty }
@@ -75,19 +80,83 @@ public enum JekyllAdoption {
         guard plan.isWorthDoing else { return Plan(leftAlone: plan.leftAlone) }
 
         if FileManager.default.fileExists(atPath: root.appending(path: ".nojekyll").path) { plan.removals.append(".nojekyll") }
-        plan.keptNames = hiddenNames(in: root)
-        if !plan.keptNames.isEmpty {
-            let configURL = root.appending(path: "_config.yml")
-            let lines = "include:\n" + plan.keptNames.map { "  - \"\($0)\"\n" }.joined()
-            if let config = try? String(contentsOf: configURL, encoding: .utf8) {
-                if config.range(of: #"(?m)^include\s*:"#, options: .regularExpression) == nil {
-                    plan.writes["_config.yml"] = config + (config.hasSuffix("\n") || config.isEmpty ? "" : "\n") + lines
-                }
+        plan.markdownShown = markdownFiles(in: root)
+        let hidden = hiddenNames(in: root)
+        if !hidden.isEmpty {
+            let config = try? String(contentsOf: root.appending(path: "_config.yml"), encoding: .utf8)
+            if let merged = including(hidden, in: config ?? "") {
+                if merged != config { plan.writes["_config.yml"] = merged }
+                plan.keptNames = hidden
             } else {
-                plan.writes["_config.yml"] = lines
+                plan.notKept = hidden
             }
         }
         return plan
+    }
+
+    /// `config` with `names` in its `include:` list: a new block list, one more item in a block list, or more names in a
+    /// one-line flow list. Nil for other forms, which are left to the person.
+    static func including(_ names: [String], in config: String) -> String? {
+        var lines = config.components(separatedBy: "\n")
+        func quoted(_ name: String) -> String { "\"\(name)\"" }
+        func unquoted(_ item: Substring) -> String { item.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r'\"")) }
+        guard let index = lines.firstIndex(where: { $0.range(of: #"^include\s*:"#, options: .regularExpression) != nil }) else {
+            var text = config
+            if !text.isEmpty, !text.hasSuffix("\n") { text += "\n" }
+            return text + "include:\n" + names.map { "  - \(quoted($0))\n" }.joined()
+        }
+        let line = lines[index]
+        let value = line[line.index(after: line.firstIndex(of: ":")!)...].trimmingCharacters(in: .whitespaces)
+        let ending = line.hasSuffix("\r") ? "\r" : ""
+        if value.isEmpty || value.hasPrefix("#") {
+            // A block list: items follow, indented.
+            var last = index
+            var indent = "  "
+            var present = Set<String>()
+            for i in (index + 1) ..< lines.count {
+                let item = lines[i]
+                let trimmed = item.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+                // YAML allows a list's items at the key's own indentation ("include:" then "- a") as well as deeper.
+                guard trimmed.hasPrefix("- ") || trimmed == "-" else { break }
+                indent = String(item.prefix { $0 == " " || $0 == "\t" })
+                present.insert(unquoted(trimmed.dropFirst()))
+                last = i
+            }
+            let added = names.filter { !present.contains($0) }.map { "\(indent)- \(quoted($0))\(ending)" }
+            lines.insert(contentsOf: added, at: last + 1)
+            return lines.joined(separator: "\n")
+        }
+        guard let match = value.range(of: #"^\[([^\]\[]*)\]\s*(#.*)?$"#, options: .regularExpression), match.lowerBound == value.startIndex,
+              let open = value.firstIndex(of: "["), let close = value.firstIndex(of: "]") else { return nil }
+        let items = value[value.index(after: open) ..< close].split(separator: ",").map(unquoted).filter { !$0.isEmpty }
+        let all = value[value.index(after: open) ..< close].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty } + names.filter { !items.contains($0) }.map(quoted)
+        let comment = value[value.index(after: close)...].trimmingCharacters(in: .whitespaces)
+        lines[index] = "include: [\(all.joined(separator: ", "))]" + (comment.isEmpty ? "" : " " + comment) + ending
+        return lines.joined(separator: "\n")
+    }
+
+    /// Markdown files without front matter that GitHub Pages would turn into pages once Jekyll builds the site. Files
+    /// it leaves alone (README, LICENSE and the like) are not listed.
+    static func markdownFiles(in root: URL) -> [String] {
+        let kept: Set = ["readme", "license", "licence", "copying", "code_of_conduct", "contributing", "issue_template",
+                         "pull_request_template"]
+        var found: [String] = []
+        func scan(_ folder: URL, prefix: String, depth: Int) {
+            for item in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isDirectoryKey])) ?? [] {
+                let name = item.lastPathComponent
+                guard !name.hasPrefix("_"), !name.hasPrefix("."), name != "node_modules" else { continue }
+                if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                    if depth < 6 { scan(item, prefix: prefix + name + "/", depth: depth + 1) }
+                } else if ["md", "markdown"].contains(item.pathExtension.lowercased()),
+                          !kept.contains((name as NSString).deletingPathExtension.lowercased()) {
+                    found.append(prefix + name)
+                }
+            }
+        }
+        scan(root, prefix: "", depth: 0)
+        return found.sorted()
     }
 
     /// Files and folders the site serves today whose names Jekyll skips: those starting with `_` or `.`, at any depth.

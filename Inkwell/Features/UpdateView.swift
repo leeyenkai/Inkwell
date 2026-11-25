@@ -22,9 +22,18 @@ struct UpdateView: View {
 
     @ViewBuilder var content: some View {
         switch updates.state {
-        case .idle, .checking:
+        case .checking:
             Text("Checking for updates…").font(.headline)
             ProgressView().controlSize(.small)
+        case .idle:
+            // Opened from the Window menu, or after skipping a version: no check is running.
+            Text("Software Update").font(.headline)
+            Text("Version \(updates.currentVersion)").foregroundStyle(.secondary)
+            HStack {
+                Spacer()
+                Button("Close") { dismissWindow(id: "update") }.keyboardShortcut(.cancelAction)
+                Button("Check Now") { Task { await updates.check(userInitiated: true) } }.keyboardShortcut(.defaultAction)
+            }
         case .upToDate:
             Text("Inkwell is up to date").font(.headline)
             Text("Version \(updates.currentVersion) is the newest.").foregroundStyle(.secondary)

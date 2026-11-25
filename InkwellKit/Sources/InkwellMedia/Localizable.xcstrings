@@ -1,10 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ can only be replaced by a picture of the same kind. Add the new picture instead, and link to it." : {
+
+    },
     "%@ could not be read as an image." : {
 
     },
     "%@ could not be saved." : {
+
+    },
+    "%@ is a JPEG, which cannot keep the new picture’s transparent parts. Choose a picture without them." : {
 
     }
   },

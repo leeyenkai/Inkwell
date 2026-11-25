@@ -136,11 +136,11 @@ public enum MarkdownScanner {
             spans.append(StyleSpan(.liquid, shifted(m.range)))
             taken.append(m.range)
         }
-        for m in matches(#"!\[[^\]]*\]\([^)]*\)"#, line) where free(m.range) {
+        for m in matches(#"!\[[^\]]*\]\((?:[^()]|\([^()]*\))*\)"#, line) where free(m.range) {
             spans.append(StyleSpan(.image, shifted(m.range)))
             taken.append(m.range)
         }
-        for m in matches(#"(?<!\!)\[([^\]^][^\]]*)\]\(([^)]+)\)"#, line) where free(m.range) {
+        for m in matches(#"(?<!\!)\[((?!\^)(?:\\.|[^\]\\])+)\]\(((?:[^()]|\([^()]*\))+)\)"#, line) where free(m.range) {
             let text = m.range(at: 1)
             spans.append(StyleSpan(.link, shifted(text)))
             spans.append(StyleSpan(.syntax, shifted(NSRange(location: m.range.location, length: 1))))

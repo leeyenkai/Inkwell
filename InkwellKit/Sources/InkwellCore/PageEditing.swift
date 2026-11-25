@@ -11,6 +11,8 @@ public enum PageEditing {
         public var images: [NSRange]
         /// The `href` value of each link.
         public var links: [NSRange] = []
+        /// The whole `<img …>` tag of each picture.
+        public var imageTags: [NSRange] = []
         /// The page with `data-ik-text` and `data-ik-img` marks, for the preview only.
         public var annotated: String
     }
@@ -36,7 +38,7 @@ public enum PageEditing {
             return text.contains("{{") || text.contains("{%")
         }
 
-        var texts: [NSRange] = [], images: [NSRange] = []
+        var texts: [NSRange] = [], images: [NSRange] = [], imageTags: [NSRange] = []
         var marks: [(Int, String)] = []
         let tags = textTags.joined(separator: "|")
         let element = try? NSRegularExpression(pattern: "<(\(tags))(\\s[^<>]*)?>([^<]*)</\\1\\s*>", options: .caseInsensitive)
@@ -53,6 +55,7 @@ public enum PageEditing {
             guard !hasTags(value) else { continue }
             marks.append((m.range.location + 4, " data-ik-img=\"\(images.count)\""))
             images.append(value)
+            imageTags.append(m.range)
         }
         var links: [NSRange] = []
         let link = try? NSRegularExpression(pattern: #"<a\b[^>]*?\shref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>"#, options: .caseInsensitive)
@@ -64,7 +67,7 @@ public enum PageEditing {
         }
         let annotated = NSMutableString(string: html)
         for (location, mark) in marks.sorted(by: { $0.0 > $1.0 }) { annotated.insert(mark, at: location) }
-        return Regions(texts: texts, images: images, links: links, annotated: annotated as String)
+        return Regions(texts: texts, images: images, links: links, imageTags: imageTags, annotated: annotated as String)
     }
 
     /// The page with element `index`'s text replaced, or nil when the page no longer has that element with the text
@@ -84,11 +87,38 @@ public enum PageEditing {
         return ns.replacingCharacters(in: range, with: replacement)
     }
 
-    /// The page with picture `index` pointing at `source`.
-    public static func replacingImage(_ index: Int, with source: String, in html: String, liquid: Bool = false) -> String? {
+    /// The address picture `index` shows now, to check later that it is still the one clicked.
+    public static func imageSource(_ index: Int, in html: String, liquid: Bool = false) -> String? {
         let found = regions(in: html, liquid: liquid).images
         guard found.indices.contains(index) else { return nil }
-        return (html as NSString).replacingCharacters(in: found[index], with: HTMLHead.escape(source))
+        return HTMLHead.decode((html as NSString).substring(with: found[index]))
+    }
+
+    /// The page with picture `index` pointing at `source`, or nil when that picture no longer shows `original` (given).
+    /// The picture's `srcset` and `sizes`, and the `<source>` alternatives of a `<picture>` around it, are removed:
+    /// browsers would keep showing the old picture from them.
+    public static func replacingImage(_ index: Int, with source: String, expecting original: String? = nil, in html: String,
+                                      liquid: Bool = false) -> String? {
+        let found = regions(in: html, liquid: liquid)
+        guard found.images.indices.contains(index) else { return nil }
+        let ns = html as NSString
+        let value = found.images[index], tag = found.imageTags[index]
+        if let original, HTMLHead.decode(ns.substring(with: value)) != original { return nil }
+        let newTag = NSMutableString(string: ns.substring(with: tag))
+        newTag.replaceCharacters(in: NSRange(location: value.location - tag.location, length: value.length), with: HTMLHead.escape(source))
+        let alternatives = #"\s+(?:srcset|sizes)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#
+        var tagText = (newTag as String).replacingOccurrences(of: alternatives, with: "", options: [.regularExpression, .caseInsensitive])
+        if tagText.isEmpty { tagText = newTag as String }
+        let picture = try? NSRegularExpression(pattern: #"<picture\b[^>]*>.*?</picture\s*>"#, options: [.caseInsensitive, .dotMatchesLineSeparators])
+        if let around = picture?.matches(in: html, range: NSRange(location: 0, length: ns.length))
+            .first(where: { NSLocationInRange(tag.location, $0.range) })?.range {
+            let inside = NSMutableString(string: ns.substring(with: around))
+            inside.replaceCharacters(in: NSRange(location: tag.location - around.location, length: tag.length), with: tagText)
+            let cleaned = (inside as String).replacingOccurrences(of: #"\s*<source\b[^>]*>"#, with: "",
+                                                                   options: [.regularExpression, .caseInsensitive])
+            return ns.replacingCharacters(in: around, with: cleaned)
+        }
+        return ns.replacingCharacters(in: tag, with: tagText)
     }
 
     /// The page with link `index` pointing at `address`, or nil when that link no longer points where it did.

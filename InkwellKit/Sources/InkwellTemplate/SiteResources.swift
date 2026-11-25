@@ -110,7 +110,7 @@ public final class SiteResources: @unchecked Sendable {
 
     public func response(for requestPath: String) -> Response {
         var path = requestPath.removingPercentEncoding ?? requestPath
-        if !baseurl.isEmpty, path.hasPrefix(baseurl) { path = String(path.dropFirst(baseurl.count)) }
+        if !baseurl.isEmpty, path == baseurl || path.hasPrefix(baseurl + "/") { path = String(path.dropFirst(baseurl.count)) }
         if path.isEmpty { path = "/" }
 
         if let page = builder.page(at: path) {

@@ -130,7 +130,8 @@ public enum Formatting {
 
     /// Inserts the next footnote at the cursor and its definition at the end, then numbers all footnotes in reading order.
     public static func footnote(_ text: String, at cursor: Int) -> (text: String, selection: NSRange) {
-        let numbers = footnoteLabels(text).compactMap { Int($0) }
+        // Definitions count too: a definition whose reference was deleted must not share the new label.
+        let numbers = (footnoteLabels(text) + definitionLabels(text)).compactMap { Int($0) }
         let label = "\((numbers.max() ?? 0) + 1)"
         let ns = text as NSString
         var result = ns.replacingCharacters(in: NSRange(location: cursor, length: 0), with: "[^\(label)]")
@@ -148,11 +149,18 @@ public enum Formatting {
         return (regex?.matches(in: text, range: NSRange(location: 0, length: ns.length)) ?? []).map { ns.substring(with: $0.range(at: 1)) }
     }
 
-    /// Renumbers numeric footnotes 1, 2, 3 in the order their references first appear. Named footnotes are left alone.
+    static func definitionLabels(_ text: String) -> [String] {
+        let regex = try? NSRegularExpression(pattern: #"(?m)^\[\^([^\]]+)\]:"#)
+        let ns = text as NSString
+        return (regex?.matches(in: text, range: NSRange(location: 0, length: ns.length)) ?? []).map { ns.substring(with: $0.range(at: 1)) }
+    }
+
+    /// Renumbers numeric footnotes 1, 2, 3 in the order their references first appear; definitions nothing refers to
+    /// follow, so no two definitions end up with one label. Named footnotes are left alone.
     public static func renumberFootnotes(_ text: String) -> String {
         var mapping: [String: String] = [:]
         var next = 1
-        for label in footnoteLabels(text) where Int(label) != nil && mapping[label] == nil {
+        for label in footnoteLabels(text) + definitionLabels(text) where Int(label) != nil && mapping[label] == nil {
             mapping[label] = "\(next)"
             next += 1
         }
