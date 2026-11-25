@@ -125,12 +125,12 @@ struct PropertiesView: View {
                 }
                 ForEach(editor.otherKeys, id: \.self) { key in
                     GridRow {
-                        Text(key).foregroundStyle(.secondary)
+                        Text(key).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
                         Text(editor.frontMatter.rawValue(key) ?? "").font(.callout.monospaced()).foregroundStyle(.secondary)
                     }
                 }
                 GridRow {
-                    Text("URL").foregroundStyle(.secondary)
+                    Text("URL").foregroundStyle(.secondary).gridColumnAlignment(.trailing)
                     HStack(spacing: 6) {
                         Text(editor.displayURL).font(.callout.monospaced()).textSelection(.enabled)
                         if editor.document.origin == .localDraft {
@@ -142,6 +142,8 @@ struct PropertiesView: View {
             .font(.callout)
             .padding(.top, 8)
             .padding(.leading, 4)
+            // A page with few properties stays at the left edge, lined up with the rest of the form.
+            .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
             Text("Properties").font(.callout.weight(.medium)).foregroundStyle(.secondary)
         }

@@ -57,7 +57,7 @@ struct SharingView: View {
     }
 
     var cardDescription: String {
-        description.isEmpty ? Excerpt.make(editor.body) : description
+        description.isEmpty ? Excerpt.make(editor.body, title: editor.title) : description
     }
 
     var host: String {

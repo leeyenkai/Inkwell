@@ -369,11 +369,13 @@ public enum EditorCommands {
         let spans = MarkdownScanner.scan(ns.substring(with: paragraph))
             .map { StyleSpan($0.style, NSRange(location: $0.range.location + paragraph.location, length: $0.range.length)) }
         var remove: [NSRange] = []
+        // Link addresses are syntax spans too; the link pass below removes them.
+        let addresses = Set(spans.filter { $0.style == .url }.map { [$0.range.location, $0.range.length] })
         let styled: Set<MarkdownStyle> = [.bold, .italic, .strike, .highlight, .underline, .code]
         // A styled span touching the selection loses its markers at both ends.
         for span in spans where styled.contains(span.style) && NSIntersectionRange(span.range, selection).length > 0 {
             remove += spans
-                .filter { $0.style == .syntax && $0.range.length <= 7 }
+                .filter { $0.style == .syntax && $0.range.length <= 7 && !addresses.contains([$0.range.location, $0.range.length]) }
                 .filter { NSIntersectionRange($0.range, span.range).length == $0.range.length }
                 .filter { $0.range.location == span.range.location || NSMaxRange($0.range) == NSMaxRange(span.range) }
                 .map(\.range)

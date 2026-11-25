@@ -146,6 +146,8 @@ public enum MarkdownScanner {
             spans.append(StyleSpan(.syntax, shifted(NSRange(location: m.range.location, length: 1))))
             let tail = NSRange(location: NSMaxRange(text), length: NSMaxRange(m.range) - NSMaxRange(text))
             spans.append(StyleSpan(.url, shifted(tail)))
+            // The address hides with the opening bracket away from the cursor, so a link reads as its text alone.
+            spans.append(StyleSpan(.syntax, shifted(tail)))
             taken.append(m.range)
         }
         for m in matches(#"\[\^[^\]]+\]"#, line) where free(m.range) {

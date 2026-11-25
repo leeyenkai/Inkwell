@@ -285,7 +285,7 @@ public enum SiteLoader {
         return SiteDocument(
             id: origin == .repository ? "repo:\(relativePath)" : "draft:\(fileURL.path)",
             sectionID: sectionID, origin: origin, fileURL: fileURL, relativePath: relativePath, title: title, date: date,
-            publishedFlag: published, url: resolvedURL, modified: modified, excerpt: Excerpt.make(doc.body)
+            publishedFlag: published, url: resolvedURL, modified: modified, excerpt: Excerpt.make(doc.body, title: title)
         )
     }
 
@@ -322,8 +322,23 @@ public enum SiteLoader {
 }
 
 public enum Excerpt {
-    public static func make(_ body: String, limit: Int = 140) -> String {
-        var text = body
+    /// The opening words of the text a reader sees. A heading that repeats the title, and what Liquid loops and
+    /// conditions print (a page's list of posts, its "nothing here yet"), are left out.
+    public static func make(_ body: String, title: String = "", limit: Int = 140) -> String {
+        var text = body.replacingOccurrences(
+            of: #"(?s)\{%-?\s*(for|if|unless|case|capture|comment|raw)\b.*?\{%-?\s*end\1\s*-?%\}"#, with: "", options: .regularExpression
+        )
+        let plainTitle = title.trimmingCharacters(in: .whitespaces).lowercased()
+        if !plainTitle.isEmpty {
+            text = text.split(separator: "\n", omittingEmptySubsequences: false).filter { line in
+                guard let heading = line.range(of: #"^\s{0,3}#{1,6}\s+"#, options: .regularExpression) else { return true }
+                return line[heading.upperBound...].trimmingCharacters(in: .whitespaces).lowercased() != plainTitle
+            }.joined(separator: "\n")
+            // The same heading written as HTML, as on hand-written pages.
+            let escaped = NSRegularExpression.escapedPattern(for: title.trimmingCharacters(in: .whitespaces))
+            text = text.replacingOccurrences(of: #"(?is)<h([1-6])[^>]*>\s*"# + escaped + #"\s*</h\1>"#, with: "",
+                                             options: [.regularExpression, .caseInsensitive])
+        }
         let patterns = [
             #"\{%.*?%\}"#, #"\{\{.*?\}\}"#, #"!\[[^\]]*\]\([^)]*\)"#, #"<[^>]+>"#, #"\[\^[^\]]+\]:?"#,
         ]

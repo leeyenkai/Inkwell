@@ -171,7 +171,8 @@ final class EditorDocument {
 
     /// Fields in the file that the section's schema does not know, kept exactly as written.
     var otherKeys: [String] {
-        let known = Set(fields.map(\.key)).union(["layout", "description", "image"])
+        // The title has its own field above the properties.
+        let known = Set(fields.map(\.key)).union(["title", "layout", "description", "image"])
         return frontMatter.keys.filter { !known.contains($0) }
     }
 

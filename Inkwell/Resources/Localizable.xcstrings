@@ -1266,6 +1266,9 @@
     "Choose a folder with a Jekyll site that you already publish with git." : {
 
     },
+    "Choose a page, or press ⇧⌘N to make a new one." : {
+
+    },
     "Choose a photo" : {
 
     },
@@ -2369,6 +2372,9 @@
 
     },
     "No" : {
+
+    },
+    "No Page Selected" : {
 
     },
     "No Post Selected" : {

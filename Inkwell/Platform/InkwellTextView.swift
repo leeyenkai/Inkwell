@@ -806,8 +806,25 @@ enum MarkdownStyler {
                 storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: r)
             }
         }
+        if !source { collapseLeadingBlankLines(in: storage, full: full, activeRange: activeRange) }
         storage.endEditing()
         return liquid
+    }
+
+    /// Blank lines between the front matter and the first paragraph stay in the file but take no room, unless the cursor is in them.
+    private static func collapseLeadingBlankLines(in storage: NSTextStorage, full: NSRange, activeRange: NSRange?) {
+        guard full.location == 0 else { return }
+        let ns = storage.string as NSString
+        var end = 0
+        while end < ns.length, let scalar = Unicode.Scalar(ns.character(at: end)), CharacterSet.newlines.contains(scalar) { end += 1 }
+        guard end > 0, end < ns.length else { return }
+        let blank = NSRange(location: 0, length: min(end, NSMaxRange(full)))
+        if let activeRange, NSIntersectionRange(activeRange, blank).length > 0 || activeRange.location < end { return }
+        let p = NSMutableParagraphStyle()
+        p.maximumLineHeight = 0.01
+        p.paragraphSpacing = 0
+        p.lineSpacing = 0
+        storage.addAttributes([.font: NSFont.systemFont(ofSize: 0.01), .paragraphStyle: p], range: blank)
     }
 }
 

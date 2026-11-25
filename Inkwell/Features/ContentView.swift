@@ -478,6 +478,9 @@ struct DetailView: View {
                         .frame(minWidth: 320)
                 }
             }
+        } else if model.sidebarSelection == .section("pages") {
+            ContentUnavailableView("No Page Selected", systemImage: "doc.richtext",
+                                   description: Text("Choose a page, or press ⇧⌘N to make a new one."))
         } else {
             ContentUnavailableView("No Post Selected", systemImage: "square.and.pencil",
                                    description: Text("Choose a post, or press ⌘N to write a new one."))

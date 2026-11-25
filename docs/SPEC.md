@@ -19,7 +19,9 @@
 - **Release.** Version 0.9.0 as an ad-hoc signed disk image (`scripts/make-dmg.sh`), an update check against GitHub releases, and a privacy note.
 - **Design.** Six bundled themes that differ in layout, shown as real renders and tried on your own posts before a reviewable switch; palette and font presets; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
-Verified by 201 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+**Planned:** websites that are not blogs, including hand-built HTML sites (§4.12).
+
+Verified by 205 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
@@ -52,6 +54,7 @@ Principles:
 ### Target users
 
 - **Primary:** people with a personal GitHub Pages site (Jekyll first, then Hugo or plain HTML) who write essays, short notes and photo posts on a Mac, and who are comfortable enough to have set the site up but don't want to live in a text editor.
+- **Also primary from v1.1:** people whose Pages site is a website rather than a blog, such as a product page, project documentation or a portfolio, often written by hand in HTML (§4.12).
 - **Secondary:** non-technical people who want a free personal site. Inkwell can create one from a template, so they never need to learn what Jekyll is.
 
 ## 3. Landscape (why build this)
@@ -289,6 +292,74 @@ A background checker shows one badge in the sidebar:
 - Missing SEO basics (meta description, Open Graph image, RSS feed, sitemap, favicon, 404 page), each with a one-click fix using standard plugins (`jekyll-seo-tag`, `jekyll-feed`, `jekyll-sitemap`). A hand-written feed or sitemap counts: Inkwell never adds a second one.
 - Repo hygiene: committed build output (`_site/`), `.DS_Store`, and a missing `.gitignore`
 
+### 4.12 Websites, not only blogs (planned, v1.1)
+
+Many GitHub Pages sites are not blogs. They are a product page, a project's documentation, a portfolio or a one-page landing site, and often hand-written HTML, CSS and JavaScript. An example is `fxgl.github.io/steamac`. It is two HTML pages, a stylesheet with 15 CSS custom properties, scripts and media, served from `/docs` of an app's code repository, with a `.nojekyll` file so GitHub copies the files as they are.
+
+**What Inkwell does with such a site today (checked on a copy, 25 Nov 2026).**
+- It shows an empty Posts section and no pages, because it only lists pages that have front matter.
+- The preview says "Not found: /", because the preview has no directory index for plain files.
+- Theme & Style offers "Change Theme…", which would replace a hand-made design.
+- Opened as a local folder at the repository root, it finds nothing, because local mode has no way to know about `/docs`. GitHub mode already builds from the Pages source folder.
+
+The goal is that a person who owns a site like this can open it, change its words and pictures, see the result, and publish. Nothing should be broken or rewritten on the way.
+
+#### Kinds of site
+
+Inkwell decides the kind of site when it opens it, and shows the kind in the site summary. The choice can be changed in Settings.
+
+| Kind | How Inkwell recognises it | What Jekyll does | What Inkwell shows |
+|---|---|---|---|
+| **Blog** | Has collections or `_posts` with posts | Builds everything | As now |
+| **Website on Jekyll** | Has front matter pages, but no posts | Builds pages; files without front matter are copied as they are | Pages first, posts only if added |
+| **Hand-built website** | Has `.nojekyll`, or has HTML pages and no front matter anywhere | Nothing; every file is served as it is | Pages, Media, Health, Design (colours only), Code |
+| **Built by another tool** | `.nojekyll` together with signs of generated output: a `generator` meta tag, hashed asset names such as `app.3f9c1a.js`, or a GitHub Actions workflow that builds the site with another generator | Nothing; the files are another program's output | Read only, with a note to edit the source instead |
+
+Files without front matter on a Jekyll site are listed too. Jekyll copies them unchanged, so they are pages a person edits like any other.
+
+#### Rules that keep a hand-built site safe
+
+- **Byte-preserving HTML editing.** The rule for Markdown applies to HTML as well. Saving without changes gives the same bytes, and an edit replaces only the characters that changed. Inkwell never reformats, re-indents or "tidies" markup.
+- **No front matter.** On a site with `.nojekyll`, Inkwell never adds front matter to a file. GitHub would serve it to readers as visible text.
+- **No Liquid.** On a site with `.nojekyll`, no Liquid is written into files, and none is run in the preview.
+- **No theme replacement.** No theme gallery is shown for a hand-built site, because applying a theme would replace its design.
+- **Elements as plain HTML only.** Elements that rely on Jekyll includes (Recent posts, Archive) are not offered. The others are written as plain HTML, with the element kit's stylesheet and script linked from the page directly, and only after the person agrees to add those two files.
+- **Repository boundaries.** In a code repository, Inkwell shows only the site folder. Publishing commits only paths inside it, as the rule for named paths already requires.
+
+#### Phases
+
+**W1: Recognise and show** (makes the example site usable for reading and small changes)
+1. **Site kind.** Detect the kind of site (table above) in `SiteLoader`, from the file tree and, in GitHub mode, the Pages build type.
+2. **Local folder mode.** If the root has no site and a `docs/` folder does, use `docs/` and say so. A folder picker covers other layouts.
+3. **Listing pages.** List HTML and Markdown pages that have no front matter. Each page's title comes from its `<title>`, and its description from `<meta name="description">`.
+4. **Sidebar.** For websites, the sidebar shows Pages, Media, Health, Design and Code. Posts, Drafts, Tags and Photos are hidden until the site has them. An "Add a blog…" action adds a posts section as a reviewable change. It is offered only on Jekyll sites.
+5. **Plain preview.** Files are served as they are. `/` and folder addresses fall back to `index.html`. Hand-built sites get no Liquid and no "Approximate" badge.
+6. **Health.** Checks broken internal links and images across HTML pages, a missing `<title>`, description or share image, oversized media, and missing alt text. Fixes edit the HTML directly, under the byte-preserving rule.
+
+**W2: Edit pages** (the HTML equivalent of today's post editor)
+1. **Opening a page.** An HTML page opens in a source editor with a live preview beside it. This reuses the code pane's highlighter, with undo and find.
+2. **Properties.** A page's title, description and share image are edited in a Properties form. Each field rewrites only its tag's attribute or text.
+3. **Pictures.** Dropping a picture onto an HTML page imports it under the same rules as posts (resized, location and camera details removed) and inserts an `<img>` with alt text.
+4. **New pages.** A new page starts from an HTML template that links the site's own stylesheet. The template takes the page's shared header and footer from an existing page, so it matches the rest of the site.
+5. **Publishing.** Publishing works as it does now, through review of all changes.
+
+**W3: Edit on the page** (the "feels like Notes" step for websites)
+1. **Editing text in place.** Clicking text in the preview lets the person type there. Only the text of that element changes in the file.
+2. **How the preview finds the source.** The preview marks each editable element with its source position. These marks exist only in the preview and are never written to the file.
+3. **Pictures and links.** Pictures are replaced by dropping one onto them. Links are edited in the existing link popover.
+4. **Content made by scripts.** Text that a script builds (a games list loaded by JavaScript, for example) is not editable in place, and the page says why.
+
+**W4: Parts shared by every page**
+1. **Editing a shared part once.** The same header, menu and footer are usually copied into every HTML page. They can be edited once and applied to every page that has an identical copy, shown as one reviewable change.
+2. **Navigation.** The navigation editor works on that shared menu when the site has no `_data/navigation.yml`.
+3. **Switching to Jekyll.** Turning a hand-built site into a Jekyll site, with includes for the shared parts and `.nojekyll` removed, is an optional adoption step only. It changes how GitHub builds the site, so it is never automatic.
+
+#### Testing
+
+- **Fixtures.** Two fixture sites in `InkwellKit/Tests`: a hand-built `.nojekyll` site in `docs/`, and a generated site with hashed assets and a `generator` tag.
+- **What the tests cover.** Detection, page listing, the preview's directory index, and byte-preserving edits to text, attributes and `<img>` insertion. They also check that no front matter or Liquid is written to a `.nojekyll` site.
+- **Real sites, read only.** A read-only check runs against a local copy of a real hand-built site, such as the example above. It is never published.
+
 ---
 
 ## 5. Onboarding
@@ -374,6 +445,12 @@ Windows, Linux, Android and a web client are out of scope. The value is a Mac-na
 - Exact preview (portable Ruby), whole-site preview, version history, unpublish
 - Site health panel and SEO one-click fixes; Hugo and plain HTML adapters
 
+**v1.1, websites (§4.12):**
+- W1: recognise hand-built and generated sites, `docs/` in local folder mode, pages without front matter, a plain preview, HTML health checks
+- W2: edit HTML pages with a live preview, page properties from `<title>` and `<meta>`, pictures, new pages from HTML templates
+- W3: edit text and pictures on the rendered page
+- W4: shared header, menu and footer edited once for every page
+
 **v1.x:**
 - iOS capture app with share sheet; draft sync through iCloud
 - Scheduled posts, internal links and backlinks, tag pages, media library
@@ -394,6 +471,9 @@ Windows, Linux, Android and a web client are out of scope. The value is a Mac-na
 | Testing damages the real site | Fixture site in tests; `make-sample-site.sh` clone with a local remote; self-test refuses GitHub remotes |
 | Repo size growth from photos | Resize on import, storage meter, optional external storage |
 | Users accidentally publishing drafts in public repos | Local-first drafts by default; publish is always explicit; warning for `published: false` |
+| Editing a hand-built page breaks its markup | Byte-preserving edits that replace only changed characters; no reformatting; round-trip tests on HTML fixtures |
+| Inkwell edits a generated site whose source lives elsewhere | Detect generated output and open it read only, with a note to edit the source |
+| Front matter or Liquid written into a `.nojekyll` site shows up as text on the live site | Neither is ever written to such a site; tests check it |
 | Bundling Ruby for exact Jekyll builds is heavy | Lazy download on first "Exact preview"; Hugo needs only a single binary; or move the site to an Actions build |
 
 **Open questions**
@@ -402,4 +482,6 @@ Windows, Linux, Android and a web client are out of scope. The value is a Mac-na
 3. Should Inkwell manage the `github-pages` gem build or migrate sites to a GitHub Actions build, which allows modern Jekyll and any plugin? Migration could be an opt-in adoption step, and it would also make Exact preview simpler.
 4. Is there demand for multi-author support, or should Inkwell stay single-author?
 5. Should Inkwell clone sites into its own folder, or keep working in the clone the person already has? Working in place is simpler and is what the MVP does. A private clone avoids clashes with other tools.
-6. When a published post's title changes, should Inkwell offer to rename the file (a new URL plus a redirect) or always keep the URL?
+6. For hand-built websites (§4.12), how much should "edit on the page" (W3) allow: text and pictures only, or also adding and removing sections of a page? *Leaning: text, pictures and links only; structure stays in the source editor.*
+7. Should Inkwell offer to move a hand-built site to Jekyll (includes for the shared parts), or only edit shared parts across pages in place? *Leaning: edit in place; moving to Jekyll is an optional adoption step.*
+8. When a published post's title changes, should Inkwell offer to rename the file (a new URL plus a redirect) or always keep the URL?
