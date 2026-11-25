@@ -421,7 +421,7 @@ enum SelfTest {
         try? FileManager.default.removeItem(at: source)
         try? FileManager.default.copyItem(at: root.appending(path: "assets/images/estonia.jpg"), to: source)
         model.importPhotos([source])
-        for _ in 0..<20 where model.pendingPhotos == nil { try? await Task.sleep(for: .milliseconds(250)) }
+        for _ in 0 ..< 20 where model.pendingPhotos == nil { try? await Task.sleep(for: .milliseconds(250)) }
         if var pending = model.pendingPhotos, !pending.isEmpty {
             pending[0].caption = "Self-test snow"
             pending[0].alt = "A snowy street"
@@ -443,7 +443,7 @@ enum SelfTest {
         try? FileManager.default.removeItem(at: source)
         try? FileManager.default.copyItem(at: root.appending(path: "assets/images/estonia.jpg"), to: source)
         model.importPhotos([source])
-        for _ in 0..<20 where model.pendingPhotos == nil { try? await Task.sleep(for: .milliseconds(250)) }
+        for _ in 0 ..< 20 where model.pendingPhotos == nil { try? await Task.sleep(for: .milliseconds(250)) }
         if var pending = model.pendingPhotos, !pending.isEmpty {
             pending[0].caption = "Self-test harbour"
             model.savePendingPhotos(pending)

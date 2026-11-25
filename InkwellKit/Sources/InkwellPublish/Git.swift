@@ -146,6 +146,13 @@ public struct Git: Sendable {
     /// throw: the commit is kept and `pushError` says why, so the app can offer to push again.
     public func publish(paths: [String], message: String, push: Bool = true) async throws -> PublishResult {
         precondition(!paths.isEmpty)
+        let earlierUnpushed = await unpushedCount()
+        // A file git could not merge still holds conflict markers; publishing it would put them live.
+        let here = await prefix()
+        let unmerged = Set(await unmerged()).intersection(paths.map { here + $0 })
+        guard unmerged.isEmpty else {
+            throw GitError(command: "commit", output: localized("These files still have unresolved git conflicts: \(unmerged.sorted().joined(separator: ", ")). Settle them with git first."))
+        }
         try await run(["add", "--all", "--"] + paths)
         do {
             try await run(["commit", "-m", message, "--only", "--"] + paths)
@@ -156,7 +163,11 @@ public struct Git: Sendable {
         let branch = try await currentBranch()
         var pushed = false
         var pushError: String?
-        if push, await remoteURL() != nil {
+        // Pushing sends every commit not yet on GitHub. Commits made here outside the app (work in progress, say) must
+        // not go live with a post, so those wait for an explicit Push.
+        if push, earlierUnpushed > 0 {
+            pushError = localized("\(earlierUnpushed) earlier commits in this folder are not on GitHub yet, so nothing was pushed. Push when they are ready to go live.")
+        } else if push, await remoteURL() != nil {
             do {
                 try await self.push()
                 pushed = true
@@ -175,6 +186,7 @@ public struct Git: Sendable {
         let behind = try await run(["rev-list", "--count", "HEAD..origin/\(branch)"], allowFailure: true)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let n = Int(behind), n > 0 {
+            try await refuseOverlap(branch: branch)
             do {
                 try await run(["pull", "--rebase", "--autostash", "origin", branch])
             } catch {
@@ -183,6 +195,25 @@ public struct Git: Sendable {
             }
         }
         try await run(["push", "origin", "HEAD:\(branch)"])
+    }
+
+    /// Uncommitted edits in files GitHub also changed would come back from the autostash as conflict markers, and the
+    /// next publish would put those live. Such a pull is refused, leaving everything as it is.
+    public func refuseOverlap(branch: String) async throws {
+        let incoming = try await run(["diff", "--name-only", "-z", "HEAD...origin/\(branch)"])
+            .split(separator: "\0").map { String($0) }
+        // Both lists are relative to the top of the repository.
+        let dirty = try await status().keys
+        let both = Set(incoming).intersection(dirty).sorted()
+        guard both.isEmpty else {
+            throw GitError(command: "pull", output: localized("Changed here and on GitHub: \(both.joined(separator: ", ")). Publish or discard those edits, or settle them with git, then try again."))
+        }
+    }
+
+    /// Files git could not merge, with conflict markers in them.
+    public func unmerged() async -> [String] {
+        let out = (try? await run(["diff", "--name-only", "-z", "--diff-filter=U"], allowFailure: true)) ?? ""
+        return out.split(separator: "\0").map(String.init)
     }
 
     /// Commits made here that are not on the remote yet.

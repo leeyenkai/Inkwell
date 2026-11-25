@@ -15,6 +15,11 @@ final class FakeGitHub: @unchecked Sendable {
     var requests: [String] = []
     /// When set, the next branch-head read returns this (an older commit), like a lagging GitHub replica.
     var staleHeadOnce: String?
+    /// Moves the branch but answers with a server error, as when the reply is lost.
+    var loseRefAnswerOnce = false
+    var truncateTrees = false
+    /// Runs while a blob is being served, to change local files mid-sync.
+    var duringBlobFetch: (() -> Void)?
     var devicePolls = 0
     let owner = "octo", repo = "octo.github.io"
 
@@ -115,8 +120,9 @@ final class FakeGitHub: @unchecked Sendable {
             let sha = rest[2]
             let entries = trees[sha]!.map { ["path": $0.key, "mode": $0.value.mode, "type": "blob", "sha": $0.value.sha,
                                              "size": blobs[$0.value.sha]!.count] as [String: Any] }
-            return ok(["sha": sha, "tree": entries, "truncated": false])
+            return ok(["sha": sha, "tree": entries, "truncated": truncateTrees])
         case ("GET", "git", "blobs"):
+            duringBlobFetch?()
             return (200, blobs[rest[2]]!, [:])
         case ("GET", "tarball", _):
             return (200, tarball(commit: rest[1]), [:])
@@ -141,6 +147,10 @@ final class FakeGitHub: @unchecked Sendable {
                 return (422, Data(#"{"message":"Update is not a fast forward"}"#.utf8), [:])
             }
             head = sha
+            if loseRefAnswerOnce {
+                loseRefAnswerOnce = false
+                return (502, Data(#"{"message":"Bad gateway"}"#.utf8), [:])
+            }
             return ok(["object": ["sha": sha]])
         default:
             return (404, Data(#"{"message":"Not Found"}"#.utf8), [:])

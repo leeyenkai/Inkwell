@@ -139,7 +139,9 @@ final class AppModel {
     var pendingGallery: PendingGallery?
     var selectedPhotoID: String?
     var showPhotoSetup = false
+
     // MARK: Photo albums (see PhotoActions.swift)
+
     /// Which photos the grid shows: all, one album's, or those in no album.
     var albumFilter: AlbumFilter = .all
     /// Every chosen photo when several are; `selectedPhotoID` is the one clicked last.
@@ -715,6 +717,8 @@ final class AppModel {
             reloadDrafts()
             rebuildDerived(site)
             refreshChanges()
+            // Publishing pulls first, which can update the open file too.
+            editor?.reloadIfChangedOnDisk()
             if let relativePath, let doc = site.documents.first(where: { $0.relativePath == relativePath }) {
                 selectedDocumentID = nil
                 select(doc.id)

@@ -599,7 +599,7 @@ final class InkwellTextView: NSTextView {
 /// Shown under an image line; clicks go through to the text.
 final class InlineImageView: NSImageView {
     var url: URL?
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func hitTest(_: NSPoint) -> NSView? { nil }
 }
 
 /// Pixel sizes of pictures, read from their headers and kept until the file changes.

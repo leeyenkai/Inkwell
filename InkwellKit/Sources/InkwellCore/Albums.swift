@@ -440,9 +440,9 @@ public struct AlbumLibrary: Sendable {
     }
 }
 
-extension [ContentEdit] {
+public extension [ContentEdit] {
     /// One edit per path, the last one winning, in the order paths were first changed.
-    public var merged: [ContentEdit] {
+    var merged: [ContentEdit] {
         var order: [String] = []
         var latest: [String: ContentEdit] = [:]
         for edit in self {

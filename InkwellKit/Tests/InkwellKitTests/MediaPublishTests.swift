@@ -129,6 +129,51 @@ final class GitTests: XCTestCase {
         XCTAssertEqual(remoteHead, result.commit)
     }
 
+    func testEarlierLocalCommitsAreNotPushedWithAPost() async throws {
+        let remote = temp.appending(path: "remote.git"), work = temp.appending(path: "work"), other = temp.appending(path: "other")
+        for url in [remote, work] { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
+        let bare = try XCTUnwrap(Git(root: remote))
+        try await bare.run(["init", "--bare", "-b", "main"])
+        let git = try XCTUnwrap(Git(root: work))
+        try await git.run(["init", "-b", "main"])
+        try await git.run(["config", "user.email", "test@example.com"])
+        try await git.run(["config", "user.name", "Test"])
+        try await git.run(["remote", "add", "origin", remote.path])
+        try "base\n".write(to: work.appending(path: "README.md"), atomically: true, encoding: .utf8)
+        try await git.run(["add", "README.md"])
+        try await git.run(["commit", "-m", "init"])
+        try await git.run(["push", "-u", "origin", "main"])
+
+        // Work in progress committed by hand stays here.
+        try "wip\n".write(to: work.appending(path: "wip.md"), atomically: true, encoding: .utf8)
+        try await git.run(["add", "wip.md"])
+        try await git.run(["commit", "-m", "wip"])
+        try "post\n".write(to: work.appending(path: "post.md"), atomically: true, encoding: .utf8)
+        let result = try await git.publish(paths: ["post.md"], message: "Publish: post")
+        XCTAssertFalse(result.pushed)
+        XCTAssertNotNil(result.pushError)
+        let remoteLog = try await bare.run(["log", "--format=%s", "main"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(remoteLog, "init")
+
+        // An edit here to a file GitHub also changed is never pulled over.
+        try await git.run(["push", "origin", "main"])
+        let clone = try XCTUnwrap(Git(root: temp))
+        try await clone.run(["clone", "-q", remote.path, other.path])
+        let otherGit = try XCTUnwrap(Git(root: other))
+        try await otherGit.run(["config", "user.email", "test@example.com"])
+        try await otherGit.run(["config", "user.name", "Test"])
+        try "from elsewhere\n".write(to: other.appending(path: "README.md"), atomically: true, encoding: .utf8)
+        try await otherGit.run(["commit", "-qam", "remote edit"])
+        try await otherGit.run(["push", "-q", "origin", "main"])
+        try "edited here\n".write(to: work.appending(path: "README.md"), atomically: true, encoding: .utf8)
+        try await git.run(["fetch", "-q", "origin", "main"])
+        do {
+            try await git.refuseOverlap(branch: "main")
+            XCTFail("expected a refusal")
+        } catch {}
+        XCTAssertEqual(try String(contentsOf: work.appending(path: "README.md"), encoding: .utf8), "edited here\n")
+    }
+
     func testGitHubRepositoryParsing() {
         XCTAssertEqual(Git.gitHubRepository(from: "https://github.com/leeyenkai/leeyenkai.github.io.git")?.name, "leeyenkai.github.io")
         XCTAssertEqual(Git.gitHubRepository(from: "git@github.com:owner/site.git")?.owner, "owner")

@@ -183,6 +183,7 @@ final class LocalGitBackend: SiteBackend {
         let behind = Int(try await git.run(["rev-list", "--count", "HEAD..origin/\(branch)"], allowFailure: true)
             .trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         guard behind > 0 else { return SyncOutcome() }
+        try await git.refuseOverlap(branch: branch)
         do {
             try await git.run(["pull", "--rebase", "--autostash", "origin", branch])
         } catch {

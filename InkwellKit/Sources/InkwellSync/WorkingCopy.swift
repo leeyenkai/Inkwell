@@ -126,6 +126,10 @@ public actor WorkingCopy {
     let stateURL: URL
     private(set) var state: SyncState?
     private var hashCache: [String: (size: Int, modified: Date, sha: String)] = [:]
+    /// Downloads, pulls, publishes and conflict fixes take turns: each reads the state, waits on the network and writes it
+    /// back, so two at once would undo each other.
+    private var busy = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
 
     static let ignoredNames: Set = [".DS_Store", ".git", "_site", ".jekyll-cache", ".sass-cache", ".jekyll-metadata", "Thumbs.db"]
 
@@ -149,9 +153,25 @@ public actor WorkingCopy {
         ref.sitePath.isEmpty ? sitePath : "\(ref.sitePath)/\(sitePath)"
     }
 
+    private func exclusive<T>(_ body: () async throws -> T) async throws -> T {
+        while busy {
+            await withCheckedContinuation { waiting.append($0) }
+        }
+        busy = true
+        defer {
+            busy = false
+            if !waiting.isEmpty { waiting.removeFirst().resume() }
+        }
+        return try await body()
+    }
+
     // MARK: Download
 
     public func download(client: GitHubClient, progress: @Sendable (String) async -> Void = { _ in }) async throws {
+        try await exclusive { try await downloadNow(client: client, progress: progress) }
+    }
+
+    private func downloadNow(client: GitHubClient, progress: @Sendable (String) async -> Void) async throws {
         await progress(localized("Finding the latest version…"))
         let head = try await client.branchHead(ref.owner, ref.name, branch: ref.branch)
         let commit = try await client.commit(ref.owner, ref.name, sha: head)
@@ -187,21 +207,38 @@ public actor WorkingCopy {
         }
         state = SyncState(ref: ref, baseCommit: head, baseTree: commit.tree.sha, files: files, modes: modes, conflicts: [:], updated: Date())
         hashCache = [:]
-        try saveState()
 
         // The archive can differ from the tree (export-ignore, export-subst): fetch those files one by one, so a fresh
-        // copy never shows changes that publishing would then send.
-        for (path, kind) in try changes().sorted(by: { $0.key < $1.key }).prefix(500) {
-            let url = root.appending(path: path)
-            if kind == .added {
-                try? fm.removeItem(at: url)
-            } else if let sha = files[path], modes[path] != "120000" {
-                let data = try await client.blob(ref.owner, ref.name, sha: sha)
-                try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try data.write(to: url)
+        // copy never shows changes that publishing would then send. State is saved only once this has worked; otherwise
+        // the fresh copy (which holds no edits yet) is removed and the next open downloads again.
+        do {
+            for (path, kind) in try changes().sorted(by: { $0.key < $1.key }) {
+                let url = root.appending(path: path)
+                guard isInside(url) else { continue }
+                if kind == .added {
+                    try? fm.removeItem(at: url)
+                } else if let sha = files[path], modes[path] != "120000" {
+                    let data = try await client.blob(ref.owner, ref.name, sha: sha)
+                    try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try data.write(to: url)
+                }
             }
+            hashCache = [:]
+            try saveState()
+        } catch {
+            state = nil
+            hashCache = [:]
+            try? fm.removeItem(at: root)
+            throw error
         }
-        hashCache = [:]
+    }
+
+    /// Whether a file's folder, with links followed, is still inside the copy. A link committed to the repository
+    /// must never let a sync write elsewhere on the Mac.
+    func isInside(_ url: URL) -> Bool {
+        let base = root.resolvingSymlinksInPath().standardizedFileURL.path + "/"
+        let folder = url.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path + "/"
+        return folder.hasPrefix(base)
     }
 
     static func untar(_ archive: URL, into folder: URL) throws {
@@ -281,9 +318,13 @@ public actor WorkingCopy {
 
     /// Commits exactly `paths` (repository paths, added, changed or deleted) as one commit and moves the branch to it.
     public func publish(paths: [String], message: String, client: GitHubClient) async throws -> String {
+        try await exclusive { try await publishNow(paths: paths, message: message, client: client) }
+    }
+
+    private func publishNow(paths: [String], message: String, client: GitHubClient) async throws -> String {
         guard state != nil else { throw SyncError.notDownloaded }
         for attempt in 0 ..< 3 {
-            let outcome = try await pull(client: client)
+            let outcome = try await pullNow(client: client)
             let blocked = Set(outcome.conflicts + conflicts).intersection(paths)
             if !blocked.isEmpty { throw SyncError.conflict(blocked.sorted()) }
             do {
@@ -317,7 +358,15 @@ public actor WorkingCopy {
         guard !entries.isEmpty else { throw SyncError.nothingToPublish }
         let tree = try await client.createTree(ref.owner, ref.name, base: state.baseTree, entries: entries)
         let commit = try await client.createCommit(ref.owner, ref.name, message: message, tree: tree, parents: [state.baseCommit])
-        try await client.updateBranch(ref.owner, ref.name, branch: ref.branch, to: commit)
+        do {
+            try await client.updateBranch(ref.owner, ref.name, branch: ref.branch, to: commit)
+        } catch GitHubError.notFastForward {
+            throw GitHubError.notFastForward
+        } catch {
+            // The answer can be lost after GitHub moved the branch. Ask again before reporting a failure, or the
+            // caller would roll back a publish that is already live.
+            guard (try? await client.branchHead(ref.owner, ref.name, branch: ref.branch)) == commit else { throw error }
+        }
         state.pass(state.baseCommit)
         state.baseCommit = commit
         state.baseTree = tree
@@ -335,11 +384,17 @@ public actor WorkingCopy {
     /// as they are here and reported as conflicts.
     @discardableResult
     public func pull(client: GitHubClient) async throws -> PullOutcome {
+        try await exclusive { try await pullNow(client: client) }
+    }
+
+    private func pullNow(client: GitHubClient) async throws -> PullOutcome {
         guard var state else { throw SyncError.notDownloaded }
         let head = try await client.branchHead(ref.owner, ref.name, branch: ref.branch)
         guard head != state.baseCommit, !(state.passed ?? []).contains(head) else { return PullOutcome() }
         let commit = try await client.commit(ref.owner, ref.name, sha: head)
         let tree = try await client.tree(ref.owner, ref.name, sha: commit.tree.sha)
+        // A partial list would read as files deleted on GitHub.
+        guard !tree.truncated else { throw SyncError.tooLarge }
         var remote: [String: String] = [:]
         var remoteModes: [String: String] = [:]
         for entry in tree.tree where entry.type == "blob" {
@@ -362,7 +417,18 @@ public actor WorkingCopy {
                 }
                 continue
             }
-            try await write(path: path, sha: new, client: client)
+            // The editor may have saved this file while GitHub's version was downloading: check again just before
+            // writing, with no wait in between, and keep the edit as a conflict if so.
+            var data: Data?
+            if let new { data = try await client.blob(ref.owner, ref.name, sha: new) }
+            hashCache[path] = nil
+            let current = (try? contents(root.appending(path: path))).map(GitBlob.sha)
+            if current != old, current != new {
+                state.conflicts[path] = .some(new)
+                outcome.conflicts.append(path)
+                continue
+            }
+            try place(path: path, data: data)
             state.files[path] = new
             outcome.updated.append(path)
         }
@@ -377,13 +443,20 @@ public actor WorkingCopy {
     }
 
     private func write(path: String, sha: String?, client: GitHubClient) async throws {
+        var data: Data?
+        if let sha { data = try await client.blob(ref.owner, ref.name, sha: sha) }
+        try place(path: path, data: data)
+    }
+
+    /// Writes GitHub's version of a file (or removes it when `data` is nil).
+    private func place(path: String, data: Data?) throws {
         let url = root.appending(path: path)
         let fm = FileManager.default
-        if let sha {
-            let data = try await client.blob(ref.owner, ref.name, sha: sha)
+        guard isInside(url) else { throw SyncError.extractFailed(path) }
+        if let data {
             try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: url, options: .atomic)
-        } else if fm.fileExists(atPath: url.path) {
+        } else if fm.fileExists(atPath: url.path) || (try? fm.destinationOfSymbolicLink(atPath: url.path)) != nil {
             try fm.removeItem(at: url)
         }
         hashCache[path] = nil
@@ -393,6 +466,10 @@ public actor WorkingCopy {
 
     /// Settles a conflict: keep this Mac's version (it publishes over GitHub's) or take GitHub's.
     public func resolve(path: String, keepMine: Bool, client: GitHubClient) async throws {
+        try await exclusive { try await resolveNow(path: path, keepMine: keepMine, client: client) }
+    }
+
+    private func resolveNow(path: String, keepMine: Bool, client: GitHubClient) async throws {
         guard var state, let remote = state.conflicts[path] else { return }
         if !keepMine { try await write(path: path, sha: remote, client: client) }
         state.files[path] = remote
@@ -408,9 +485,20 @@ public actor WorkingCopy {
     }
 
     /// Puts a file back as it was at the last sync (or removes it if it is new).
+    /// A conflicted file is put back to GitHub's version, which settles the conflict.
     public func discard(path: String, client: GitHubClient) async throws {
-        guard let state else { throw SyncError.notDownloaded }
-        try await write(path: path, sha: state.files[path], client: client)
+        try await exclusive {
+            guard var state else { throw SyncError.notDownloaded }
+            if let remote = state.conflicts[path] {
+                try await write(path: path, sha: remote, client: client)
+                state.files[path] = remote
+                state.conflicts[path] = nil
+                self.state = state
+                try saveState()
+            } else {
+                try await write(path: path, sha: state.files[path], client: client)
+            }
+        }
     }
 
     func saveState() throws {

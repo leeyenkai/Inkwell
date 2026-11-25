@@ -204,6 +204,11 @@ final class EditorDocument {
         saveTask?.cancel()
         let text = frontMatter.text
         guard !retired, loadError == nil, diskConflict == nil, text != lastSaved else { return }
+        // A sync may have written GitHub's version since the last save: never write over it unseen.
+        if let disk = try? String(contentsOf: document.fileURL, encoding: .utf8), disk != lastSaved, disk != text {
+            diskConflict = disk
+            return
+        }
         do {
             try Data(text.utf8).write(to: document.fileURL, options: .atomic)
             lastSaved = text

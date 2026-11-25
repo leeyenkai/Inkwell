@@ -14,8 +14,11 @@ public struct ThemeCache: Sendable {
             .appending(path: "Inkwell/Themes", directoryHint: .isDirectory))
     }
 
+    /// The names come from the site's `_config.yml`, so anything that could reach outside the cache folder is replaced.
     public func location(owner: String, repository: String, ref: String?) -> URL {
-        folder.appending(path: "\(owner)-\(repository)@\(ref ?? "default")", directoryHint: .isDirectory)
+        let name = "\(owner)-\(repository)@\(ref ?? "default")"
+        let safe = String(name.map { $0.isLetter || $0.isNumber || "-_.@".contains($0) ? $0 : "_" }).replacingOccurrences(of: "..", with: "_")
+        return folder.appending(path: safe, directoryHint: .isDirectory)
     }
 
     public func cached(owner: String, repository: String, ref: String?) -> URL? {
@@ -26,7 +29,7 @@ public struct ThemeCache: Sendable {
     /// The theme's files, downloading them the first time. Public themes need no sign-in.
     public func ensure(owner: String, repository: String, ref: String?, client: GitHubClient) async throws -> URL {
         if let url = cached(owner: owner, repository: repository, ref: ref) { return url }
-        let path = ref.map { "repos/\(owner)/\(repository)/tarball/\($0)" } ?? "repos/\(owner)/\(repository)/tarball"
+        let path = ref.map { "repos/\(owner)/\(repository)/tarball/\($0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? $0)" } ?? "repos/\(owner)/\(repository)/tarball"
         let (archive, _) = try await client.data("GET", path)
         let fm = FileManager.default
         let staging = folder.appending(path: "staging-\(UUID().uuidString)", directoryHint: .isDirectory)

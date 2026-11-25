@@ -16,7 +16,7 @@ final class PerformanceTests: XCTestCase {
         root = fm.temporaryDirectory.appending(path: "inkwell-large-\(UUID().uuidString)", directoryHint: .isDirectory)
         try? fm.copyItem(at: fixtureSite(), to: root)
         try? fm.createDirectory(at: root.appending(path: "assets/images"), withIntermediateDirectories: true)
-        let pixel = Data(repeating: 0xFF, count: 40_000)
+        let pixel = Data(repeating: 0xFF, count: 40000)
         for i in 0 ..< images { try? pixel.write(to: root.appending(path: "assets/images/picture-\(i).jpg")) }
         let paragraph = "Writing for the web should feel like writing a note, with **bold**, *italic*, `code` and [a link](/notes/post-1/). "
         for i in 0 ..< posts {

@@ -78,7 +78,7 @@ final class ElementKitTests: XCTestCase {
         try FileManager.default.copyItem(at: fixtureSite(), to: temp)
         let theme = ThemeManifest.named(ProcessInfo.processInfo.environment["INKWELL_RENDER_THEME"] ?? "essayist")!
         try ThemeApplier.plan(theme: theme, siteRoot: temp).apply(to: temp)
-        let template = PageTemplate(rawValue: ProcessInfo.processInfo.environment["INKWELL_RENDER_TEMPLATE"] ?? "") 
+        let template = PageTemplate(rawValue: ProcessInfo.processInfo.environment["INKWELL_RENDER_TEMPLATE"] ?? "")
         var body = PageElement.allCases.filter { $0 != .map }.map { "### \($0.title)\n\n" + $0.template(collection: "notes") }.joined(separator: "\n\n")
         body = body.replacingOccurrences(of: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n</div>",
                                          with: "<div class=\"ik-gallery\" data-columns=\"3\" markdown=\"1\">\n"

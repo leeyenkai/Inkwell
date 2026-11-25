@@ -122,6 +122,53 @@ final class WorkingCopyTests: XCTestCase {
         XCTAssertEqual(changes, [:])
     }
 
+    func testEditSavedDuringPullIsKeptAsConflict() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n"])
+        fake.remoteEdit(["_notes/a.md": "A from GitHub\n"])
+        let url = copy.root.appending(path: "_notes/a.md")
+        fake.duringBlobFetch = { try? "A typed here meanwhile\n".write(to: url, atomically: true, encoding: .utf8) }
+        let outcome = try await copy.pull(client: client)
+        fake.duringBlobFetch = nil
+        XCTAssertEqual(outcome.conflicts, ["_notes/a.md"])
+        XCTAssertEqual(read(copy, "_notes/a.md"), "A typed here meanwhile\n")
+    }
+
+    func testLostBranchAnswerStillCountsAsPublished() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n"])
+        try write(copy, "_notes/a.md", "A edited\n")
+        fake.loseRefAnswerOnce = true
+        let commit = try await copy.publish(paths: ["_notes/a.md"], message: "Update", client: client)
+        XCTAssertEqual(fake.head, commit)
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, [:])
+    }
+
+    func testPullRefusesPartialTree() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n", "index.md": "Home\n"])
+        fake.remoteEdit(["about.md": "About\n"])
+        fake.truncateTrees = true
+        do {
+            try await copy.pull(client: client)
+            XCTFail("expected tooLarge")
+        } catch {
+            XCTAssertEqual(error as? SyncError, .tooLarge)
+        }
+        XCTAssertEqual(read(copy, "index.md"), "Home\n")
+    }
+
+    func testDiscardSettlesConflict() async throws {
+        let (fake, copy, client) = try await make(["_notes/a.md": "A\n"])
+        fake.remoteEdit(["_notes/a.md": "A from GitHub\n"])
+        try write(copy, "_notes/a.md", "A from this Mac\n")
+        try await copy.pull(client: client)
+        try await copy.discard(path: "_notes/a.md", client: client)
+        let conflicts = await copy.conflicts
+        XCTAssertEqual(conflicts, [])
+        XCTAssertEqual(read(copy, "_notes/a.md"), "A from GitHub\n")
+        let changes = try await copy.changes()
+        XCTAssertEqual(changes, [:])
+    }
+
     func testConflictsMustBeResolved() async throws {
         let (fake, copy, client) = try await make(["_notes/a.md": "A\n"])
         fake.remoteEdit(["_notes/a.md": "A from GitHub\n"])

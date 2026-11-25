@@ -165,10 +165,10 @@ public enum PhotoStream {
     }
 }
 
-extension ConfigEditing {
+public extension ConfigEditing {
     /// Adds `name:` under `collections:` (creating it) with `output:`; false when it is already there.
     @discardableResult
-    public mutating func addCollection(_ name: String, output: Bool) -> Bool {
+    mutating func addCollection(_ name: String, output: Bool) -> Bool {
         let parsed = YAML.parse(lines.joined(separator: "\n"))
         if parsed["collections"]?[name] != nil || parsed["collections"]?.list?.contains(where: { $0.string == name }) == true { return false }
         guard let start = lines.firstIndex(where: { $0.hasPrefix("collections:") }) else {
