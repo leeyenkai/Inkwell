@@ -141,6 +141,8 @@ final class AppModel {
     var pendingImage: PendingImage?
     var pendingPhotos: [PendingPhoto]?
     var tableEdit: TableEdit?
+    var pageLinkEdit: PageLinkEdit?
+    var showMoveToJekyll = false
     var elementEdit: ElementEdit?
     var showElementPicker = false
     var health: SiteHealth.Report?
@@ -227,6 +229,7 @@ final class AppModel {
                 if let pages = try? await client.pages(owner, name) {
                     pagesURL = pages.html_url.flatMap(URL.init(string:))
                     pagesBuildType = pages.build_type
+                    reloadIfBuildTypeMatters()
                 }
                 defaultBranch = try? await client.repository(owner, name).default_branch
             }
@@ -265,6 +268,7 @@ final class AppModel {
             await attach(GitHubBackend(copy: copy, client: client))
             defaultBranch = repo.default_branch
             pagesBuildType = pages?.build_type
+            reloadIfBuildTypeMatters()
             showSitePicker = false
             if pages == nil {
                 errorMessage = String(localized: """
@@ -307,8 +311,9 @@ final class AppModel {
 
     func attach(_ backend: any SiteBackend) async {
         let root = backend.siteRoot
+        let options = SiteLoader.Options(kind: Self.chosenKind(forSite: backend.draftKey))
         do {
-            let site = try await Task.detached { try SiteLoader.load(root) }.value
+            let site = try await Task.detached { try SiteLoader.load(root, options: options) }.value
             settleEditor()
             editor = nil
             selectedDocumentID = nil
@@ -417,13 +422,44 @@ final class AppModel {
 
     func reloadSite() {
         guard let root = backend?.siteRoot else { return }
+        let options = loadOptions
         Task {
-            guard let site = try? await Task.detached(operation: { try SiteLoader.load(root) }).value else { return }
+            guard let site = try? await Task.detached(operation: { try SiteLoader.load(root, options: options) }).value else { return }
             self.site = site
             reloadDrafts()
             rebuildDerived(site)
             refreshChanges()
         }
+    }
+
+    // MARK: Site kind (SPEC §4.12)
+
+    /// The kind chosen for the open site, or nil to use the one Inkwell finds.
+    var chosenKind: SiteKind? {
+        backend.flatMap { Self.chosenKind(forSite: $0.draftKey) }
+    }
+
+    static func chosenKind(forSite key: String) -> SiteKind? {
+        UserDefaults.standard.string(forKey: "siteKind:\(key)").flatMap(SiteKind.init(rawValue:))
+    }
+
+    func chooseKind(_ kind: SiteKind?) {
+        guard let key = backend?.draftKey else { return }
+        UserDefaults.standard.set(kind?.rawValue, forKey: "siteKind:\(key)")
+        settleEditor()
+        editor = nil
+        selectedDocumentID = nil
+        reloadSite()
+    }
+
+    var loadOptions: SiteLoader.Options {
+        SiteLoader.Options(kind: chosenKind, pagesBuildType: pagesBuildType)
+    }
+
+    /// A branch-built site's workflows do not build it, so they no longer decide its kind once GitHub says so.
+    func reloadIfBuildTypeMatters() {
+        guard pagesBuildType == "legacy", let root = backend?.siteRoot, PagesWorkflow.build(siteRoot: root) != nil else { return }
+        reloadSite()
     }
 
     /// After a sync or discard, files may have changed under the Design panel too.
@@ -802,7 +838,9 @@ final class AppModel {
 
     func didPublish(selecting relativePath: String?) {
         Task {
-            guard let root = backend?.siteRoot, let site = try? await Task.detached(operation: { try SiteLoader.load(root) }).value else { return }
+            let options = loadOptions
+            guard let root = backend?.siteRoot,
+                  let site = try? await Task.detached(operation: { try SiteLoader.load(root, options: options) }).value else { return }
             self.site = site
             reloadDrafts()
             rebuildDerived(site)
@@ -936,7 +974,7 @@ final class AppModel {
         switch message["kind"] as? String {
         case "text":
             guard let before = message["before"] as? String, let after = message["after"] as? String else { return }
-            if let updated = PageEditing.replacingText(index, with: after, expecting: before, in: editor.fullText) {
+            if let updated = PageEditing.replacingText(index, with: after, expecting: before, in: editor.fullText, liquid: editor.document.isHTMLPage) {
                 if updated != editor.fullText { editor.setFullText(updated) }
             } else {
                 errorMessage = String(localized: "That text changed in the source while you were editing it, so your edit was not kept.")
@@ -947,7 +985,7 @@ final class AppModel {
             panel.message = String(localized: "Choose a picture to show here instead.")
             panel.prompt = String(localized: "Replace")
             guard panel.runModal() == .OK, let url = panel.url else { return }
-            let root = site.root, page = editor.document.relativePath, id = ObjectIdentifier(editor)
+            let root = site.root, page = editor.document.relativePath, id = ObjectIdentifier(editor), liquid = editor.document.isHTMLPage
             let folder = ["media", "images", "img", "assets/images", "assets/img"]
                 .first { FileManager.default.fileExists(atPath: root.appending(path: $0).path) } ?? "images"
             let slug = (editor.document.filename as NSString).deletingPathExtension
@@ -960,7 +998,7 @@ final class AppModel {
                     }.value
                     let source = Self.relativePath(to: String(image.sitePath.drop { $0 == "/" }), from: page)
                     guard let current = self.editor, ObjectIdentifier(current) == id,
-                          let updated = PageEditing.replacingImage(index, with: source, in: current.fullText) else {
+                          let updated = PageEditing.replacingImage(index, with: source, in: current.fullText, liquid: liquid) else {
                         try? FileManager.default.removeItem(at: image.fileURL)
                         errorMessage = Self.pictureNotAdded
                         return
@@ -971,9 +1009,31 @@ final class AppModel {
                     errorMessage = error.localizedDescription
                 }
             }
+        case "link":
+            guard let before = message["before"] as? String else { return }
+            pageLinkEdit = PageLinkEdit(index: index, address: before, page: editor.document.relativePath)
         default:
             break
         }
+    }
+
+    /// A link on a hand-built page whose address is being changed from the preview.
+    struct PageLinkEdit: Identifiable {
+        let id = UUID()
+        var index: Int
+        var address: String
+        var page: String
+    }
+
+    func finishPageLinkEdit(_ edit: PageLinkEdit, address: String) {
+        guard let editor, editor.document.relativePath == edit.page else { return }
+        let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let updated = PageEditing.replacingLink(edit.index, with: address, expecting: edit.address, in: editor.fullText,
+                                                      liquid: editor.document.isHTMLPage) else {
+            errorMessage = String(localized: "That link changed in the source while you were editing it, so your edit was not kept.")
+            return
+        }
+        if updated != editor.fullText { editor.setFullText(updated) }
     }
 
     func insertPendingImage() {

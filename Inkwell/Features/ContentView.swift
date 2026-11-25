@@ -69,7 +69,8 @@ struct SiteWindow: View {
             } else if let design = model.design, model.sidebarSelection?.isDesign == true {
                 Group {
                     switch model.sidebarSelection {
-                    case .navigation?: NavigationEditor(design: design, model: model)
+                    case .navigation?:
+                        if model.usesHTMLMenu { HTMLMenuEditor(model: model) } else { NavigationEditor(design: design, model: model) }
                     case .settings?: SiteSettingsView(design: design, model: model)
                     case .code?: CodeFileList(design: design, model: model)
                     default: DesignPanel(design: design, model: model)
@@ -164,6 +165,8 @@ struct SiteWindow: View {
         }
         .sheet(item: $model.pendingGallery) { _ in GallerySheet(model: model) }
         .sheet(item: $model.tableEdit) { edit in TableEditorSheet(model: model, edit: edit) }
+        .sheet(item: $model.pageLinkEdit) { edit in PageLinkSheet(model: model, edit: edit) }
+        .sheet(isPresented: $model.showMoveToJekyll) { MoveToJekyllSheet(model: model) }
         .sheet(item: $model.elementEdit) { edit in ElementEditorSheet(model: model, edit: edit) }
         .sheet(isPresented: $model.showElementPicker) { ElementPicker(model: model) }
         .sheet(isPresented: $model.showPhotoSetup) { PhotoSetupSheet(model: model) }
@@ -240,9 +243,9 @@ struct SidebarView: View {
             if kind != .generated {
                 Section("Design") {
                     Label(kind.servesFilesAsIs ? "Style" : "Theme & Style", systemImage: "paintpalette").tag(SidebarSelection.design)
-                    // The menu and settings are Jekyll files (_data/navigation.yml, _config.yml).
+                    // A hand-built site's menu is in its pages; its settings would be Jekyll's (_config.yml).
+                    Label("Navigation", systemImage: "menubar.rectangle").tag(SidebarSelection.navigation)
                     if !kind.servesFilesAsIs {
-                        Label("Navigation", systemImage: "menubar.rectangle").tag(SidebarSelection.navigation)
                         Label("Settings", systemImage: "gearshape").tag(SidebarSelection.settings)
                     }
                     Label("Code", systemImage: "chevron.left.forwardslash.chevron.right").tag(SidebarSelection.code)
@@ -251,7 +254,7 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .top) {
-            if kind == .generated { GeneratedSiteNotice() }
+            if kind == .generated { GeneratedSiteNotice(builtByWorkflow: model.site?.builtByWorkflow == true) }
         }
         .safeAreaInset(edge: .bottom) {
             SyncFooter(model: model)
@@ -330,7 +333,9 @@ struct SiteMenu: View {
             Button("Check GitHub for Changes") { Task { await model.sync() } }
             Button("Review Unpublished Changes…") { model.showChanges = true }
             Divider()
-            if !model.photosSetUp { Button("Set Up Photos…") { model.showPhotoSetup = true } }
+            if model.site?.kind == .blog, !model.photosSetUp { Button("Set Up Photos…") { model.showPhotoSetup = true } }
+            if model.site?.kind == .handBuilt { Button("Move to Jekyll…") { model.showMoveToJekyll = true } }
+            SiteKindPicker(model: model).pickerStyle(.menu)
             if let url = model.pagesURL { Button("Open Live Site") { NSWorkspace.shared.open(url) } }
             if let repo = model.backend?.repository, let url = URL(string: "https://github.com/\(repo.owner)/\(repo.name)") {
                 Button("Open Repository on GitHub") { NSWorkspace.shared.open(url) }
@@ -501,7 +506,7 @@ struct DetailView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        if let editor = model.editor, editor.document.isStatic || model.site?.kind.servesFilesAsIs == true {
+        if let editor = model.editor, editor.document.editsAsHTML || model.site?.kind.servesFilesAsIs == true {
             StaticPageEditor(model: model, editor: editor)
         } else if let editor = model.editor {
             // The editor keeps its place whether or not the preview is beside it, so its text view (cursor, scroll,

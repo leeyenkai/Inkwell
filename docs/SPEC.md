@@ -22,10 +22,17 @@
 - **Websites (§4.12), phase W1.** Inkwell tells blogs, Jekyll websites, hand-built sites and generated output apart. It lists HTML pages that have no front matter and opens them as source beside a live preview. The preview serves files as they are. A site in `docs/` opens from its repository. The sidebar suits a website. Health checks relative links and pictures, alt text and page titles, and publishing a page takes its new pictures along.
 - **Websites (§4.12), phase W2.** An HTML page's title, description and share image are edited in a Properties form that rewrites only those values. Pictures dropped on a page are imported and inserted as `<img>` with alt text. New pages copy an existing page's head, header and footer.
 - **Websites (§4.12), phases W3 and W4.**
-  - Edit on Page makes the preview editable: click text to change it in place, or click a picture to replace it. Only those characters change in the file.
+  - Edit on Page makes the preview editable: click text to change it in place, click a picture to replace it, or click a link and
+    choose Change Address. Only those characters change in the file.
   - When a page's header, menu or footer changes, the editor offers to make the same change on every page with an identical copy.
+  - Navigation edits a hand-built site's menu (the links in a page's `<nav>`) and makes the same change on every page whose menu
+    leads to the same places, even where the pages mark their own item as current or sit in other folders.
+  - Site › Move to Jekyll… puts a header, menu or footer copied by several pages into `_includes`, adds `layout: null` front
+    matter to the pages that use them, removes `.nojekyll` and lists hidden files in `include:`, all for review before publishing.
+  - A site built by a GitHub Actions workflow with another generator opens read only; a workflow that uploads the files as they
+    are counts like `.nojekyll`. The kind Inkwell found can be changed from the Site menu or the first-open summary.
 
-Verified by 223 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content, design and website self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+Verified by 240 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content, design and website self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
@@ -296,7 +303,7 @@ A background checker shows one badge in the sidebar:
 - Missing SEO basics (meta description, Open Graph image, RSS feed, sitemap, favicon, 404 page), each with a one-click fix using standard plugins (`jekyll-seo-tag`, `jekyll-feed`, `jekyll-sitemap`). A hand-written feed or sitemap counts: Inkwell never adds a second one.
 - Repo hygiene: committed build output (`_site/`), `.DS_Store`, and a missing `.gitignore`
 
-### 4.12 Websites, not only blogs (planned, v1.1)
+### 4.12 Websites, not only blogs (v1.1, built)
 
 Many GitHub Pages sites are not blogs. They are a product page, a project's documentation, a portfolio or a one-page landing site, and often hand-written HTML, CSS and JavaScript. An example is `fxgl.github.io/steamac`. It is two HTML pages, a stylesheet with 15 CSS custom properties, scripts and media, served from `/docs` of an app's code repository, with a `.nojekyll` file so GitHub copies the files as they are.
 
@@ -321,14 +328,22 @@ Inkwell decides the kind of site when it opens it, and shows the kind in the sit
 
 HTML files without front matter on a Jekyll site are listed too. Jekyll copies them unchanged, so they are pages a person edits like any other. Markdown files without front matter, such as a README, are not listed, because GitHub serves them as plain text.
 
-**What is left after W1 to W4.**
-- **Link addresses.** They are edited in the source; on the page, only link text is editable.
-- **Navigation.** The navigation editor does not yet work on a hand-built site's shared menu. A menu change on one page is offered to the other pages instead.
-- **Moving to Jekyll.** The optional adoption step is not built.
-- **Generated sites.** Detecting them from a GitHub Actions workflow is not built.
+**How the last parts were built (25 Nov 2026).**
+- **Link addresses.** The preview marks each link's `href`. Clicking a link shows its address with Change Address, and the new
+  address replaces only that attribute's value. On a Jekyll page, text and addresses holding Liquid tags are not marked.
+- **Navigation.** The menu is the links of a page's first `<nav>`, as `<li>` items or bare links. Renaming, changing an address,
+  reordering, removing and adding rewrite only those items; the markup between them stays. The change reaches every page whose
+  menu leads to the same places, with addresses rewritten for its folder, and a copied item loses `active` and `aria-current`.
+  Menus with submenus, or links without addresses, are left to the source.
+- **Moving to Jekyll.** A part is shared when two or more pages have the identical copy. Pages containing `{{` or `{%` are left
+  exactly as they are, since Jekyll would read them. Whole HTML pages with front matter open as HTML source, and the preview runs
+  their includes.
+- **Generated sites.** `.github/workflows` (or the repository's, for a `docs/` site) decides when a workflow deploys to Pages: a
+  Jekyll build keeps the site editable, another generator makes it read only, and an upload with no build step serves the files
+  as they are. In GitHub mode, a branch-built site ignores its workflows.
 
 **How W1 was built.**
-- **Detection.** It uses files only: `.nojekyll`, a `generator` tag, hashed script names, or the `_next`, `_astro` or `static/js` folders. A Pages build from a GitHub Actions workflow is not used yet.
+- **Detection.** It uses files: `.nojekyll`, a `generator` tag, hashed script names, or the `_next`, `_astro` or `static/js` folders, and the repository's GitHub Actions workflows (see above).
 - **Editing.** HTML pages open in the code editor beside a live preview, which is the first step of W2.
 - **What is turned off on plain HTML sites:**
   - New Page, because its templates are Markdown.
@@ -363,13 +378,13 @@ HTML files without front matter on a Jekyll site are listed too. Jekyll copies t
 4. **New pages.** A new page starts from an HTML template that links the site's own stylesheet. The template takes the page's shared header and footer from an existing page, so it matches the rest of the site.
 5. **Publishing.** Publishing works as it does now, through review of all changes.
 
-**W3: Edit on the page** (done 25 Nov 2026, except link addresses; the "feels like Notes" step for websites)
+**W3: Edit on the page** (done 25 Nov 2026; the "feels like Notes" step for websites)
 1. **Editing text in place.** Clicking text in the preview lets the person type there. Only the text of that element changes in the file.
 2. **How the preview finds the source.** The preview marks each editable element with its source position. These marks exist only in the preview and are never written to the file.
-3. **Pictures and links.** Pictures are replaced by dropping one onto them. Links are edited in the existing link popover.
+3. **Pictures and links.** Clicking a picture replaces it. Clicking a link shows its address with Change Address.
 4. **Content made by scripts.** Text that a script builds (a games list loaded by JavaScript, for example) is not editable in place, and the page says why.
 
-**W4: Parts shared by every page** (step 1 done 25 Nov 2026; steps 2 and 3 not started)
+**W4: Parts shared by every page** (done 25 Nov 2026)
 1. **Editing a shared part once.** The same header, menu and footer are usually copied into every HTML page. They can be edited once and applied to every page that has an identical copy, shown as one reviewable change.
 2. **Navigation.** The navigation editor works on that shared menu when the site has no `_data/navigation.yml`.
 3. **Switching to Jekyll.** Turning a hand-built site into a Jekyll site, with includes for the shared parts and `.nojekyll` removed, is an optional adoption step only. It changes how GitHub builds the site, so it is never automatic.
@@ -382,7 +397,8 @@ HTML files without front matter on a Jekyll site are listed too. Jekyll copies t
 - **What exists for W1 to W4.**
   - `WebsiteTests` covers detection, listing, the preview and health.
   - `scripts/make-plain-site.sh` builds the fixture site in `InkwellKit/Tests/Fixtures/plain-site`.
-  - `--selftest-website` edits a page on that site and publishes it. It also adds a description, drops in a picture and makes a new page. Then it edits a paragraph on the preview through its script and applies a header change to the page that shares it.
+  - `--selftest-website` edits a page on that site and publishes it. It also adds a description, drops in a picture and makes a new page. Then it edits a paragraph and a link address on the preview through its script, applies a header change to the page that shares it, adds a menu item to both pages with that menu, and moves the site to Jekyll, checking that the preview runs the shared header include.
+  - `WebsiteMenuTests` covers link addresses, menus (byte-identical when unchanged, list and bare-link menus, other folders), the move to Jekyll and workflow detection.
   - The example site was checked read only, with preview snapshots.
 
 ---
@@ -474,7 +490,7 @@ Windows, Linux, Android and a web client are out of scope. The value is a Mac-na
 - W1: recognise hand-built and generated sites, `docs/` in local folder mode, pages without front matter, a plain preview, HTML health checks
 - W2: edit HTML pages with a live preview, page properties from `<title>` and `<meta>`, pictures, new pages from HTML templates
 - W3: edit text and pictures on the rendered page
-- W4: shared header, menu and footer edited once for every page
+- W4: shared header, menu and footer edited once for every page; the menu editor for hand-built sites; the optional move to Jekyll
 
 **v1.x:**
 - iOS capture app with share sheet; draft sync through iCloud

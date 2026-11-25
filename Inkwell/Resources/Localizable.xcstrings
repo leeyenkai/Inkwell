@@ -536,6 +536,72 @@
         }
       }
     },
+    "%lld pages contain text Jekyll would read as its own tags, so they are left exactly as they are." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld page contains text Jekyll would read as its own tags, so it is left exactly as it is."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pages contain text Jekyll would read as its own tags, so they are left exactly as they are."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pages have a different menu and are left alone." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld page has a different menu and is left alone."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pages have a different menu and are left alone."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pages start with a few lines Jekyll reads (layout: null), so it builds them as they are." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld page starts with a few lines Jekyll reads (layout: null), so it builds it as it is."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pages start with a few lines Jekyll reads (layout: null), so it builds them as they are."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld photos" : {
       "localizations" : {
         "en" : {
@@ -845,6 +911,12 @@
         }
       }
     },
+    "A GitHub Actions workflow builds this site with another program, from the source shown here. Edit it with that program." : {
+
+    },
+    "A GitHub Actions workflow builds this site with another program, so it opens read only. Edit it with that program." : {
+
+    },
     "A letter or emoji" : {
 
     },
@@ -952,6 +1024,9 @@
 
     },
     "Add a Link…" : {
+
+    },
+    "Add a Page" : {
 
     },
     "Add a Page or Section" : {
@@ -1132,6 +1207,9 @@
     "Approximate" : {
 
     },
+    "As Found (%@)" : {
+
+    },
     "Ask each site your posts link to whether the page is still there" : {
 
     },
@@ -1148,6 +1226,9 @@
 
     },
     "Based on" : {
+
+    },
+    "Blog" : {
 
     },
     "Body" : {
@@ -1192,7 +1273,13 @@
     "Centre" : {
 
     },
+    "Change" : {
+
+    },
     "Change %@" : {
+
+    },
+    "Change Address…" : {
 
     },
     "Change Share Image…" : {
@@ -1217,6 +1304,31 @@
 
     },
     "Changed on GitHub too: %@. Choose which version to keep, then publish again." : {
+
+    },
+    "Changes are made on this page and on %lld other pages with the same menu." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Changes are made on this page and on %lld other page with the same menu."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Changes are made on this page and on %lld other pages with the same menu."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Changes are made on this page only. No other page has the same menu." : {
 
     },
     "Changes are saved to your site’s files as you make them and go live when you publish." : {
@@ -1661,6 +1773,9 @@
     "Drag photos onto the album, or choose some in All Photos and use Add to Album. Photos you add now join it." : {
 
     },
+    "Drag to reorder. A link whose words hold other tags, such as an icon, keeps its words; change them in the source." : {
+
+    },
     "Drag to reorder. The menu appears at the top of every page, in this order." : {
 
     },
@@ -1886,6 +2001,9 @@
     "GitHub could not change HTTPS yet: %@" : {
 
     },
+    "GitHub would build this site with Jekyll instead of serving its files as they are. A header, menu or footer that several pages copy moves into one file, so a change to it reaches every page. The pages look the same as before." : {
+
+    },
     "Goes to %@/%@; GitHub Pages then rebuilds the site." : {
       "localizations" : {
         "en" : {
@@ -1897,6 +2015,9 @@
       }
     },
     "Grid of pictures" : {
+
+    },
+    "Hand-built website" : {
 
     },
     "Heading" : {
@@ -1983,6 +2104,9 @@
 
     },
     "How many" : {
+
+    },
+    "If Inkwell guessed wrong, choose what this site is. The Site menu has the same choice." : {
 
     },
     "Image" : {
@@ -2274,6 +2398,9 @@
     "Link" : {
 
     },
+    "Link Address" : {
+
+    },
     "Link goes nowhere on the site: %@" : {
 
     },
@@ -2368,6 +2495,9 @@
     "Menu" : {
 
     },
+    "Menu on" : {
+
+    },
     "Merge" : {
 
     },
@@ -2393,6 +2523,12 @@
 
     },
     "Move lines up or down" : {
+
+    },
+    "Move to Jekyll" : {
+
+    },
+    "Move to Jekyll…" : {
 
     },
     "Move to Trash" : {
@@ -2522,6 +2658,9 @@
     "No broken links" : {
 
     },
+    "No header, menu or footer is the same on two pages, so there is nothing to share. The site stays as it is." : {
+
+    },
     "No photos in “%@”" : {
 
     },
@@ -2601,6 +2740,9 @@
     "Nothing here yet" : {
 
     },
+    "Nothing is published yet. You review every change, then publish them together." : {
+
+    },
     "Nothing left to resolve." : {
 
     },
@@ -2635,6 +2777,9 @@
 
     },
     "One sentence about the site, for search results and link previews" : {
+
+    },
+    "Only the address changes in the file. The link’s text is changed by clicking it on the page." : {
 
     },
     "Open" : {
@@ -2707,6 +2852,9 @@
 
     },
     "Page Elements" : {
+
+    },
+    "Pages" : {
 
     },
     "Pages and Posts" : {
@@ -3314,8 +3462,33 @@
     "That is not a YouTube or Vimeo address Inkwell can embed." : {
 
     },
+    "That link changed in the source while you were editing it, so your edit was not kept." : {
+
+    },
     "That text changed in the source while you were editing it, so your edit was not kept." : {
 
+    },
+    "The %@ of %lld pages moves to %@." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %1$@ of %2$lld page moves to %3$@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %1$@ of %2$lld pages moves to %3$@."
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "The %@ theme could not be downloaded, so the preview is unstyled: %@" : {
       "localizations" : {
@@ -3348,6 +3521,9 @@
           }
         }
       }
+    },
+    "The .nojekyll file is removed." : {
+
     },
     "The Pages build failed (%@). Open the repository’s Actions tab on GitHub for the details." : {
 
@@ -3442,6 +3618,9 @@
     "The title and line of text are in the editor. Without a picture, the banner uses the theme’s panel colour." : {
 
     },
+    "The words of this link hold other tags; change them in the source." : {
+
+    },
     "Theme" : {
 
     },
@@ -3473,6 +3652,9 @@
 
     },
     "This folder holds a site generator's output. Edit the site's source and build it again; changes made here would be lost." : {
+
+    },
+    "This page has no menu Inkwell can edit: no <nav> with links, or one with submenus. Edit it in the page’s source." : {
 
     },
     "This post changed outside Inkwell while you were editing it." : {
@@ -3509,6 +3691,9 @@
 
     },
     "Title, such as Japan 2025" : {
+
+    },
+    "Treat as" : {
 
     },
     "Try a different search." : {
@@ -3619,6 +3804,9 @@
     "Warning" : {
 
     },
+    "Website on Jekyll" : {
+
+    },
     "What happened" : {
 
     },
@@ -3704,7 +3892,13 @@
     "_config.yml has other unpublished changes, and they go out with this post too." : {
 
     },
+    "_config.yml lists files Jekyll would otherwise leave out: %@." : {
+
+    },
     "_includes/footer-extra.html" : {
+
+    },
+    "about.html" : {
 
     },
     "blog.example.com" : {

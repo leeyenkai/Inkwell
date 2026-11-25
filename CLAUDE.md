@@ -39,6 +39,7 @@ InkwellKit/Sources/
   InkwellSync            WorkingCopy (download, blob-SHA changes, one-commit publish, pull, conflicts, discard), SiteRef
   InkwellDesign          CSSTokenDocument, ConfigDocument, NavigationDocument, ThemeManifest + Themes/, ThemeApplier, DesignTokens
   InkwellCore            YAML subset, FrontMatterDocument, SiteLoader, Permalink, Filename, Slug, SchemaInference, Validation, ContentChecks, DraftStore,
+                         websites (HTMLHead, PageEditing, SharedParts, HTMLMenu, JekyllAdoption, PagesWorkflow, HTMLPageTemplate),
                          ContentTools (MovePlanner, ConfigEditing, TagIndex, TextDiff), Photos (PhotoStream, MediaLibrary), Schedule,
                          SiteHealth
   InkwellMarkdown        MarkdownScanner (editor styling), MarkdownRenderer (kramdown + GFM HTML), Formatting (editor commands),
@@ -63,8 +64,9 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
   That private repository is a throwaway the user agreed to; never point the write test at a real site.
 - Websites (SPEC §4.12): `scripts/make-plain-site.sh` makes a code repository with a hand-built site in `docs/` and a local
   bare remote. `--site <plain-site> --selftest-website` edits and publishes a page and checks the commit (page and new
-  picture only, no front matter), then adds a description, drops in a picture, makes a new page, edits a paragraph on the
-  preview and applies a header change to another page (refuses GitHub remotes).
+  picture only, no front matter), then adds a description, drops in a picture, makes a new page, edits a paragraph and a link
+  address on the preview, applies a header change to another page, adds a menu item and moves the site to Jekyll (the site
+  ends as a Jekyll website; run the script again for a fresh one; refuses GitHub remotes).
 - Preview pictures: window captures leave web views blank, so `--snapshot-preview <file.png>` saves what the preview shows.
 - Design self-test: `--site <sample-site> --selftest-design` (applies a theme, edits colours, options and the menu, checks files,
   preview and the change list; refuses GitHub remotes).
@@ -85,7 +87,8 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
   (`--media-file <path in site>`), `--photo <_photos/file>`,
   `--apply-theme <id>`, `--theme-gallery`, `--pane code --code-file <path> [--theme-file]`, `--site`, `--section <id>`, `--open <path in site>`, `--preview`, `--source`, `--publish-sheet`, `--new-draft <title>` with `--draft-body <file>`, `--table-cursor` (cursor in the first table),
   `--edit-table` (the table grid, in a window so it can be captured), `--settings`, `--help <topic>`, `--summary` (first-open
-  summary, which `--site` otherwise suppresses).
+  summary, which `--site` otherwise suppresses), `--move-to-jekyll` (the move sheet on a hand-built site), `--page-link <address>`
+  (the address sheet for that link on the open HTML page).
 - README screenshots: `scripts/readme/screenshots.sh` (needs Screen Recording permission for the terminal). Files the app reads must live outside `~/Desktop`, or macOS blocks the app on a privacy prompt.
 
 ## Rules
@@ -99,8 +102,10 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
 - **Drafts stay out of the repo** until publish (`DraftStore`, Application Support). Images are written into the site when added; they are committed only with the post that uses them.
 - **Image import strips location and camera metadata** and never keeps the original file in the site.
 - Text views: formatting commands go through `Formatting` (pure, tested) and `InkwellTextView.apply`, so each is one undo step.
-- Sites GitHub serves as they are (`SiteKind.servesFilesAsIs`: `.nojekyll`, or hand-written HTML) never get front matter or
-  Liquid written into them, and pages without front matter (`SiteDocument.isStatic`) are edited as HTML source, byte for byte.
+- Sites GitHub serves as they are (`SiteKind.servesFilesAsIs`: `.nojekyll`, a workflow that uploads files as they are, or
+  hand-written HTML) never get front matter or Liquid written into them, and pages without front matter (`SiteDocument.isStatic`)
+  are edited as HTML source, byte for byte. The one exception is Move to Jekyll (`JekyllAdoption`), which the person asks for and
+  reviews. Whole HTML pages with front matter (`isHTMLPage`) are edited as source too.
 - Page elements are plain Markdown/HTML that GitHub Pages builds without Inkwell (`PageElements`, `ElementKit`). New element
   styles go in `ElementKit/assets/css/inkwell-blocks.css` using theme tokens with fallbacks, so they work on any theme.
 - User-facing copy: plain and short, no exclamation marks, no emoji.

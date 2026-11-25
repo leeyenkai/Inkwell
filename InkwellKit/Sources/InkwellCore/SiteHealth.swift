@@ -87,7 +87,7 @@ public enum SiteHealth {
         for doc in site.documents {
             guard let text = texts[doc.relativePath] else { continue }
             let front = FrontMatterDocument(text: text)
-            let found = doc.isStatic ? [] : Validation.frontMatter(front, filename: doc.filename, inCollection: !doc.isPage)
+            let found = doc.editsAsHTML ? [] : Validation.frontMatter(front, filename: doc.filename, inCollection: !doc.isPage)
             if !found.isEmpty {
                 issues.append(Issue(id: "fm:\(doc.relativePath)", category: .content,
                                     severity: found.contains { $0.severity == .error } ? .error : .warning,
@@ -132,7 +132,7 @@ public enum SiteHealth {
     static func links(_ site: Site, texts: [String: String], files: FileIndex) -> [Issue] {
         let known = Set(site.documents.map { normalized(localPath($0.url, site: site)) })
         var issues: [Issue] = []
-        for doc in site.documents where !doc.isStatic {
+        for doc in site.documents where !doc.editsAsHTML {
             guard let text = texts[doc.relativePath] else { continue }
             let body = FrontMatterDocument(text: text).body
             var broken: [String] = []
@@ -208,7 +208,7 @@ public enum SiteHealth {
 
     static func media(_ site: Site, texts: [String: String], files: FileIndex) -> [Issue] {
         var issues: [Issue] = []
-        for doc in site.documents where doc.publishedFlag && !doc.isStatic {
+        for doc in site.documents where doc.publishedFlag && !doc.editsAsHTML {
             guard let text = texts[doc.relativePath] else { continue }
             let missing = ContentChecks.images(in: FrontMatterDocument(text: text).body).filter { $0.alt.trimmingCharacters(in: .whitespaces).isEmpty }
             if !missing.isEmpty {

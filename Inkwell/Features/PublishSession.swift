@@ -153,7 +153,7 @@ final class PublishSession: Identifiable {
     // MARK: Checklist
 
     private func buildChecklist(document: SiteDocument, text: String, site: Site, changes: [String: ChangeKind]) {
-        if document.isStatic || site.kind.servesFilesAsIs {
+        if document.editsAsHTML || site.kind.servesFilesAsIs {
             return buildStaticChecklist(document: document, text: text, site: site, changes: changes)
         }
         let doc = FrontMatterDocument(text: text)

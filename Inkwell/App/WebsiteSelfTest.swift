@@ -72,14 +72,15 @@ extension SelfTest {
         }
         model.publishSheet = nil
 
-        ok = await editingChecks(model) && ok
-
         let report = SiteHealth.check(model.site ?? site)
         let jekyllFix = report.issues.contains { issue in
             if case let .edits(edits, _)? = issue.fix { return edits.contains { $0.path == "_config.yml" || $0.path.hasSuffix(".md") } }
             return false
         }
         ok = check(!jekyllFix, "health offers no Jekyll fixes") && ok
+
+        // Last, since it ends with the site moved to Jekyll.
+        ok = await editingChecks(model) && ok
         return ok
     }
 
@@ -151,6 +152,34 @@ extension SelfTest {
             let text = (try? String(contentsOf: home.fileURL, encoding: .utf8)) ?? ""
             ok = check(text.contains("<p>Edited on the page &amp; saved</p>") && !text.contains("data-ik"),
                        "paragraph edited on the page, no marks in the file (\(answer.map { "\($0)" } ?? "no preview"))") && ok
+
+            // W3: a link's address changed from the preview's chip, then put back.
+            let click = """
+            (() => {
+              const a = document.querySelector('nav a[data-ik-link]');
+              if (!a) return 'no link';
+              a.click();
+              const button = document.querySelector('.inkwell-chip button');
+              if (!button) return 'no chip';
+              button.click();
+              return a.getAttribute('href');
+            })()
+            """
+            let clicked = try? await SitePreview.latest?.evaluateJavaScript(click)
+            for _ in 0 ..< 20 where model.pageLinkEdit == nil { try? await Task.sleep(for: .milliseconds(100)) }
+            if let edit = model.pageLinkEdit {
+                model.pageLinkEdit = nil
+                model.finishPageLinkEdit(edit, address: "about.html#team")
+                model.editor?.saveNow()
+                let changed = (try? String(contentsOf: home.fileURL, encoding: .utf8)) ?? ""
+                ok = check(changed == text.replacingOccurrences(of: #"href="about.html""#, with: #"href="about.html#team""#) && changed != text,
+                           "link address changed from the preview, nothing else") && ok
+                model.finishPageLinkEdit(AppModel.PageLinkEdit(index: edit.index, address: "about.html#team", page: edit.page), address: "about.html")
+                model.editor?.saveNow()
+                ok = check((try? String(contentsOf: home.fileURL, encoding: .utf8)) == text, "link address put back") && ok
+            } else {
+                ok = check(false, "link chip asks for a new address (\(clicked.map { "\($0)" } ?? "no preview"))") && ok
+            }
             model.editOnPage = false
         }
 
@@ -175,6 +204,53 @@ extension SelfTest {
                 ok = check(change?.part == .header && changed == 1 && text.contains("<h1>Plain Product Co</h1>")
                     && text.contains("<h1>Pricing</h1>"), "header change applied to the page sharing it") && ok
             }
+        }
+        ok = await menuAndJekyllChecks(model) && ok
+        return ok
+    }
+
+    /// W4 steps 2 and 3: a menu item added on the home page reaches the page with the same menu; then the site moves to
+    /// Jekyll, with its shared header in an include the preview runs.
+    static func menuAndJekyllChecks(_ model: AppModel) async -> Bool {
+        func check(_ ok: Bool, _ what: String) -> Bool {
+            print("website selftest: \(ok ? "ok" : "FAILED") \(what)")
+            return ok
+        }
+        guard let root = model.site?.root else { return false }
+        func read(_ path: String) -> String { (try? String(contentsOf: root.appending(path: path), encoding: .utf8)) ?? "" }
+        var ok = true
+        let aboutBefore = read("about.html")
+        if let source = model.menuSources.first(where: { $0.path == "index.html" }), let text = model.currentText(of: "index.html"),
+           let menu = HTMLMenu.find(in: text) {
+            let matches = model.menuMatches(for: source, menu: menu)
+            var entries = menu.entries
+            entries.append(HTMLMenu.Entry(title: "Pricing", address: "pricing.html"))
+            model.applyMenu(entries, from: menu, on: source, and: matches.same)
+            model.editor?.saveNow()
+            let item = #"<nav><a href="about.html">About</a><a href="pricing.html">Pricing</a></nav>"#
+            ok = check(matches.same.map(\.path) == ["pricing.html"] && read("index.html").contains(item) && read("pricing.html").contains(item)
+                && read("about.html") == aboutBefore, "menu item added on both pages with that menu, nothing else") && ok
+        } else {
+            ok = check(false, "home page menu found") && ok
+        }
+
+        model.createHTMLPage(title: "Contact", basedOn: nil)
+        try? await Task.sleep(for: .seconds(1))
+        guard let plan = model.jekyllAdoptionPlan() else { return check(false, "move to Jekyll planned") }
+        ok = check(plan.isWorthDoing && plan.shared.map(\.path) == ["_includes/header.html"] && plan.leftAlone == ["index.html"]
+            && plan.removals == [".nojekyll"], "move planned: header shared by \(plan.shared.first?.pages ?? []), home left alone") && ok
+        model.adoptJekyll(plan)
+        model.showChanges = false
+        for _ in 0 ..< 40 where model.site?.kind != .website { try? await Task.sleep(for: .milliseconds(100)) }
+        try? await Task.sleep(for: .seconds(1))
+        let contact = model.site?.documents.first { $0.relativePath == "contact.html" }
+        ok = check(model.site?.kind == .website && contact?.isHTMLPage == true && !FileManager.default.fileExists(atPath: root.appending(path: ".nojekyll").path)
+            && read("_includes/header.html").contains("<h1>Plain Product Co</h1>") && read("contact.html").hasPrefix(JekyllAdoption.frontMatter),
+            "moved to Jekyll: a website whose pages stay HTML (\(model.site?.kind.rawValue ?? "no site"))") && ok
+        if let builder = model.previewBuilder, let contact {
+            let page = builder.render(text: read("contact.html"), relativePath: "contact.html", url: contact.url)
+            ok = check(page.html.contains("<h1>Plain Product Co</h1>") && !page.html.contains("{% include") && !page.html.contains("layout:"),
+                       "preview runs the shared header include") && ok
         }
         return ok
     }

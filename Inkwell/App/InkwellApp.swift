@@ -334,6 +334,11 @@ enum Launch {
             }
         }
         if args.contains("--settings") { model.settingsRequested = true }
+        if args.contains("--move-to-jekyll") { model.showMoveToJekyll = true }
+        if let address = value("--page-link"), let editor = model.editor,
+           let index = PageEditing.regions(in: editor.fullText).links.firstIndex(where: { (editor.fullText as NSString).substring(with: $0) == address }) {
+            model.pageLinkEdit = AppModel.PageLinkEdit(index: index, address: address, page: editor.document.relativePath)
+        }
         if let feed = value("--update-feed") { model.updates.feedOverride = URL(string: feed) }
         if args.contains("--check-updates") {
             model.updates.windowRequested = true

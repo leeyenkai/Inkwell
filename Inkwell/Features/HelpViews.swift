@@ -269,6 +269,8 @@ struct SiteSummarySheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("\(site.name) is ready").font(.title.weight(.semibold))
                 Text(summary(site, sections: sections, posts: posts)).fixedSize(horizontal: false, vertical: true)
+                SiteKindPicker(model: model).fixedSize()
+                    .help("If Inkwell guessed wrong, choose what this site is. The Site menu has the same choice.")
                 VStack(alignment: .leading, spacing: 12) {
                     if site.kind == .blog {
                         step("square.and.pencil", "Write a post", "Press ⌘N. It stays a draft on this Mac until you publish.")
@@ -321,6 +323,8 @@ struct SiteSummarySheet: View {
         switch site.kind {
         case .handBuilt:
             return String(localized: "Inkwell found a hand-built website: \(pages) HTML pages that GitHub Pages serves as they are.")
+        case .generated where site.builtByWorkflow:
+            return String(localized: "A GitHub Actions workflow builds this site with another program, so it opens read only. Edit it with that program.")
         case .generated:
             return String(localized: "Inkwell found a site built by another program, so it opens read only. Edit its source instead.")
         case .website:

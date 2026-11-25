@@ -48,11 +48,19 @@ struct StaticPageEditor: View {
 
 /// Explains why a site built by another program opens read only.
 struct GeneratedSiteNotice: View {
+    var builtByWorkflow = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label("Built by another program", systemImage: "lock").font(.callout.weight(.semibold))
-            Text("This folder holds a site generator's output. Edit the site's source and build it again; changes made here would be lost.")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Group {
+                if builtByWorkflow {
+                    Text("A GitHub Actions workflow builds this site with another program, from the source shown here. Edit it with that program.")
+                } else {
+                    Text("This folder holds a site generator's output. Edit the site's source and build it again; changes made here would be lost.")
+                }
+            }
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -212,8 +220,63 @@ struct SharedPartsBanner: View {
         opened = editor.fullText
         dismissed = []
         let mine = editor.document.relativePath
-        others = (model.site?.documents ?? []).filter { $0.isStatic && $0.relativePath != mine }.compactMap { doc in
+        others = (model.site?.documents ?? []).filter { $0.editsAsHTML && $0.relativePath != mine }.compactMap { doc in
             (try? String(contentsOf: doc.fileURL, encoding: .utf8)).map { (doc, $0) }
         }
+    }
+}
+
+/// Changes the address of a link clicked in the preview of a hand-built page. Pages of the site are offered with
+/// addresses relative to this page, as hand-built sites write them.
+struct PageLinkSheet: View {
+    var model: AppModel
+    var edit: AppModel.PageLinkEdit
+    @Environment(\.dismiss) private var dismiss
+    @State private var address = ""
+
+    var pages: [(title: String, address: String)] {
+        (model.site?.documents ?? []).filter(\.editsAsHTML).sorted { $0.relativePath < $1.relativePath }.compactMap { doc in
+            doc.relativePath == edit.page ? nil : (doc.title, SitePath.relative(to: doc.relativePath, from: edit.page))
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Link Address").font(.title2.weight(.semibold))
+            HStack {
+                TextField("Address", text: $address, prompt: Text(verbatim: "https://"))
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(save)
+                Menu("Pages") {
+                    ForEach(pages, id: \.address) { page in
+                        Button {
+                            address = page.address
+                        } label: {
+                            Text(verbatim: "\(page.title) (\(page.address))")
+                        }
+                    }
+                }
+                .fixedSize()
+                .disabled(pages.isEmpty)
+            }
+            Text("Only the address changes in the file. The link’s text is changed by clicking it on the page.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Change", action: save)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+        .onAppear { address = edit.address }
+    }
+
+    func save() {
+        guard !address.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        model.finishPageLinkEdit(edit, address: address)
+        dismiss()
     }
 }

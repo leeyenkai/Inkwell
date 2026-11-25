@@ -256,7 +256,7 @@ struct PreviewPane: View {
     }
 
     var editsOnPage: Bool {
-        model.editOnPage && model.site?.kind != .generated && (editor.document.isStatic || model.site?.kind.servesFilesAsIs == true)
+        model.editOnPage && model.site?.kind != .generated && (editor.document.editsAsHTML || model.site?.kind.servesFilesAsIs == true)
     }
 
     func scheduleRender() {
@@ -276,7 +276,9 @@ struct PreviewPane: View {
             page = PreviewPage(html: html, unsupportedTags: [])
             return
         }
-        page = builder.render(text: editor.fullText, relativePath: editor.document.relativePath, url: editor.currentURL)
+        // A whole HTML page on a Jekyll site runs its includes; marks for editing on the page skip anything with tags.
+        let text = editsOnPage && editor.document.isHTMLPage ? PageEditing.regions(in: editor.fullText, liquid: true).annotated : editor.fullText
+        page = builder.render(text: text, relativePath: editor.document.relativePath, url: editor.currentURL)
     }
 }
 
@@ -294,18 +296,21 @@ final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
 }
 
 /// The preview's side of editing on the page: a click makes a marked element editable, leaving it (or Return) sends
-/// the new text, Escape puts the old text back, and a click on a marked picture asks for a new one.
+/// the new text, Escape puts the old text back, a click on a marked picture asks for a new one, and a click on a link
+/// shows its address with a button to change it.
 enum PageEditingScript {
     static let handlerName = "inkwell"
 
     static var source: String {
         let note = String(localized: "Edit this in the source beside the preview: it has other tags inside, or a script makes it.")
-        let json = (try? String(data: JSONEncoder().encode(note), encoding: .utf8)) ?? "\"\""
+        let change = String(localized: "Change Address…")
+        func js(_ text: String) -> String { (try? String(data: JSONEncoder().encode(text), encoding: .utf8)) ?? "\"\"" }
         return """
         (() => {
           if (window.__inkwellEditing) return;
           window.__inkwellEditing = true;
-          const note = \(json);
+          const note = \(js(note));
+          const changeLabel = \(js(change));
           const post = (m) => window.webkit?.messageHandlers?.inkwell?.postMessage(m);
           const marked = () => document.querySelector('[data-ik-text],[data-ik-img]') !== null;
           const style = document.createElement('style');
@@ -314,7 +319,13 @@ enum PageEditingScript {
             [data-ik-img]:hover { cursor: pointer; }
             [data-ik-text][contenteditable] { outline: 2px solid rgba(10,132,255,.95); outline-offset: 3px; }
             .inkwell-note { position: fixed; z-index: 2147483647; max-width: 300px; padding: 8px 10px; border-radius: 8px;
-              font: 13px -apple-system, sans-serif; color: #fff; background: rgba(30,30,30,.92); pointer-events: none; }`;
+              font: 13px -apple-system, sans-serif; color: #fff; background: rgba(30,30,30,.92); pointer-events: none; }
+            .inkwell-chip { position: fixed; z-index: 2147483647; display: flex; gap: 8px; align-items: center; max-width: 420px;
+              padding: 5px 6px 5px 10px; border-radius: 8px; font: 12px -apple-system, sans-serif; color: #fff;
+              background: rgba(30,30,30,.92); box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+            .inkwell-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .8; }
+            .inkwell-chip button { flex: none; font: 12px -apple-system, sans-serif; color: #fff; background: rgba(10,132,255,.95);
+              border: 0; border-radius: 5px; padding: 3px 8px; cursor: pointer; }`;
           document.documentElement.appendChild(style);
           let shown = null;
           const showNote = (x, y) => {
@@ -328,11 +339,35 @@ enum PageEditingScript {
             const mine = shown;
             setTimeout(() => mine.remove(), 2600);
           };
+          let chip = null;
+          const showChip = (link) => {
+            chip?.remove();
+            chip = document.createElement('div');
+            chip.className = 'inkwell-chip';
+            const address = document.createElement('span');
+            address.textContent = link.getAttribute('href');
+            const button = document.createElement('button');
+            button.textContent = changeLabel;
+            button.addEventListener('click', () => {
+              post({ kind: 'link', index: Number(link.dataset.ikLink), before: link.getAttribute('href') });
+              chip?.remove(); chip = null;
+            });
+            chip.append(address, button);
+            const box = link.getBoundingClientRect();
+            chip.style.left = Math.max(6, Math.min(box.left, innerWidth - 430)) + 'px';
+            chip.style.top = (box.bottom + 8 > innerHeight - 40 ? box.top - 36 : box.bottom + 8) + 'px';
+            document.documentElement.appendChild(chip);
+          };
+          addEventListener('scroll', () => { chip?.remove(); chip = null; }, true);
           document.addEventListener('click', (e) => {
             if (!marked()) return;
+            if (e.target.closest?.('.inkwell-chip')) return;
+            chip?.remove(); chip = null;
             const img = e.target.closest?.('[data-ik-img]');
             const text = e.target.closest?.('[data-ik-text]');
+            const link = e.target.closest?.('[data-ik-link]');
             if (img || text || e.target.closest?.('a')) { e.preventDefault(); }
+            if (link && !img) showChip(link);
             if (img) { e.stopPropagation(); post({ kind: 'image', index: Number(img.dataset.ikImg) }); return; }
             if (text) {
               e.stopPropagation();

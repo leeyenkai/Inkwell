@@ -112,6 +112,12 @@ public struct SiteDocument: Identifiable, Sendable, Hashable {
     public var excerpt: String
     /// A file without front matter, which GitHub Pages serves as it is: no layout, no Liquid, no Markdown.
     public var isStatic = false
+    /// A whole HTML page with front matter (`layout: null`, as a hand-built site moved to Jekyll has): edited as HTML
+    /// source, with Liquid run in the preview.
+    public var isHTMLPage = false
+
+    /// Edited as HTML source beside its preview rather than in the writing editor.
+    public var editsAsHTML: Bool { isStatic || isHTMLPage }
 
     public var filename: String { (relativePath as NSString).lastPathComponent }
     public var isPage: Bool { !relativePath.hasPrefix("_") }
@@ -141,6 +147,10 @@ public struct Site: Sendable {
     public var documents: [SiteDocument]
     public var generator: String
     public var kind: SiteKind = .blog
+    /// The kind Inkwell found, before any choice made in Settings.
+    public var detectedKind: SiteKind = .blog
+    /// A GitHub Actions workflow builds the site with another generator: these files are its source.
+    public var builtByWorkflow = false
 
     public var name: String {
         if let host = URL(string: config.url)?.host { return host }
@@ -167,7 +177,20 @@ public enum SiteError: Error, LocalizedError {
 }
 
 public enum SiteLoader {
-    public static func load(_ root: URL) throws -> Site {
+    public struct Options: Sendable, Equatable {
+        /// The kind chosen in Settings, which wins over the one Inkwell finds.
+        public var kind: SiteKind?
+        /// GitHub's Pages `build_type` ("legacy" for a branch, "workflow" for Actions), when known. A branch build
+        /// means the repository's workflows do not build the site.
+        public var pagesBuildType: String?
+
+        public init(kind: SiteKind? = nil, pagesBuildType: String? = nil) {
+            self.kind = kind
+            self.pagesBuildType = pagesBuildType
+        }
+    }
+
+    public static func load(_ root: URL, options: Options = Options()) throws -> Site {
         let fm = FileManager.default
         let configURL = root.appending(path: "_config.yml")
         // GitHub Pages builds a site without _config.yml, from its Markdown and a home page.
@@ -175,7 +198,16 @@ public enum SiteLoader {
             throw SiteError.notASite(root)
         }
         let config = SiteConfig(yaml: YAML.parse(configText))
-        let noJekyll = fm.fileExists(atPath: root.appending(path: ".nojekyll").path)
+        let workflow = options.pagesBuildType == "legacy" ? nil : PagesWorkflow.build(siteRoot: root)
+        let hasConfig = fm.fileExists(atPath: configURL.path)
+        // A workflow that uploads the files as they are serves them the way `.nojekyll` does.
+        var noJekyll = fm.fileExists(atPath: root.appending(path: ".nojekyll").path) || workflow == .filesAsIs
+        let builtByWorkflow = workflow == .otherGenerator && !hasConfig
+        switch options.kind {
+        case .handBuilt?, .generated?: noJekyll = true
+        case .blog?, .website?: noJekyll = false
+        case nil: break
+        }
         var navigation: [NavItem] = []
         if let text = try? String(contentsOf: root.appending(path: "_data/navigation.yml"), encoding: .utf8) {
             for item in YAML.parse(text).list ?? [] {
@@ -248,8 +280,9 @@ public enum SiteLoader {
                 pages.append(staticPage(at: file, relativePath: name, text: text, config: config))
             }
         }
-        let kind = siteKind(root: root, noJekyll: noJekyll, hasConfig: fm.fileExists(atPath: configURL.path), hasCollections: hasCollections,
-                            documents: documents + pages)
+        let detected = builtByWorkflow ? .generated
+            : siteKind(root: root, noJekyll: noJekyll, hasConfig: hasConfig, hasCollections: hasCollections, documents: documents + pages)
+        let kind = options.kind ?? detected
         // Every Jekyll blog has posts; without a folder or another collection, offer a Posts section to start one.
         if !hasCollections, kind == .blog {
             addCollection("posts", label: localized("Posts"))
@@ -260,6 +293,8 @@ public enum SiteLoader {
         }
         var site = Site(root: root, config: config, navigation: navigation, sections: sections, documents: documents, generator: "Jekyll")
         site.kind = kind
+        site.detectedKind = detected
+        site.builtByWorkflow = builtByWorkflow
         return site
     }
 
@@ -368,15 +403,29 @@ public enum SiteLoader {
         let values = doc.values
         let filename = (relativePath as NSString).lastPathComponent
         let parsedName = Filename.parse(filename, timeZone: config.timeZone)
-        let title = values["title"]?.string ?? parsedName.slug.replacingOccurrences(of: "-", with: " ").capitalized
+        let wholePage = isWholeHTMLPage(relativePath: relativePath, values: values, body: doc.body)
+        let headTitle = wholePage ? HTMLHead(doc.body).title.map(HTMLHead.shortTitle).flatMap { $0.isEmpty ? nil : $0 } : nil
+        let title = values["title"]?.string ?? headTitle ?? parsedName.slug.replacingOccurrences(of: "-", with: " ").capitalized
         let date = self.date(values: values, filename: filename, config: config)
         let published = values["published"]?.bool ?? true
         let resolvedURL = url ?? self.url(relativePath: relativePath, values: values, date: date, config: config)
-        return SiteDocument(
+        let excerpt = wholePage ? HTMLHead(doc.body).description ?? HTMLHead.decode(Excerpt.make(HTMLHead.mainContent(doc.body), title: title))
+            : Excerpt.make(doc.body, title: title)
+        var result = SiteDocument(
             id: origin == .repository ? "repo:\(relativePath)" : "draft:\(fileURL.path)",
             sectionID: sectionID, origin: origin, fileURL: fileURL, relativePath: relativePath, title: title, date: date,
-            publishedFlag: published, url: resolvedURL, modified: modified, excerpt: Excerpt.make(doc.body, title: title)
+            publishedFlag: published, url: resolvedURL, modified: modified, excerpt: excerpt
         )
+        result.isHTMLPage = wholePage
+        return result
+    }
+
+    /// An HTML file that is a whole page of its own (no layout, or it starts with `<!doctype` or `<html>`).
+    static func isWholeHTMLPage(relativePath: String, values: YAMLValue, body: String) -> Bool {
+        guard ["html", "htm"].contains((relativePath as NSString).pathExtension.lowercased()), !relativePath.hasPrefix("_") else { return false }
+        if let layout = values["layout"], layout == .null || ["null", "none", ""].contains(layout.string ?? "-") { return true }
+        let start = body.drop { $0.isWhitespace }.prefix(15).lowercased()
+        return start.hasPrefix("<!doctype") || start.hasPrefix("<html")
     }
 
     /// The front matter's `date`, else the filename's, in the site's time zone.

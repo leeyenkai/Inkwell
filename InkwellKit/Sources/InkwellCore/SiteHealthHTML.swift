@@ -77,7 +77,7 @@ public extension SiteHealth {
             if folder.isEmpty { return files.exists("index.html") }
             return files.exists(folder) || files.exists(folder + "/index.html") || files.exists(folder + ".html")
         }
-        for doc in site.documents where doc.isStatic {
+        for doc in site.documents where doc.editsAsHTML {
             guard let text = texts[doc.relativePath] else { continue }
             var broken: [String] = [], missing: [String] = []
             for reference in htmlReferences(in: text) {
