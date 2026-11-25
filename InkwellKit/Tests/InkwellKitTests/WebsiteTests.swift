@@ -56,6 +56,10 @@ final class WebsiteTests: XCTestCase {
         XCTAssertEqual(pages.map(\.url), ["/games.html", "/"])
         XCTAssertTrue(pages.allSatisfy(\.isStatic))
         XCTAssertEqual(pages[1].excerpt, "Play & enjoy.")
+        try write("pricing.html", "<html><head><title>Pricing — Launcher</title></head><body><header><a href=\"./\">Launcher</a></header>"
+            + "<main><h1>Pricing</h1><p>Free &amp; open.</p></main><footer>Made by us</footer></body></html>")
+        let pricing = try XCTUnwrap(SiteLoader.load(root).documents.first { $0.relativePath == "pricing.html" })
+        XCTAssertEqual(pricing.excerpt, "Free & open.", "no header, menu, footer or the heading that repeats the title")
     }
 
     func testFrontMatterOnANoJekyllSiteIsStillServedAsItIs() throws {
@@ -169,5 +173,52 @@ final class WebsiteTests: XCTestCase {
     func testFixtureBlogIsStillABlog() throws {
         let fixture = try XCTUnwrap(Bundle.module.url(forResource: "Fixtures/site", withExtension: nil))
         XCTAssertEqual(try SiteLoader.load(fixture).kind, .blog)
+    }
+
+    // MARK: W2: editing pages
+
+    func testHeadFieldsChangeOnlyTheirOwnCharacters() {
+        let page = "<html>\n<head>\n    <title>Old &amp; tired</title>\n    <link rel=\"stylesheet\" href=\"a.css\">\n</head>\n<body>x</body></html>"
+        let retitled = HTMLHead.setting(.title, to: "New & <improved>", in: page)
+        XCTAssertEqual(retitled, page.replacingOccurrences(of: "Old &amp; tired", with: "New &amp; &lt;improved>"))
+        XCTAssertEqual(HTMLHead.setting(.title, to: "Old & tired", in: page), page, "an equal value writes nothing")
+        let described = HTMLHead.setting(.description, to: "Say \"hi\"", in: page)
+        XCTAssertEqual(described, page.replacingOccurrences(of: "</head>",
+                                                            with: "    <meta name=\"description\" content=\"Say &quot;hi&quot;\">\n</head>"))
+        XCTAssertEqual(HTMLHead(described).description, "Say \"hi\"")
+        XCTAssertEqual(HTMLHead.setting(.description, to: "Other", in: described),
+                       described.replacingOccurrences(of: "Say &quot;hi&quot;", with: "Other"))
+        XCTAssertEqual(HTMLHead.setting(.image, to: "", in: page), page, "an empty missing field adds nothing")
+    }
+
+    func testNewPageCopiesTheSitesLook() {
+        let source = """
+        <!doctype html>
+        <html lang="en"><head>
+        <title>Launcher — Games on your Mac</title>
+        <meta name="description" content="Home only.">
+        <meta property="og:title" content="Launcher">
+        <link rel="stylesheet" href="assets/style.css">
+        </head>
+        <body class="home">
+        <header class="nav"><a href="./">Launcher</a> <a href="games.html">Games</a></header>
+        <section class="hero">Big hero</section>
+        <footer><p>Made by us</p></footer>
+        <script src="assets/app.js"></script>
+        </body></html>
+        """
+        let page = HTMLPageTemplate.make(from: source, title: "Pricing", sourceIsHome: true)
+        XCTAssertEqual(HTMLHead(page).title, "Pricing — Launcher")
+        XCTAssertNil(HTMLHead(page).description, "the home page's description is not the new page's")
+        XCTAssertFalse(page.contains("og:title"))
+        XCTAssertTrue(page.contains("<link rel=\"stylesheet\" href=\"assets/style.css\">"))
+        XCTAssertTrue(page.contains("<header class=\"nav\">") && page.contains("<footer><p>Made by us</p></footer>"))
+        XCTAssertTrue(page.contains("<h1>Pricing</h1>"))
+        XCTAssertFalse(page.contains("Big hero") || page.contains("app.js"), "the source's own content and scripts stay behind")
+        XCTAssertFalse(page.hasPrefix("---"))
+        let other = HTMLPageTemplate.make(from: source.replacingOccurrences(of: "Launcher — Games on your Mac", with: "Games — Launcher"),
+                                          title: "Pricing", sourceIsHome: false)
+        XCTAssertEqual(HTMLHead(other).title, "Pricing — Launcher")
+        XCTAssertEqual(HTMLPageTemplate.fileName(for: "Pricing & Plans", existing: ["pricing-plans.html"]), "pricing-plans-2.html")
     }
 }

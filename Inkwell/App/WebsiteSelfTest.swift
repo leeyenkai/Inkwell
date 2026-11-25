@@ -72,12 +72,70 @@ extension SelfTest {
         }
         model.publishSheet = nil
 
+        ok = await editingChecks(model) && ok
+
         let report = SiteHealth.check(model.site ?? site)
         let jekyllFix = report.issues.contains { issue in
             if case let .edits(edits, _)? = issue.fix { return edits.contains { $0.path == "_config.yml" || $0.path.hasSuffix(".md") } }
             return false
         }
         ok = check(!jekyllFix, "health offers no Jekyll fixes") && ok
+        return ok
+    }
+
+    /// W2: a description added through Properties, a picture dropped on a page, and a new page made from the home page.
+    static func editingChecks(_ model: AppModel) async -> Bool {
+        guard let site = model.site else { return false }
+        func check(_ ok: Bool, _ what: String) -> Bool {
+            print("website selftest: \(ok ? "ok" : "FAILED") \(what)")
+            return ok
+        }
+        var ok = true
+        guard let about = site.documents.first(where: { $0.relativePath == "about.html" }),
+              let before = try? String(contentsOf: about.fileURL, encoding: .utf8) else { return check(false, "about.html is a page") }
+        model.select(about.id)
+        guard let editor = model.editor else { return check(false, "about.html opens") }
+        editor.setFullText(HTMLHead.setting(.description, to: "Who makes it", in: editor.fullText))
+        editor.saveNow()
+        let after = (try? String(contentsOf: about.fileURL, encoding: .utf8)) ?? ""
+        let added = after.count - before.count
+        ok = check(HTMLHead(after).description == "Who makes it" && after.replacingOccurrences(of: #"<meta name="description" content="Who makes it">"#,
+                                                                                                with: "") == before && added > 0,
+                   "description added as one tag, nothing else changed") && ok
+
+        // A picture dropped on the page: imported, then written as <img> with its alt text.
+        let source = FileManager.default.temporaryDirectory.appending(path: "inkwell-selftest-drop.png")
+        let image = NSImage(size: NSSize(width: 40, height: 30))
+        image.lockFocus()
+        NSColor.systemOrange.setFill()
+        NSRect(x: 0, y: 0, width: 40, height: 30).fill()
+        image.unlockFocus()
+        if let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            try? png.write(to: source)
+        }
+        let at = (editor.fullText as NSString).range(of: "</body>").location
+        model.importImagesIntoPage([source], at: at)
+        for _ in 0 ..< 30 where model.pendingImage == nil { try? await Task.sleep(for: .milliseconds(100)) }
+        if var pending = model.pendingImage {
+            pending.alt = "An orange square"
+            model.pendingImage = pending
+            model.insertPendingImage()
+            editor.saveNow()
+            let text = (try? String(contentsOf: about.fileURL, encoding: .utf8)) ?? ""
+            let src = pending.htmlSource ?? ""
+            ok = check(text.contains("<img src=\"\(src)\" alt=\"An orange square\">")
+                && FileManager.default.fileExists(atPath: site.root.appending(path: src).path), "dropped picture imported and inserted (\(src))") && ok
+        } else {
+            ok = check(false, "dropped picture imported") && ok
+        }
+
+        // A new page from the home page.
+        model.createHTMLPage(title: "Pricing", basedOn: nil)
+        try? await Task.sleep(for: .seconds(1))
+        let page = (try? String(contentsOf: site.root.appending(path: "pricing.html"), encoding: .utf8)) ?? ""
+        let listed = model.site?.documents.first { $0.relativePath == "pricing.html" }
+        ok = check(page.contains("<h1>Pricing</h1>") && page.contains("assets/site.css") && !page.hasPrefix("---")
+            && listed?.isStatic == true, "new page copies the site's look and is listed (\(HTMLHead(page).title ?? "no title"))") && ok
         return ok
     }
 }

@@ -139,6 +139,31 @@ extension AppModel {
         didPublish(selecting: path)
     }
 
+    /// A new page on a hand-built site, made from `source` (the home page when nil) and saved beside it, so its
+    /// links to stylesheets and pictures work unchanged.
+    func createHTMLPage(title: String, basedOn source: SiteDocument?) {
+        guard let site else { return }
+        let pages = site.documents.filter(\.isStatic)
+        let source = source ?? pages.first { $0.relativePath == "index.html" } ?? pages.first
+        let folder = source.map { ($0.relativePath as NSString).deletingLastPathComponent } ?? ""
+        let existing = Set((try? FileManager.default.contentsOfDirectory(atPath: site.root.appending(path: folder).path)) ?? [])
+        let name = HTMLPageTemplate.fileName(for: title, existing: existing)
+        let path = folder.isEmpty ? name : "\(folder)/\(name)"
+        let text: String = if let source, let sourceText = try? String(contentsOf: source.fileURL, encoding: .utf8) {
+            HTMLPageTemplate.make(from: sourceText, title: title, sourceIsHome: source.filename == "index.html")
+        } else {
+            HTMLPageTemplate.plain(title: title)
+        }
+        do {
+            try ContentEdit(path: path, newText: text).apply(to: site.root)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        sidebarSelection = .section("pages")
+        didPublish(selecting: path)
+    }
+
     // MARK: Editor actions
 
     // MARK: Tables

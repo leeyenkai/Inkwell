@@ -153,7 +153,10 @@ struct SiteWindow: View {
         .sheet(isPresented: $model.showChanges) { ChangesSheet(model: model) }
         .sheet(item: $model.moveRequest) { doc in MoveSheet(model: model, doc: doc) }
         .sheet(item: $model.historyRequest) { doc in HistorySheet(model: model, doc: doc) }
-        .sheet(isPresented: $model.showNewPage) { NewPageSheet(model: model) }
+        .sheet(isPresented: $model.showNewPage) {
+            // Page templates are Markdown with front matter, which a site served as it is would show as text.
+            if model.site?.kind.servesFilesAsIs == true { NewHTMLPageSheet(model: model) } else { NewPageSheet(model: model) }
+        }
         .sheet(item: $model.linkPick) { pick in LinkPickerSheet(model: model, location: pick.location) }
         .sheet(isPresented: $model.showConflicts) { ConflictSheet(model: model) }
         .sheet(isPresented: Binding(get: { model.pendingPhotos != nil }, set: { if !$0, model.pendingPhotos != nil { model.cancelPendingPhotos() } })) {
@@ -514,7 +517,7 @@ struct DetailView: View {
         } else if model.sidebarSelection == .section("pages") {
             ContentUnavailableView("No Page Selected", systemImage: "doc.richtext",
                                    description: Text(model.site?.kind.servesFilesAsIs == true
-                                       ? "Choose a page to edit its HTML."
+                                       ? "Choose a page to edit its HTML, or press ⇧⌘N to make a new one."
                                        : "Choose a page, or press ⇧⌘N to make a new one."))
         } else {
             ContentUnavailableView("No Post Selected", systemImage: "square.and.pencil",

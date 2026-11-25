@@ -850,6 +850,9 @@
     "A sentence for search results and link previews" : {
 
     },
+    "A sentence for search results and shared links" : {
+
+    },
     "A standalone page, such as About, Now or Contact. Start from a template; everything in it can be changed." : {
 
     },
@@ -1122,6 +1125,9 @@
     "Background picture" : {
 
     },
+    "Based on" : {
+
+    },
     "Body" : {
 
     },
@@ -1294,7 +1300,7 @@
     "Choose a folder with a GitHub Pages site that you already publish with git." : {
 
     },
-    "Choose a page to edit its HTML." : {
+    "Choose a page to edit its HTML, or press ⇧⌘N to make a new one." : {
 
     },
     "Choose a page, or press ⇧⌘N to make a new one." : {
@@ -2304,6 +2310,9 @@
     "Make" : {
 
     },
+    "Make Page" : {
+
+    },
     "Make it yours" : {
 
     },
@@ -2405,6 +2414,9 @@
 
     },
     "New File…" : {
+
+    },
+    "New Page" : {
 
     },
     "New Page…" : {
@@ -2745,6 +2757,9 @@
 
     },
     "Preview of %@ with your posts" : {
+
+    },
+    "Pricing" : {
 
     },
     "Privacy" : {
@@ -3102,6 +3117,9 @@
     "Shown after the copyright line" : {
 
     },
+    "Shown in the browser tab and search results" : {
+
+    },
     "Shows an album’s photos, on its own page or in any post." : {
 
     },
@@ -3322,6 +3340,9 @@
 
     },
     "The list of albums at the top of the photos page." : {
+
+    },
+    "The new page copies the look of an existing one: its stylesheets, header and footer. Its main part starts empty." : {
 
     },
     "The page at %@ stops working once GitHub Pages rebuilds the site." : {
@@ -3659,6 +3680,9 @@
 
     },
     "https:// or /about/" : {
+
+    },
+    "media/picture.jpg" : {
 
     },
     "published is off: the post stays off the site, but its file is public on GitHub." : {

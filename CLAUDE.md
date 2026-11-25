@@ -63,7 +63,7 @@ scripts/                 build.sh, make-sample-site.sh, sync-strings.sh, make-dm
   That private repository is a throwaway the user agreed to; never point the write test at a real site.
 - Websites (SPEC §4.12): `scripts/make-plain-site.sh` makes a code repository with a hand-built site in `docs/` and a local
   bare remote. `--site <plain-site> --selftest-website` edits and publishes a page and checks the commit (page and new
-  picture only, no front matter; refuses GitHub remotes).
+  picture only, no front matter), then adds a description, drops in a picture and makes a new page (refuses GitHub remotes).
 - Preview pictures: window captures leave web views blank, so `--snapshot-preview <file.png>` saves what the preview shows.
 - Design self-test: `--site <sample-site> --selftest-design` (applies a theme, edits colours, options and the menu, checks files,
   preview and the change list; refuses GitHub remotes).

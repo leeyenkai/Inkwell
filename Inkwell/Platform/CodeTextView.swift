@@ -55,12 +55,24 @@ struct CodeEditor: NSViewRepresentable {
     var editable: Bool
     /// Changes when another file is shown, so the text is replaced rather than edited.
     var identity: String
+    /// Pictures dropped on the text, with the character position they were dropped at. Without it, a drop inserts
+    /// the file's path as text.
+    var onDropImages: (([URL], Int) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSTextView.scrollableTextView()
-        guard let textView = scroll.documentView as? NSTextView else { return scroll }
+        let scroll = NSScrollView()
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .noBorder
+        let textView = DroppingTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.onDropImages = onDropImages
+        scroll.documentView = textView
         textView.isRichText = false
         textView.allowsUndo = true
         textView.isAutomaticQuoteSubstitutionEnabled = false
@@ -81,6 +93,7 @@ struct CodeEditor: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.parent = self
         guard let textView = scroll.documentView as? NSTextView else { return }
+        (textView as? DroppingTextView)?.onDropImages = onDropImages
         if context.coordinator.identity != identity || (textView.string != text && !context.coordinator.isEditing) {
             load(textView, coordinator: context.coordinator)
         }
@@ -111,5 +124,28 @@ struct CodeEditor: NSViewRepresentable {
             parent.text = textView.string
             isEditing = false
         }
+    }
+}
+
+/// A code text view that hands dropped pictures to its owner instead of inserting their paths.
+final class DroppingTextView: NSTextView {
+    var onDropImages: (([URL], Int) -> Void)?
+    static let pictureTypes: Set = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "tif", "tiff", "avif"]
+
+    private func pictures(_ info: any NSDraggingInfo) -> [URL] {
+        let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        return urls.filter { Self.pictureTypes.contains($0.pathExtension.lowercased()) }
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        onDropImages != nil && isEditable && !pictures(sender).isEmpty ? .copy : super.draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        let urls = pictures(sender)
+        guard let onDropImages, isEditable, !urls.isEmpty else { return super.performDragOperation(sender) }
+        let point = convert(sender.draggingLocation, from: nil)
+        onDropImages(urls, characterIndexForInsertion(at: point))
+        return true
     }
 }

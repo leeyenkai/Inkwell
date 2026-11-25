@@ -31,8 +31,8 @@ struct InkwellApp: App {
                     .disabled(model.site == nil)
                 Button("New Page…") { model.showNewPage = true }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
-                    // Page templates are Markdown with front matter, which a site served as it is would show as text.
-                    .disabled(model.site == nil || model.site?.kind.servesFilesAsIs == true)
+                    // A generated site's pages come from its source; hand-built sites get HTML pages.
+                    .disabled(model.site == nil || model.site?.kind == .generated)
                 Button("Switch Site…") { model.closeSite() }
                     .keyboardShortcut("o")
                     .disabled(model.site == nil)

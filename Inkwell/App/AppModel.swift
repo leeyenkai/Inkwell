@@ -841,6 +841,8 @@ final class AppModel {
         var insertAt: InsertPoint
         var alt = ""
         var caption = ""
+        /// For a page served as it is: the `src` to write, relative to the page, and the picture goes in as HTML.
+        var htmlSource: String?
     }
 
     /// Where a picture goes, remembered when its import starts: the post, and its text then.
@@ -886,8 +888,49 @@ final class AppModel {
         }
     }
 
+    /// Pictures dropped on a page served as it is: imported like any picture (resized, location and camera details
+    /// removed) into the folder the site keeps its pictures in, then written as `<img>` once it has alt text.
+    func importImagesIntoPage(_ urls: [URL], at location: Int) {
+        guard let site, let editor, let url = urls.first else { return }
+        let point = InsertPoint(editor: ObjectIdentifier(editor), text: editor.fullText, location: location)
+        let root = site.root
+        let folder = ["media", "images", "img", "assets/images", "assets/img"]
+            .first { FileManager.default.fileExists(atPath: root.appending(path: $0).path) } ?? "images"
+        let page = editor.document.relativePath
+        let slug = (editor.document.filename as NSString).deletingPathExtension
+        Task {
+            do {
+                var importer = ImageImport.app
+                importer.folder = folder
+                let image = try await Task.detached {
+                    try importer.importImage(at: url, siteRoot: root, slug: slug == "index" ? "picture" : slug)
+                }.value
+                guard self.editor.map(ObjectIdentifier.init) == point.editor else {
+                    try? FileManager.default.removeItem(at: image.fileURL)
+                    errorMessage = Self.pictureNotAdded
+                    return
+                }
+                let target = String(image.sitePath.drop { $0 == "/" })
+                pendingImage = PendingImage(image: image, insertAt: point, htmlSource: Self.relativePath(to: target, from: page))
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// `media/a.jpg` as seen from `guide/index.html` is `../media/a.jpg`.
+    static func relativePath(to target: String, from page: String) -> String {
+        let folder = page.split(separator: "/").dropLast()
+        let parts = target.split(separator: "/")
+        var shared = 0
+        while shared < folder.count, shared < parts.count - 1, folder[folder.startIndex + shared] == parts[shared] { shared += 1 }
+        let up = Array(repeating: "..", count: folder.count - shared)
+        return (up + parts[shared...].map(String.init)).joined(separator: "/")
+    }
+
     func insertPendingImage() {
         guard let pending = pendingImage else { return }
+        if let source = pending.htmlSource { return insertPendingImageIntoPage(pending, source: source) }
         let alt = pending.alt.trimmingCharacters(in: .whitespaces)
         var markdown = pending.image.markdown(alt: alt, useRelativeURL: true)
         let caption = pending.caption.trimmingCharacters(in: .whitespaces)
@@ -898,6 +941,28 @@ final class AppModel {
             return
         }
         textView?.insertBlock(markdown, at: location)
+        pendingImage = nil
+        refreshChanges()
+    }
+
+    private func insertPendingImageIntoPage(_ pending: PendingImage, source: String) {
+        guard let editor, ObjectIdentifier(editor) == pending.insertAt.editor else {
+            cancelPendingImage()
+            errorMessage = Self.pictureNotAdded
+            return
+        }
+        let alt = HTMLHead.escape(pending.alt.trimmingCharacters(in: .whitespaces))
+        let caption = pending.caption.trimmingCharacters(in: .whitespaces)
+        let img = "<img src=\"\(HTMLHead.escape(source))\" alt=\"\(alt)\">"
+        let html = caption.isEmpty ? img : "<figure>\(img)<figcaption>\(HTMLHead.escapeText(caption))</figcaption></figure>"
+        let text = editor.fullText as NSString
+        // Where it was dropped while the page is unchanged; otherwise just before </body>.
+        var location = editor.fullText == pending.insertAt.text ? min(pending.insertAt.location, text.length) : NSNotFound
+        if location == NSNotFound {
+            let body = text.range(of: "</body>", options: [.caseInsensitive, .backwards])
+            location = body.location == NSNotFound ? text.length : body.location
+        }
+        editor.setFullText(text.replacingCharacters(in: NSRange(location: location, length: 0), with: html))
         pendingImage = nil
         refreshChanges()
     }

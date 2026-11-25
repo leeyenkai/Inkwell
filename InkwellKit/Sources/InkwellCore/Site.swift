@@ -298,7 +298,7 @@ public enum SiteLoader {
         var doc = SiteDocument(
             id: "repo:\(relativePath)", sectionID: "pages", origin: .repository, fileURL: file, relativePath: relativePath, title: title,
             date: nil, publishedFlag: true, url: config.baseurl + url, modified: modified,
-            excerpt: head.description ?? Excerpt.make(HTMLHead.visibleText(text), title: title)
+            excerpt: head.description ?? HTMLHead.decode(Excerpt.make(HTMLHead.mainContent(text), title: title))
         )
         doc.isStatic = true
         return doc
