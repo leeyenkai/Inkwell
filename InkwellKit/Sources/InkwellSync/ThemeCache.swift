@@ -29,7 +29,8 @@ public struct ThemeCache: Sendable {
     /// The theme's files, downloading them the first time. Public themes need no sign-in.
     public func ensure(owner: String, repository: String, ref: String?, client: GitHubClient) async throws -> URL {
         if let url = cached(owner: owner, repository: repository, ref: ref) { return url }
-        let path = ref.map { "repos/\(owner)/\(repository)/tarball/\($0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? $0)" } ?? "repos/\(owner)/\(repository)/tarball"
+        let encoded = ref.map { $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? $0 }
+        let path = encoded.map { "repos/\(owner)/\(repository)/tarball/\($0)" } ?? "repos/\(owner)/\(repository)/tarball"
         let (archive, _) = try await client.data("GET", path)
         let fm = FileManager.default
         let staging = folder.appending(path: "staging-\(UUID().uuidString)", directoryHint: .isDirectory)

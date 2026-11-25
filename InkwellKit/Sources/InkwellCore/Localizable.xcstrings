@@ -162,6 +162,19 @@
     "GitHub Pages sites should stay under 1 GB. Delete unused images from Media." : {
 
     },
+    "GitHub runs scheduled workflows only on the default branch (%@), and this site publishes from %@, so the post appears the next time you publish anything after its date." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "GitHub runs scheduled workflows only on the default branch (%1$@), and this site publishes from %2$@, so the post appears the next time you publish anything after its date."
+          }
+        }
+      }
+    },
+    "GitHub runs workflows only from the repository root, and this site is in a folder, so the post appears the next time you publish anything after its date." : {
+
+    },
     "GitHub warns above 50 MB and refuses files over 100 MB." : {
 
     },
@@ -345,6 +358,9 @@
 
     },
     "The site is %@" : {
+
+    },
+    "This site is built by its own GitHub Actions workflow, so the post appears the first time that workflow runs after its date." : {
 
     },
     "Without one, build output and system files can end up in the repository." : {

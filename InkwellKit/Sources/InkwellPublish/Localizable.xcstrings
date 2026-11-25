@@ -1,10 +1,38 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld earlier commits in this folder are not on GitHub yet, so nothing was pushed. Push when they are ready to go live." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld earlier commit in this folder is not on GitHub yet, so nothing was pushed. Push when it is ready to go live."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld earlier commits in this folder are not on GitHub yet, so nothing was pushed. Push when they are ready to go live."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Changed here and on GitHub: %@. Publish or discard those edits, or settle them with git, then try again." : {
+
+    },
     "GitHub did not accept the saved sign-in for this repository. Push once from Terminal to save it, then try again." : {
 
     },
     "The site changed on GitHub since it was last fetched, and the changes could not be combined automatically." : {
+
+    },
+    "These files still have unresolved git conflicts: %@. Settle them with git first." : {
 
     },
     "git %@ failed." : {

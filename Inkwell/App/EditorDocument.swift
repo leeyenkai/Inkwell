@@ -135,7 +135,8 @@ final class EditorDocument {
     }
 
     var timeZone: TimeZone { site.config.timeZone }
-    var publishesFutureNow: Bool { Schedule.publishesFutureNow(site.config) }
+    /// Only an explicit `future: true` keeps a dated post live; otherwise scheduling turns future posts off.
+    var publishesFutureNow: Bool { Schedule.futureTurnedOn(site.config) }
 
     /// Whether the value carries a time of day, which is kept when the date changes.
     func hasTime(_ key: String) -> Bool {

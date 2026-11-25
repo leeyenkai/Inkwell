@@ -19,7 +19,7 @@
 - **Release.** Version 0.9.0 as an ad-hoc signed disk image (`scripts/make-dmg.sh`), an update check against GitHub releases, and a privacy note.
 - **Design.** Six bundled themes that differ in layout, shown as real renders and tried on your own posts before a reviewable switch; palette and font presets; colours (light and dark), fonts and layout for Inkwell themes and hand-made stylesheets; theme options; navigation; site settings, favicon, share image and custom domain; and a live preview of any page.
 
-Verified by 163 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
+Verified by 201 package tests (including a fake GitHub server for sync and performance bounds on a 600-post site) and the publish, content and design self-tests. A read-only live test passed against the real `leeyenkai/leeyenkai.github.io` (download, no false changes, pull). A live write test passed against a private throwaway repository: publish, pull during publish, conflict, delete. Not yet checked by a person: typing with input methods, drag and drop from Photos, the scheduled-post workflow running on GitHub.
 
 ---
 
@@ -238,7 +238,7 @@ The user asked for Inkwell to work as a site designer, not only an editor. The e
 
 They come from the slash menu, the Insert menu and the toolbar. In the editor, an element's wrapper lines collapse to a labelled bar with **Edit…**, which opens a form for that element; the Markdown inside stays editable in place. Elements need a small set of site files, the **element kit**: `_includes/inkwell/*`, `assets/css/inkwell-blocks.css` and `assets/js/inkwell-blocks.js`. The kit is added the first time an element is used, and published with the post that uses it. On sites with their own theme, its stylesheet and script are added to the page head the same way Health adds tags.
 
-**Page templates.** A new page starts from a template: Blank, About, Now, Contact, Projects, Links, Timeline, Places (map), Archive, Album index, or Slides. The Slides template uses a `slides` layout in which each section break is a slide.
+**Page templates.** A new page starts from a template: Blank, About, Now, Contact, Projects, Links, Timeline, Places (map), Archive, Album index, or Slides. The Slides template uses an `inkwell-slides` layout in which each section break is a slide.
 
 **Albums.** Photos can belong to albums (`albums:` in each photo's front matter; titles, descriptions and covers in `_data/albums.yml`). Each album has its own page under `albums/`, using an `album` layout. The photos page shows the albums, then the stream. In the app, Photos has an album list, and photos can be added to and removed from albums, with a cover and title per album. A gallery element can show an album.
 

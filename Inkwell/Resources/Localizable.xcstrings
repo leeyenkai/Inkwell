@@ -1797,6 +1797,9 @@
     "GitHub Pages only rebuilds when something changes. This adds a small hourly workflow to the site that rebuilds it when a scheduled post comes due. Without it, the post appears the next time you publish anything." : {
 
     },
+    "GitHub Pages shows posts dated in the future right away, so this adds future: false to _config.yml." : {
+
+    },
     "GitHub Pages site" : {
 
     },
@@ -2091,6 +2094,9 @@
 
     },
     "Keep the old address working" : {
+
+    },
+    "Keep your version to save it over the other one, or use the other version and discard your edits." : {
 
     },
     "Keyboard Shortcuts" : {
@@ -3213,6 +3219,9 @@
     "The photos stay in your photo stream. The album and its page leave the site when you next publish." : {
 
     },
+    "The picture was not added, because another post is open now." : {
+
+    },
     "The post could not be moved: %@" : {
 
     },
@@ -3268,6 +3277,9 @@
 
     },
     "These files were changed on GitHub and on this Mac since they were last in step. Choose which version to keep." : {
+
+    },
+    "These posts are dated in the future and leave the site until their dates: %@" : {
 
     },
     "These template tags are not run in the preview: %@" : {
@@ -3490,6 +3502,9 @@
         }
       }
     },
+    "_config.yml has other unpublished changes, and they go out with this post too." : {
+
+    },
     "_includes/footer-extra.html" : {
 
     },
@@ -3512,6 +3527,9 @@
 
     },
     "published is off: the post stays off the site, but its file is public on GitHub." : {
+
+    },
+    "“%@” changed outside Inkwell while you were editing it." : {
 
     },
     "“%@” could not be opened: %@" : {

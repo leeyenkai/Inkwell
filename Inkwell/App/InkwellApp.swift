@@ -542,7 +542,9 @@ enum SelfTest {
                 ok = check(schedules, "publish offers to schedule") && ok
                 await session.run()
                 let files = (try? await git.run(["show", "--name-only", "--format=", "HEAD"]))?.split(separator: "\n").map(String.init) ?? []
-                ok = check(files.contains(Schedule.workflowPath) && files.count == 2, "post and workflow in one commit (\(files))") && ok
+                // `_config.yml` goes too when it did not turn future posts off yet.
+                ok = check(files.contains(Schedule.workflowPath) && Set(files).subtracting(["_config.yml"]).count == 2,
+                           "post and workflow in one commit (\(files))") && ok
                 model.publishSheet = nil
                 await settle()
                 let post = model.site?.documents.first { $0.title == "Self-test scheduled post" }

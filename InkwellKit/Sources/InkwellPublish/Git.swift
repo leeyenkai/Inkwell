@@ -151,7 +151,8 @@ public struct Git: Sendable {
         let here = await prefix()
         let unmerged = Set(await unmerged()).intersection(paths.map { here + $0 })
         guard unmerged.isEmpty else {
-            throw GitError(command: "commit", output: localized("These files still have unresolved git conflicts: \(unmerged.sorted().joined(separator: ", ")). Settle them with git first."))
+            let names = unmerged.sorted().joined(separator: ", ")
+            throw GitError(command: "commit", output: localized("These files still have unresolved git conflicts: \(names). Settle them with git first."))
         }
         try await run(["add", "--all", "--"] + paths)
         do {
@@ -166,7 +167,10 @@ public struct Git: Sendable {
         // Pushing sends every commit not yet on GitHub. Commits made here outside the app (work in progress, say) must
         // not go live with a post, so those wait for an explicit Push.
         if push, earlierUnpushed > 0 {
-            pushError = localized("\(earlierUnpushed) earlier commits in this folder are not on GitHub yet, so nothing was pushed. Push when they are ready to go live.")
+            pushError = localized("""
+                \(earlierUnpushed) earlier commits in this folder are not on GitHub yet, so nothing was pushed. \
+                Push when they are ready to go live.
+                """)
         } else if push, await remoteURL() != nil {
             do {
                 try await self.push()
@@ -206,7 +210,10 @@ public struct Git: Sendable {
         let dirty = try await status().keys
         let both = Set(incoming).intersection(dirty).sorted()
         guard both.isEmpty else {
-            throw GitError(command: "pull", output: localized("Changed here and on GitHub: \(both.joined(separator: ", ")). Publish or discard those edits, or settle them with git, then try again."))
+            let names = both.joined(separator: ", ")
+            throw GitError(command: "pull", output: localized("""
+                Changed here and on GitHub: \(names). Publish or discard those edits, or settle them with git, then try again.
+                """))
         }
     }
 
