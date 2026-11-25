@@ -133,6 +133,8 @@ struct CodeEditorPane: View {
     @Bindable var model: AppModel
     var file: CodeFile
     @State private var text = ""
+    /// The file `text` was read from. Saves go there, never to a file chosen since.
+    @State private var loadedFile: CodeFile?
     @State private var saveTask: Task<Void, Never>?
 
     var body: some View {
@@ -157,8 +159,11 @@ struct CodeEditorPane: View {
             .padding(.vertical, 7)
             Divider()
             HSplitView {
-                CodeEditor(text: Binding(get: { text }, set: { text = $0; scheduleSave() }), fileExtension: file.ext, editable: !file.inTheme,
-                           identity: file.id)
+                CodeEditor(text: Binding(get: { text }, set: { newText in
+                    guard loadedFile == file else { return }
+                    text = newText
+                    scheduleSave()
+                }), fileExtension: file.ext, editable: !file.inTheme, identity: file.id)
                     .frame(minWidth: 320)
                 DesignPreview(design: design, model: model)
                     .frame(minWidth: 320)
@@ -170,10 +175,12 @@ struct CodeEditorPane: View {
             load()
         }
         .onDisappear(perform: saveNow)
+        .onReceive(NotificationCenter.default.publisher(for: AppModel.flushSavesNotification)) { _ in saveNow() }
     }
 
     func load() {
         text = design.readCode(file, themeRoot: model.themeRoot) ?? ""
+        loadedFile = file
     }
 
     func scheduleSave() {
@@ -187,8 +194,8 @@ struct CodeEditorPane: View {
 
     func saveNow() {
         saveTask?.cancel()
-        guard !file.inTheme, design.read(file.path) != nil || !text.isEmpty else { return }
-        design.saveCode(file, text)
+        guard let target = loadedFile, !target.inTheme, design.read(target.path) != nil || !text.isEmpty else { return }
+        design.saveCode(target, text)
     }
 
     func revert() {
@@ -201,6 +208,8 @@ struct CodeEditorPane: View {
         alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, let backend = model.backend else { return }
         saveTask?.cancel()
+        // Nothing may write the old text back while (or after) the file is reverted.
+        loadedFile = nil
         let path = file.path
         Task {
             do {

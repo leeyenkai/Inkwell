@@ -43,13 +43,16 @@ extension AppModel {
     /// The photos collection's entries, newest first.
     var photos: [PhotoEntry] {
         guard let site else { return [] }
-        return site.documents(in: PhotoStream.collection).compactMap { doc in
+        if let photoCache { return photoCache }
+        let entries: [PhotoEntry] = site.documents(in: PhotoStream.collection).compactMap { doc in
             guard let text = try? String(contentsOf: doc.fileURL, encoding: .utf8) else { return nil }
             let values = FrontMatterDocument(text: text).values
             return PhotoEntry(doc: doc, image: values["image"]?.string ?? "", caption: values["caption"]?.string ?? "",
                               alt: values["alt"]?.string ?? "", location: values["location"]?.string ?? "",
                               hidden: values["hidden"]?.bool ?? false, albums: Albums.ids(in: values))
         }
+        photoCache = entries
+        return entries
     }
 
     /// A site path such as `/assets/photos/x.jpg` (with or without baseurl or Liquid) as a file on this Mac.
@@ -330,8 +333,13 @@ extension AppModel {
 
     /// The include that shows an album, in place of a gallery of dropped pictures, with the site files it needs.
     func insertAlbum(_ id: String, replacing gallery: PendingGallery) {
+        guard let location = location(for: gallery.insertAt) else {
+            cancelGallery()
+            errorMessage = Self.pictureNotAdded
+            return
+        }
         applyAlbumEdits(albumSiteChanges().map(\.edit))
-        textView?.insertBlock(Albums.include(id), at: gallery.insertAt)
+        textView?.insertBlock(Albums.include(id), at: location)
         cancelGallery()
         refreshChanges()
     }
@@ -339,7 +347,7 @@ extension AppModel {
     // MARK: Galleries
 
     /// Several pictures for a post at once become a gallery block, after alt text for each.
-    func importGallery(_ urls: [URL], at location: Int) {
+    func importGallery(_ urls: [URL], at point: InsertPoint) {
         guard let site, let editor else { return }
         let slug = Filename.parse(editor.document.filename).slug
         let root = site.root
@@ -348,7 +356,12 @@ extension AppModel {
                 urls.compactMap { try? ImageImport.app.importImage(at: $0, siteRoot: root, slug: slug == "untitled" ? "image" : slug) }
             }.value
             guard !images.isEmpty else { return }
-            pendingGallery = PendingGallery(images: images, alts: images.map { _ in "" }, insertAt: location)
+            guard location(for: point) != nil else {
+                for image in images { try? FileManager.default.removeItem(at: image.fileURL) }
+                errorMessage = Self.pictureNotAdded
+                return
+            }
+            pendingGallery = PendingGallery(images: images, alts: images.map { _ in "" }, insertAt: point)
         }
     }
 
@@ -356,17 +369,22 @@ extension AppModel {
         let id = UUID()
         var images: [ImportedImage]
         var alts: [String]
-        var insertAt: Int
+        var insertAt: InsertPoint
     }
 
     func insertGallery(_ gallery: PendingGallery) {
+        guard let location = location(for: gallery.insertAt) else {
+            cancelGallery()
+            errorMessage = Self.pictureNotAdded
+            return
+        }
         // A gallery element: the pictures stay Markdown images, and Edit Element changes columns and order later.
         ensureElementKit()
         let pictures = zip(gallery.images, gallery.alts).map { PageElements.Picture(path: $0.sitePath, alt: $1) }
         let columns = pictures.count == 2 || pictures.count == 4 ? 2 : 3
         let markdown = "<div class=\"ik-gallery\" data-columns=\"\(columns)\" markdown=\"1\">\n"
             + PageElements.picturesMarkdown(pictures) + "\n</div>"
-        textView?.insertBlock(markdown, at: gallery.insertAt)
+        textView?.insertBlock(markdown, at: location)
         pendingGallery = nil
         refreshChanges()
     }

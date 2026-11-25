@@ -8,7 +8,7 @@ extension AppModel {
     /// address kept working and links in other posts updated; a draft simply follows.
     func applyMove(_ doc: SiteDocument, title: String, slug: String, sectionID: String, keepOldAddress: Bool) {
         guard let site, let backend else { return }
-        if editor?.document.id == doc.id { editor?.saveNow() }
+        if editor?.document.id == doc.id { settleEditor() }
         let cleanSlug = Slug.make(slug.isEmpty ? title : slug)
         var text = (try? String(contentsOf: doc.fileURL, encoding: .utf8)) ?? ""
         var front = FrontMatterDocument(text: text)
@@ -18,12 +18,24 @@ extension AppModel {
         }
         let parts = Filename.parse(doc.filename)
         let ext = parts.ext.isEmpty ? "md" : parts.ext
-        let filename = parts.dateText.map { "\($0)-\(cleanSlug).\(ext)" } ?? "\(cleanSlug).\(ext)"
+        func name(_ slug: String) -> String { parts.dateText.map { "\($0)-\(slug).\(ext)" } ?? "\(slug).\(ext)" }
+        let filename = name(cleanSlug)
         let collection = site.section(sectionID)?.collectionName
 
         if doc.origin == .localDraft {
             guard let draftStore, let collection else { return }
-            let target = draftStore.url(collection: collection, filename: filename)
+            // Never onto another draft or a post of the site: the next free name, as a new draft gets.
+            let fm = FileManager.default
+            var target = draftStore.url(collection: collection, filename: filename)
+            var n = 2
+            func taken(_ url: URL) -> Bool {
+                let published = site.root.appending(path: "_\(collection)/\(url.lastPathComponent)")
+                return fm.fileExists(atPath: url.path) || fm.fileExists(atPath: published.path)
+            }
+            while target.standardizedFileURL != doc.fileURL.standardizedFileURL, taken(target) {
+                target = draftStore.url(collection: collection, filename: name("\(cleanSlug)-\(n)"))
+                n += 1
+            }
             do {
                 try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try Data(text.utf8).write(to: target, options: .atomic)

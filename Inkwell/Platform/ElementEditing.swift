@@ -4,18 +4,30 @@ import InkwellKit
 /// Page elements in the editor: their wrapper lines step back as small grey text, and the element under the cursor
 /// gets an Edit button for its settings. The text itself is never changed by this.
 extension InkwellTextView {
-    func styleElements(in storage: NSTextStorage) {
-        let text = storage.string
-        // Cheap check first: most posts have no elements.
-        guard !sourceMode, text.contains("markdown=") || text.contains("ik-button") || text.contains("include inkwell/") else {
+    /// Finds the elements again only after the text changed, and restyles just the given paragraphs when there are any,
+    /// since a cursor move or a keystroke restyles only those.
+    func styleElements(in storage: NSTextStorage, windows: [NSRange]? = nil) {
+        guard !sourceMode else {
             elementSpans = []
             return
         }
-        elementSpans = PageElements.find(in: text)
+        if elementsDirty {
+            elementsDirty = false
+            let text = storage.string
+            // Cheap check first: most posts have no elements.
+            elementsPresent = text.contains("markdown=") || text.contains("ik-button") || text.contains("include inkwell/")
+            elementSpans = elementsPresent ? PageElements.find(in: text) : []
+        }
+        guard elementsPresent else { return }
+        let length = storage.length
+        let areas = windows ?? [NSRange(location: 0, length: length)]
+        func touches(_ range: NSRange) -> Bool {
+            areas.contains { NSIntersectionRange($0, range).length > 0 || ($0.length == 0 && NSLocationInRange($0.location, range)) }
+        }
         let font = NSFont.monospacedSystemFont(ofSize: max(10, MarkdownStyler.bodySize - 4), weight: .regular)
         storage.beginEditing()
         for span in elementSpans {
-            for range in [span.openRange, span.closeRange].compactMap({ $0 }) where NSMaxRange(range) <= storage.length {
+            for range in [span.openRange, span.closeRange].compactMap({ $0 }) where NSMaxRange(range) <= length && touches(range) {
                 // Buttons and includes are the element itself: keep them readable, just quieter.
                 let wrapper = span.closeRange != nil
                 storage.addAttribute(.font, value: font, range: range)
@@ -23,18 +35,24 @@ extension InkwellTextView {
             }
         }
         // Wrapper lines inside elements (a column's <div markdown="1">, closing tags) step back too.
-        let ns = text as NSString
-        var location = 0
-        while location < ns.length {
-            let line = ns.lineRange(for: NSRange(location: location, length: 0))
-            location = NSMaxRange(line)
-            let content = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines)
-            let isWrapper = (content.hasPrefix("<") && content.hasSuffix(">") && content.contains("markdown=\"1\""))
-                || ["</div>", "</details>", "</section>"].contains(content)
-            guard isWrapper else { continue }
-            let range = NSRange(location: line.location, length: line.length - (ns.substring(with: line).hasSuffix("\n") ? 1 : 0))
-            storage.addAttribute(.font, value: font, range: range)
-            storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: range)
+        let ns = storage.string as NSString
+        for area in areas {
+            var location = min(area.location, ns.length)
+            let end = min(NSMaxRange(area), ns.length)
+            while location < ns.length {
+                let line = ns.lineRange(for: NSRange(location: location, length: 0))
+                location = NSMaxRange(line)
+                let text = ns.substring(with: line)
+                let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let isWrapper = (content.hasPrefix("<") && content.hasSuffix(">") && content.contains("markdown=\"1\""))
+                    || ["</div>", "</details>", "</section>"].contains(content)
+                if isWrapper {
+                    let range = NSRange(location: line.location, length: line.length - (text.hasSuffix("\n") ? 1 : 0))
+                    storage.addAttribute(.font, value: font, range: range)
+                    storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: range)
+                }
+                if location >= end { break }
+            }
         }
         storage.endEditing()
     }

@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct InkwellApp: App {
     @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
 
     init() {
         Prefs.register()
@@ -14,7 +15,10 @@ struct InkwellApp: App {
         WindowGroup("Inkwell") {
             ContentView(model: model)
                 .frame(minWidth: 900, minHeight: 560)
-                .task { await Launch.start(model) }
+                .task {
+                    appDelegate.model = model
+                    await Launch.start(model)
+                }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                     model.appBecameActive()
                 }
@@ -86,6 +90,16 @@ struct InkwellApp: App {
     }
 }
 
+/// Saves what is still waiting for its autosave pause when the app quits.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var model: AppModel?
+
+    func applicationShouldTerminate(_: NSApplication) -> NSApplication.TerminateReply {
+        model?.saveAllBeforeQuitting()
+        return .terminateNow
+    }
+}
+
 /// A view, so it can open the Help window.
 struct HelpMenuItems: View {
     var model: AppModel
@@ -117,40 +131,48 @@ struct FormatCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Format") {
-            Button("Bold") { model.textView?.toggle("**") }.keyboardShortcut("b")
-            Button("Italic") { model.textView?.toggle("*") }.keyboardShortcut("i")
-            Button("Underline") { model.textView?.toggle("<u>", "</u>") }.keyboardShortcut("u")
-            Button("Strikethrough") { model.textView?.toggle("~~") }.keyboardShortcut("x", modifiers: [.command, .shift])
-            Button("Highlight") { model.textView?.toggle("<mark>", "</mark>") }.keyboardShortcut("h", modifiers: [.command, .shift])
-            Button("Inline Code") { model.textView?.toggle("`") }.keyboardShortcut("e")
-            Button("Superscript") { model.textView?.toggle("<sup>", "</sup>") }
-            Button("Subscript") { model.textView?.toggle("<sub>", "</sub>") }
-            Button("Clear Formatting") { model.textView?.clearFormatting() }
-            Divider()
-            Button("Link…") { model.textView?.showLinkPopover() }.keyboardShortcut("k")
-            Divider()
-            Button("Heading 1") { model.textView?.heading(1) }.keyboardShortcut("1")
-            Button("Heading 2") { model.textView?.heading(2) }.keyboardShortcut("2")
-            Button("Heading 3") { model.textView?.heading(3) }.keyboardShortcut("3")
-            Button("Heading 4") { model.textView?.heading(4) }.keyboardShortcut("4")
-            Button("Body Text") { model.textView?.heading(0) }.keyboardShortcut("0")
-            Button("Code Block") { model.textView?.setTextStyle(.monospaced) }
-            Divider()
-            Button("Quote") { model.textView?.prefixLines("> ") }.keyboardShortcut("'", modifiers: [.command])
-            Button("Bulleted List") { model.textView?.setList(.bullets) }.keyboardShortcut("l", modifiers: [.command, .shift])
-            Button("Numbered List") { model.textView?.setList(.numbers) }
-            Button("Checklist") { model.textView?.setList(.checklist) }.keyboardShortcut("l", modifiers: [.command, .option])
-            Button("Footnote") { model.textView?.footnote() }.keyboardShortcut("f", modifiers: [.command, .shift])
-            Button("Section Break") { model.textView?.divider() }.keyboardShortcut(.return, modifiers: [.command, .shift])
-            Divider()
-            Button("Indent") { model.textView?.indentLines(outdent: false) }.keyboardShortcut("]")
-            Button("Outdent") { model.textView?.indentLines(outdent: true) }.keyboardShortcut("[")
-            Button("Move Line Up") { model.textView?.moveLines(up: true) }.keyboardShortcut(.upArrow, modifiers: [.command, .option])
-            Button("Move Line Down") { model.textView?.moveLines(up: false) }.keyboardShortcut(.downArrow, modifiers: [.command, .option])
+            // Only while the post text has the keyboard; in the title or a property field the shortcuts are the field’s.
+            Group {
+                Button("Bold") { model.textView?.toggle("**") }.keyboardShortcut("b")
+                Button("Italic") { model.textView?.toggle("*") }.keyboardShortcut("i")
+                Button("Underline") { model.textView?.toggle("<u>", "</u>") }.keyboardShortcut("u")
+                Button("Strikethrough") { model.textView?.toggle("~~") }.keyboardShortcut("x", modifiers: [.command, .shift])
+                Button("Highlight") { model.textView?.toggle("<mark>", "</mark>") }.keyboardShortcut("h", modifiers: [.command, .shift])
+                Button("Inline Code") { model.textView?.toggle("`") }.keyboardShortcut("e")
+                Button("Superscript") { model.textView?.toggle("<sup>", "</sup>") }
+                Button("Subscript") { model.textView?.toggle("<sub>", "</sub>") }
+                Button("Clear Formatting") { model.textView?.clearFormatting() }
+                Divider()
+                Button("Link…") { model.textView?.showLinkPopover() }.keyboardShortcut("k")
+                Divider()
+                Button("Heading 1") { model.textView?.heading(1) }.keyboardShortcut("1")
+                Button("Heading 2") { model.textView?.heading(2) }.keyboardShortcut("2")
+                Button("Heading 3") { model.textView?.heading(3) }.keyboardShortcut("3")
+                Button("Heading 4") { model.textView?.heading(4) }.keyboardShortcut("4")
+                Button("Body Text") { model.textView?.heading(0) }.keyboardShortcut("0")
+                Button("Code Block") { model.textView?.setTextStyle(.monospaced) }
+                Divider()
+                Button("Quote") { model.textView?.prefixLines("> ") }.keyboardShortcut("'", modifiers: [.command])
+                Button("Bulleted List") { model.textView?.setList(.bullets) }.keyboardShortcut("l", modifiers: [.command, .shift])
+                Button("Numbered List") { model.textView?.setList(.numbers) }
+                Button("Checklist") { model.textView?.setList(.checklist) }.keyboardShortcut("l", modifiers: [.command, .option])
+                Button("Footnote") { model.textView?.footnote() }.keyboardShortcut("f", modifiers: [.command, .shift])
+                Button("Section Break") { model.textView?.divider() }.keyboardShortcut(.return, modifiers: [.command, .shift])
+                Divider()
+                Button("Indent") { model.textView?.indentLines(outdent: false) }.keyboardShortcut("]")
+                Button("Outdent") { model.textView?.indentLines(outdent: true) }.keyboardShortcut("[")
+                Button("Move Line Up") { model.textView?.moveLines(up: true) }
+                    .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+                Button("Move Line Down") { model.textView?.moveLines(up: false) }
+                    .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+            }
+            .disabled(!model.editorHasFocus)
             Divider()
             Button("Add Image…") { addImage() }.keyboardShortcut("i", modifiers: [.command, .shift])
+                .disabled(model.editor == nil)
             Button("Table…") { model.textView?.editTable() }.keyboardShortcut("t", modifiers: [.command, .shift])
                 .help("Edit the table the cursor is in as a grid, or insert a new one")
+                .disabled(!model.editorHasFocus)
             Divider()
             Button("Insert Element…") { model.showElementPicker = true }.keyboardShortcut("e", modifiers: [.command, .option])
                 .disabled(model.editor == nil)
@@ -192,6 +214,15 @@ enum Launch {
             let ok = await ThemePreviewRenderer.renderAll(into: URL(fileURLWithPath: (folder as NSString).expandingTildeInPath), arguments: args)
             exit(ok ? 0 : 1)
         }
+        // Flags that write to the site act only on a folder named with --site, never on the site reopened from last time.
+        let siteGiven = value("--site") != nil
+        let writingFlags = ["--apply-theme", "--new-page", "--new-draft", "--measure-typing", "--selftest-publish", "--selftest-content",
+                            "--selftest-design"]
+        if !siteGiven, let flag = writingFlags.first(where: args.contains) {
+            print("\(flag) needs --site <folder>.")
+            if flag.hasPrefix("--selftest") { print("SELFTEST FAIL") }
+            exit(1)
+        }
         if let path = value("--site") {
             model.suppressSiteSummary = !args.contains("--summary")
             await model.account.restore()
@@ -200,6 +231,11 @@ enum Launch {
             await model.account.restore()
         } else {
             await model.start()
+        }
+        if args.contains(where: { $0.hasPrefix("--selftest") }), let reason = await SelfTest.refusal(model) {
+            print(reason)
+            print("SELFTEST FAIL")
+            exit(1)
         }
         if args.contains("--selftest-publish") {
             let ok = await SelfTest.publish(model)
@@ -327,6 +363,21 @@ enum Launch {
 }
 
 enum SelfTest {
+    /// Why the self-tests must not run on the open site, or nil when it is safe: they publish, so they need a local git
+    /// folder (given with --site) whose remote is not GitHub. A site synced with GitHub has no git folder at all.
+    static func refusal(_ model: AppModel) async -> String? {
+        guard let site = model.site else { return "No site is open." }
+        guard let local = model.backend as? LocalGitBackend, local.siteRoot.standardizedFileURL == site.root.standardizedFileURL else {
+            return "Refusing to self-test a site that is not a local git folder."
+        }
+        guard await local.git.isRepository() else { return "Refusing to self-test a folder that is not a git repository." }
+        if let remote = await local.git.remoteURL(),
+           remote.lowercased().contains("github.com") || Git.gitHubRepository(from: remote) != nil {
+            return "Refusing to self-test against a GitHub remote: \(remote)"
+        }
+        return nil
+    }
+
     /// Times typing into a long post: each character is a keystroke through the text view, with its restyle.
     static func measureTyping(_ model: AppModel) async {
         model.newPost()

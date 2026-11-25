@@ -21,8 +21,10 @@ final class InkwellTextView: NSTextView {
     var onInsertElement: ((Int) -> Void)?
     /// Opens the settings of the page element at a location.
     var onEditElement: ((Int) -> Void)?
-    /// Page elements in the text, refreshed with each restyle.
+    /// Page elements in the text, found again on the first restyle after the text changes.
     var elementSpans: [ElementSpan] = []
+    var elementsDirty = true
+    var elementsPresent = false
     lazy var elementButton: NSButton = {
         let button = NSButton(title: "", target: self, action: #selector(editElementFromButton))
         button.bezelStyle = .push
@@ -53,7 +55,23 @@ final class InkwellTextView: NSTextView {
         addSubview(button)
         return button
     }()
-    var sourceMode = false
+    var sourceMode = false {
+        didSet { elementsDirty = true }
+    }
+
+    override var string: String {
+        get { super.string }
+        set {
+            super.string = newValue
+            elementsDirty = true
+        }
+    }
+
+    override func didChangeText() {
+        elementsDirty = true
+        super.didChangeText()
+    }
+
     /// Hide Markdown markers on every line except the one being edited.
     var hidesSyntax = true
     private(set) var liquidRanges: [NSRange] = []
@@ -312,7 +330,7 @@ final class InkwellTextView: NSTextView {
         liquidRanges.sort { $0.location < $1.location }
         typingAttributes = MarkdownStyler.baseAttributes(source: sourceMode)
         positionImages()
-        styleElements(in: storage)
+        styleElements(in: storage, windows: merged)
         updateTableButton()
         updateElementButton()
         scheduleFormatUpdate()
@@ -448,8 +466,10 @@ final class InkwellTextView: NSTextView {
     }
 
     /// Replaces the `[[` typed at `location` with a link.
-    func insertLink(title: String, url: String, replacing location: Int) {
+    func insertLink(title: String, url: String, replacing requested: Int) {
         let ns = string as NSString
+        // The post may have been reloaded while the picker was open.
+        let location = min(max(requested, 0), ns.length)
         let length = location + 2 <= ns.length && ns.substring(with: NSRange(location: location, length: 2)) == "[[" ? 2 : 0
         let link = "[\(title)](\(url))"
         apply(FormattingResult(edits: [TextEdit(NSRange(location: location, length: length), link)],
@@ -533,13 +553,35 @@ final class InkwellTextView: NSTextView {
     /// The window's undo manager outlives this text view (a post switch or the Source toggle makes a new one), so the
     /// view's undo steps leave with it; undoing them later would message a view that is gone.
     override func viewWillMove(toWindow newWindow: NSWindow?) {
-        if newWindow == nil, let undo = undoManager {
+        if newWindow == nil {
             linkPopover?.close()
-            breakUndoCoalescing()
-            undo.removeAllActions(withTarget: self)
-            if let storage = textStorage { undo.removeAllActions(withTarget: storage) }
+            clearUndo()
+            onFocusChange?(false)
         }
         super.viewWillMove(toWindow: newWindow)
+    }
+
+    /// Forgets this view's undo steps, which are only valid for the text they were made in.
+    func clearUndo() {
+        guard let undo = undoManager else { return }
+        breakUndoCoalescing()
+        undo.removeAllActions(withTarget: self)
+        if let storage = textStorage { undo.removeAllActions(withTarget: storage) }
+    }
+
+    /// Whether this view has the keyboard, so the Format menu acts on it only then.
+    var onFocusChange: ((Bool) -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { onFocusChange?(true) }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { onFocusChange?(false) }
+        return resigned
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -812,6 +854,10 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.onOpenLink = { [weak model] url in model?.openLink(url) }
         textView.linkEntries = { [weak model] in model?.linkEntries ?? [] }
         textView.formatState = format
+        textView.onFocusChange = { [weak model, weak textView] focused in
+            guard let model, let textView else { return }
+            model.editorFocusChanged(textView, focused: focused)
+        }
         textView.restyle()
 
         let scroll = NSScrollView()
@@ -834,6 +880,8 @@ struct MarkdownEditor: NSViewRepresentable {
             context.coordinator.revision = revision
             textView.sourceMode = sourceMode
             if textView.string != text {
+                // Undo steps for the old text would apply to the wrong characters, or past the end.
+                textView.clearUndo()
                 textView.string = text
                 textView.setSelectedRange(NSRange(location: 0, length: 0))
             }

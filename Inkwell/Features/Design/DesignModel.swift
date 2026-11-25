@@ -140,12 +140,18 @@ final class DesignModel {
         tokenTask?.cancel()
         tokenTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled, let self else { return }
-            let pending = self.pendingTokens
-            self.pendingTokens = [:]
-            for (key, entry) in pending {
-                self.setToken(String(key.split(separator: "|")[0]), entry.0, scheme: entry.1)
-            }
+            guard !Task.isCancelled else { return }
+            self?.flushPendingTokens()
+        }
+    }
+
+    /// Writes colours and sizes still waiting for their pause, at once.
+    func flushPendingTokens() {
+        tokenTask?.cancel()
+        let pending = pendingTokens
+        pendingTokens = [:]
+        for (key, entry) in pending {
+            setToken(String(key.split(separator: "|")[0]), entry.0, scheme: entry.1)
         }
     }
 

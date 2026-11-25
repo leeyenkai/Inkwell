@@ -75,6 +75,19 @@ final class EditorDocument {
         }
     }
 
+    /// True when the file changed elsewhere and the text here differs from both that version and the last save, so
+    /// closing the editor now would lose one of them.
+    var conflictNeedsChoice: Bool {
+        guard let disk = diskConflict else { return false }
+        return frontMatter.text != disk && frontMatter.text != lastSaved
+    }
+
+    /// Settles a conflict that loses nothing: the text here already matches the other version, or was never edited.
+    func resolveConflictIfTrivial() {
+        guard let disk = diskConflict, !conflictNeedsChoice else { return }
+        resolveDiskConflict(keepMine: frontMatter.text == disk)
+    }
+
     var body: String {
         get { frontMatter.body }
         set {

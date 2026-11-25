@@ -83,7 +83,12 @@ enum RecentSite {
 final class AppModel {
     let account = AccountModel()
     let updates = Updates()
-    var site: Site?
+    var site: Site? {
+        didSet { photoCache = nil }
+    }
+
+    /// The photo entries, read from their files once per site load rather than on every redraw of the grid.
+    @ObservationIgnored var photoCache: [PhotoEntry]?
     private(set) var backend: (any SiteBackend)?
     var loadError: String?
     var opening: String?
@@ -173,6 +178,20 @@ final class AppModel {
         .flatMap { FileManager.default.isExecutableFile(atPath: $0.path) ? SassCompiler(executable: $0) : nil }
     private var searchIndex: [String: String] = [:]
     weak var textView: InkwellTextView?
+    /// True while the post's text view has the keyboard: the Format menu acts only then, so in the title or a property
+    /// field its shortcuts are left to the field.
+    private(set) var editorHasFocus = false
+    @ObservationIgnored private weak var focusedTextView: InkwellTextView?
+
+    func editorFocusChanged(_ view: InkwellTextView, focused: Bool) {
+        if focused {
+            focusedTextView = view
+        } else if focusedTextView !== view {
+            return
+        }
+        if !focused { focusedTextView = nil }
+        if editorHasFocus != focused { editorHasFocus = focused }
+    }
     private(set) var draftStore: DraftStore?
     private var changesTask: Task<Void, Never>?
     private var syncLoop: Task<Void, Never>?
@@ -277,7 +296,7 @@ final class AppModel {
         let root = backend.siteRoot
         do {
             let site = try await Task.detached { try SiteLoader.load(root) }.value
-            editor?.saveNow()
+            settleEditor()
             editor = nil
             selectedDocumentID = nil
             self.backend = backend
@@ -315,7 +334,7 @@ final class AppModel {
     }
 
     func closeSite() {
-        editor?.saveNow()
+        settleEditor()
         syncLoop?.cancel()
         editor = nil
         selectedDocumentID = nil
@@ -520,7 +539,7 @@ final class AppModel {
 
     func select(_ id: String?) {
         guard id != selectedDocumentID || editor == nil else { return }
-        editor?.saveNow()
+        settleEditor()
         selectedDocumentID = id
         guard let doc = document(id), let site else {
             editor = nil
@@ -661,6 +680,7 @@ final class AppModel {
         guard let backend, let draftStore, doc.origin == .repository, doc.relativePath.hasPrefix("_"),
               let folder = doc.relativePath.split(separator: "/").first else { return }
         let collection = String(folder.dropFirst())
+        if editor?.document.id == doc.id { settleEditor() }
         retireEditor(for: doc)
         publishSheet = PublishSession.unpublish(document: doc, draftURL: draftStore.url(collection: collection, filename: doc.filename),
                                                 backend: backend, model: self)
@@ -699,6 +719,33 @@ final class AppModel {
         retireEditor(for: doc)
         try? FileManager.default.trashItem(at: doc.fileURL, resultingItemURL: nil)
         reloadDrafts()
+    }
+
+    /// Saves the open post before the editor closes. If the file changed elsewhere while there are unsaved edits here,
+    /// asks which version to keep, so neither is dropped without a choice.
+    func settleEditor() {
+        guard let editor else { return }
+        editor.saveNow()
+        editor.resolveConflictIfTrivial()
+        guard editor.conflictNeedsChoice else { return }
+        let name = editor.title.isEmpty ? editor.document.filename : editor.title
+        let alert = NSAlert()
+        alert.messageText = String(localized: "“\(name)” changed outside Inkwell while you were editing it.")
+        alert.informativeText = String(localized: """
+            Keep your version to save it over the other one, or use the other version and discard your edits.
+            """)
+        alert.addButton(withTitle: String(localized: "Keep Mine"))
+        alert.addButton(withTitle: String(localized: "Use the Other Version"))
+        editor.resolveDiskConflict(keepMine: alert.runModal() == .alertFirstButtonReturn)
+    }
+
+    static let flushSavesNotification = Notification.Name("InkwellFlushSaves")
+
+    /// Writes everything still waiting for its autosave pause, before the app quits.
+    func saveAllBeforeQuitting() {
+        settleEditor()
+        design?.flushPendingTokens()
+        NotificationCenter.default.post(name: Self.flushSavesNotification, object: nil)
     }
 
     /// Stops the open editor writing to a file that is about to move or disappear.
@@ -750,14 +797,35 @@ final class AppModel {
     struct PendingImage: Identifiable {
         let id = UUID()
         var image: ImportedImage
-        var insertAt: Int
+        var insertAt: InsertPoint
         var alt = ""
         var caption = ""
     }
 
+    /// Where a picture goes, remembered when its import starts: the post, and its text then.
+    struct InsertPoint {
+        var editor: ObjectIdentifier
+        var text: String
+        var location: Int
+    }
+
+    func insertPoint(at location: Int) -> InsertPoint? {
+        guard let editor, let textView else { return nil }
+        return InsertPoint(editor: ObjectIdentifier(editor), text: textView.string, location: location)
+    }
+
+    /// The remembered location while the text is as it was, the cursor once it has changed (typing, the Source
+    /// toggle), and nil when another post is open now.
+    func location(for point: InsertPoint) -> Int? {
+        guard let editor, ObjectIdentifier(editor) == point.editor, let textView else { return nil }
+        return textView.string == point.text ? point.location : textView.selectedRange().location
+    }
+
+    static var pictureNotAdded: String { String(localized: "The picture was not added, because another post is open now.") }
+
     func importImages(_ urls: [URL], at location: Int) {
-        guard let site, let editor, let url = urls.first else { return }
-        if urls.count > 1 { return importGallery(urls, at: location) }
+        guard let site, let editor, let url = urls.first, let point = insertPoint(at: location) else { return }
+        if urls.count > 1 { return importGallery(urls, at: point) }
         let slug = Filename.parse(editor.document.filename).slug
         let root = site.root
         Task {
@@ -765,7 +833,12 @@ final class AppModel {
                 let image = try await Task.detached {
                     try ImageImport.app.importImage(at: url, siteRoot: root, slug: slug == "untitled" ? "image" : slug)
                 }.value
-                pendingImage = PendingImage(image: image, insertAt: location)
+                guard self.location(for: point) != nil else {
+                    try? FileManager.default.removeItem(at: image.fileURL)
+                    errorMessage = Self.pictureNotAdded
+                    return
+                }
+                pendingImage = PendingImage(image: image, insertAt: point)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -778,7 +851,12 @@ final class AppModel {
         var markdown = pending.image.markdown(alt: alt, useRelativeURL: true)
         let caption = pending.caption.trimmingCharacters(in: .whitespaces)
         if !caption.isEmpty { markdown += "\n*\(caption)*" }
-        textView?.insertBlock(markdown, at: pending.insertAt)
+        guard let location = location(for: pending.insertAt) else {
+            cancelPendingImage()
+            errorMessage = Self.pictureNotAdded
+            return
+        }
+        textView?.insertBlock(markdown, at: location)
         pendingImage = nil
         refreshChanges()
     }

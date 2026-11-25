@@ -15,21 +15,29 @@ final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
         self.root = root
     }
 
+    /// Requests still being answered; one WebKit stopped must not be answered.
+    private var running: Set<ObjectIdentifier> = []
+
     func webView(_: WKWebView, start task: any WKURLSchemeTask) {
         guard let url = task.request.url else { return }
         let path = url.path(percentEncoded: false)
-        let response: SiteResources.Response = if let resources {
-            resources.response(for: path)
-        } else {
-            Self.file(path: path, root: root, baseurl: baseurl)
+        let id = ObjectIdentifier(task)
+        running.insert(id)
+        let resources = resources, root = root, baseurl = baseurl
+        Task {
+            // Pages render Liquid and stylesheets may compile Sass: both off the main thread, so typing stays smooth.
+            let response = await Task.detached {
+                resources?.response(for: path) ?? Self.file(path: path, root: root, baseurl: baseurl)
+            }.value
+            guard running.remove(id) != nil else { return }
+            let headers = ["Content-Type": response.mimeType, "Cache-Control": "no-store"]
+            task.didReceive(HTTPURLResponse(url: url, statusCode: response.status, httpVersion: "HTTP/1.1", headerFields: headers)!)
+            task.didReceive(response.data)
+            task.didFinish()
         }
-        let headers = ["Content-Type": response.mimeType, "Cache-Control": "no-store"]
-        task.didReceive(HTTPURLResponse(url: url, statusCode: response.status, httpVersion: "HTTP/1.1", headerFields: headers)!)
-        task.didReceive(response.data)
-        task.didFinish()
     }
 
-    static func file(path requested: String, root: URL, baseurl: String) -> SiteResources.Response {
+    nonisolated static func file(path requested: String, root: URL, baseurl: String) -> SiteResources.Response {
         var path = requested
         if !baseurl.isEmpty, path.hasPrefix(baseurl) { path = String(path.dropFirst(baseurl.count)) }
         if path.hasSuffix("/") { path += "index.html" }
@@ -41,7 +49,9 @@ final class SiteSchemeHandler: NSObject, WKURLSchemeHandler {
         return SiteResources.Response(status: 200, data: data, mimeType: mime)
     }
 
-    func webView(_: WKWebView, stop _: any WKURLSchemeTask) {}
+    func webView(_: WKWebView, stop task: any WKURLSchemeTask) {
+        running.remove(ObjectIdentifier(task))
+    }
 }
 
 struct SitePreview: NSViewRepresentable {
@@ -207,6 +217,8 @@ struct PreviewPane: View {
         .onAppear(perform: render)
         .onChange(of: editor.fullText) { scheduleRender() }
         .onChange(of: editor.document.id) { render() }
+        // A theme that finishes downloading brings a new builder with its layouts.
+        .onChange(of: model.previewBuilder.map(ObjectIdentifier.init)) { render() }
     }
 
     func scheduleRender() {

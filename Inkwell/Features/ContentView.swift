@@ -468,15 +468,15 @@ struct DetailView: View {
 
     var body: some View {
         if let editor = model.editor {
-            if model.showPreview {
-                HSplitView {
-                    EditorView(model: model, editor: editor)
-                        .frame(minWidth: 360)
+            // The editor keeps its place whether or not the preview is beside it, so its text view (cursor, scroll,
+            // undo) survives the toggle.
+            HSplitView {
+                EditorView(model: model, editor: editor)
+                    .frame(minWidth: 360)
+                if model.showPreview {
                     PreviewPane(model: model, editor: editor)
                         .frame(minWidth: 320)
                 }
-            } else {
-                EditorView(model: model, editor: editor)
             }
         } else {
             ContentUnavailableView("No Post Selected", systemImage: "square.and.pencil",
